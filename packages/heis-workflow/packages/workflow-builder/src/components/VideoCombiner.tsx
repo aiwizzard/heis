@@ -11,6 +11,8 @@ import NodeOptionsMenu from "./NodeOptionsMenu";
 import { TbArrowMerge } from "react-icons/tb";
 import { useGenerationCost } from "./useGenerationCost";
 import VideoPlayer from "./VideoPlayer";
+import type { FormValues, ModelDefinition, SchemaProperties, WorkflowNodeProps } from "../types";
+import type { CSSProperties, MouseEvent } from "react";
 
 const inputHandles = [
   "videoInput7", // videos_list
@@ -20,21 +22,21 @@ const outputHandles = [
   "videoOutput",
 ];
 
-const VideoCombiner = ({ id, data, selected }) => {
+const VideoCombiner = ({ id, data, selected }: WorkflowNodeProps) => {
   const models = useMemo(() => {
     return data.nodeSchemas?.categories?.utility?.models 
       ? Object.values(data.nodeSchemas.categories.utility.models) 
       : [];
   }, [data.nodeSchemas]);
-  const [selectedModel, setSelectedModel] = useState(data.selectedModel || models[0] || {});
-  const [connectedInputs, setConnectedInputs] = useState({});
-  const [connectedOutputs, setConnectedOutputs] = useState({});
-  const [formValues, setFormValues] = useState(data.formValues || { videos_list: [], aspect_ratio: "auto" });
+  const [selectedModel, setSelectedModel] = useState<ModelDefinition>(data.selectedModel || models[0] || { id: "" });
+  const [connectedInputs, setConnectedInputs] = useState<Record<string, boolean>>({});
+  const [connectedOutputs, setConnectedOutputs] = useState<Record<string, boolean>>({});
+  const [formValues, setFormValues] = useState<FormValues>(data.formValues || { videos_list: [], aspect_ratio: "auto" });
   const [dropDown, setDropDown] = useState(0);
   const [loading, setLoading] = useState(0);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const videoRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const outputHistory = data.outputHistory || [];
   const prevHistoryLengthRef = useRef(outputHistory.length);
   const workflowId = getWorkflowId();
@@ -53,8 +55,8 @@ const VideoCombiner = ({ id, data, selected }) => {
     }
   }, [id, generationCost, data.cost]);
 
-  const initializeFormData = (schemaProperties) => {
-    const initialData = {};
+  const initializeFormData = (schemaProperties: SchemaProperties): FormValues => {
+    const initialData: FormValues = {};
     const fieldEntries = Object.entries(schemaProperties || {});
 
     fieldEntries.forEach(([fieldName, fieldSchema]) => {
@@ -62,7 +64,9 @@ const VideoCombiner = ({ id, data, selected }) => {
         if (fieldSchema.items?.type === "object") {
           const examples = fieldSchema.examples;
           if (Array.isArray(examples) && examples.length > 0) {
-            initialData[fieldName] = examples.map((ex) => ({ ...ex }));
+            initialData[fieldName] = examples.map((example) =>
+              typeof example === "object" && example !== null && !Array.isArray(example) && !(example instanceof File) ? { ...example } : {},
+            );
           } else {
             initialData[fieldName] = [];
           }
@@ -98,20 +102,22 @@ const VideoCombiner = ({ id, data, selected }) => {
     return initialData;
   };
 
-  const addFormValuesInTaskData = (properties) => {
+  const addFormValuesInTaskData = (properties: SchemaProperties) => {
     const defaults = initializeFormData(properties);
 
     const validKeys = Object.keys(properties);
-    const filteredFormValues = Object.entries(data.formValues || {}).reduce((acc, [key, val]) => {
+    const filteredFormValues = Object.entries(data.formValues || {}).reduce<FormValues>((acc, [key, val]) => {
       if (validKeys.includes(key)) acc[key] = val;
       return acc;
     }, {});
 
-    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce(
+    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce<FormValues>(
       (acc, [key, val]) => {
         const meta = properties[key];
-        if (meta?.enum && !meta.enum.includes(val)) {
-          acc[key] = meta.default ?? meta.enum[0] ?? "";
+        const enumContainsValue = meta?.enum?.some((option) => typeof option === "object" && option !== null ? option.value === val : option === val);
+        if (meta?.enum && !enumContainsValue) {
+          const firstOption = meta.enum[0];
+          acc[key] = meta.default ?? (typeof firstOption === "object" && firstOption !== null ? firstOption.value : firstOption) ?? "";
         } else {
           acc[key] = val;
         }
@@ -171,7 +177,7 @@ const VideoCombiner = ({ id, data, selected }) => {
     
     const timer = setTimeout(() => {
       if (Object.entries(data.formValues || {}).length > 0) {
-        setFormValues(data.formValues);
+        setFormValues(data.formValues || {});
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -183,7 +189,7 @@ const VideoCombiner = ({ id, data, selected }) => {
     }
   }, [selectedModel, formValues, loading]);
 
-  const pollNodeStatus = (run_id) => {
+  const pollNodeStatus = (run_id: string) => {
     const interval = setInterval(() => {
       axios.get(`/api/workflow/run/${run_id}/status`)
       .then((response) => {
@@ -247,13 +253,13 @@ const VideoCombiner = ({ id, data, selected }) => {
         return;
       }
 
-      const modelSchema = nodeSchemas?.categories?.utility?.models[selectedModel.id]?.input_schema?.schemas?.input_data;
+      const modelSchema = nodeSchemas?.categories?.utility?.models?.[selectedModel.id]?.input_schema?.schemas?.input_data;
       if (!modelSchema || !modelSchema.properties) {
         toast.error("No input schema found for this model");
         data.onDataChange(id, { isLoading: false });
         return;
       }
-      const params = {};
+      const params: FormValues = {};
       const inputSchema = modelSchema.properties;
       const localSources = formValues || {};
       for (const [key, meta] of Object.entries(inputSchema)) {
@@ -272,9 +278,9 @@ const VideoCombiner = ({ id, data, selected }) => {
         node_id: "Video Combiner"
       });
       pollNodeStatus(response.data.run_id);
-    } catch(error) {
+    } catch(error: unknown) {
       data.onDataChange(id, { isLoading: false });
-      toast.error(error.response?.data?.detail || "Error running node");
+      toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Error running node");
       console.error(error);
     };
   };
@@ -288,14 +294,14 @@ const VideoCombiner = ({ id, data, selected }) => {
   };
 
   useEffect(() => {
-    const connectedInputs = {};
+    const connectedInputs: Record<string, boolean> = {};
     inputHandles.forEach((h) => {
       connectedInputs[h] = edges.some(
         (e) => e.target === id && e.targetHandle === h
       );
     });
 
-    const connectedOutputs = {};
+    const connectedOutputs: Record<string, boolean> = {};
     outputHandles.forEach((h) => {
       connectedOutputs[h] = edges.some(
         (e) => e.source === id && e.sourceHandle === h
@@ -306,7 +312,7 @@ const VideoCombiner = ({ id, data, selected }) => {
     setConnectedOutputs(connectedOutputs);
   }, [edges, id]);
 
-  const handlePrev = (e) => {
+  const handlePrev = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex > 0) {
       const newIndex = currentHistoryIndex - 1;
@@ -322,7 +328,7 @@ const VideoCombiner = ({ id, data, selected }) => {
     }
   };
 
-  const handleNext = (e) => {
+  const handleNext = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex < outputHistory.length - 1) {
       const newIndex = currentHistoryIndex + 1;
@@ -338,7 +344,7 @@ const VideoCombiner = ({ id, data, selected }) => {
     }
   };
 
-  const handleDeleteHistory = async (e) => {
+  const handleDeleteHistory = async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const currentHistory = outputHistory[currentHistoryIndex];
     if (!currentHistory || !currentHistory.node_run_id) return;
@@ -357,8 +363,8 @@ const VideoCombiner = ({ id, data, selected }) => {
           setCurrentHistoryIndex(Math.max(0, currentHistoryIndex - 1));
         }
         toast.success("History entry deleted");
-      } catch (error) {
-        toast.error(error.response?.data?.detail || "Failed to delete history entry");
+      } catch (error: unknown) {
+        toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Failed to delete history entry");
         console.error(error);
       }
     }
@@ -371,6 +377,7 @@ const VideoCombiner = ({ id, data, selected }) => {
   const currentOutput = currentOutputList.length > 0
     ? currentOutputList[currentVideoIndex]?.value || currentOutputList[0]?.value || data.resultUrl
     : data.resultUrl;
+  const currentOutputUrl = typeof currentOutput === "string" ? currentOutput : "";
 
   const hasVideosList = properties && "videos_list" in properties;
 
@@ -378,12 +385,12 @@ const VideoCombiner = ({ id, data, selected }) => {
     const timeout = setTimeout(() => {
       const validHandles = [
         hasVideosList && "videoInput7",
-      ].filter(Boolean);
+      ].filter((handle): handle is string => Boolean(handle));
 
       setEdges((prevEdges) =>
         prevEdges.filter((edge) => {
           if (edge.target !== id) return true;
-          return validHandles.includes(edge.targetHandle);
+          return typeof edge.targetHandle === "string" && validHandles.includes(edge.targetHandle);
         })
       );
       }, 2000);
@@ -392,7 +399,7 @@ const VideoCombiner = ({ id, data, selected }) => {
   
   return (
     <div 
-      style={{ minHeight: 280, '--loader-color': '#f97316' }} 
+      style={{ minHeight: 280, '--loader-color': '#f97316' } as CSSProperties & Record<`--${string}`, string | number>}
       className={`
         nowheel group flex flex-col w-80 
         rounded-2xl border-2 relative transition-all duration-300 ease-in-out 
@@ -484,7 +491,7 @@ const VideoCombiner = ({ id, data, selected }) => {
             nodeId={id}
             onDuplicate={data.duplicateNode}
             onDelete={handleDeleteNode}
-            downloadUrl={currentOutput}
+            downloadUrl={currentOutputUrl}
           />
         </div>
       </div>
@@ -500,11 +507,11 @@ const VideoCombiner = ({ id, data, selected }) => {
           <div className="text-red-400 text-xs font-medium p-3 bg-red-500/10 rounded-xl border border-red-500/20 m-3 w-full capitalize">
             {data.errorMsg}
           </div>
-        ) : currentOutput ? (
+        ) : currentOutputUrl ? (
           <div className="h-full w-full relative">
             <VideoPlayer 
-              key={currentOutput}
-              src={currentOutput}
+              key={currentOutputUrl}
+              src={currentOutputUrl}
               accentColor="#f97316"
             />
           </div>

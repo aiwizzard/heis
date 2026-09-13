@@ -9,10 +9,12 @@ import toast from "react-hot-toast";
 import { FaRegTrashCan } from "react-icons/fa6";
 import { MdClose } from "react-icons/md";
 import { themes } from "./themes";
+import type { ChangeEvent, DragEvent, FormEvent } from "react";
+import type { AgentDetails, AgentFormData, AgentSkill, HostProps, UploadFields } from "../types";
 
 const BASE_URL = "/api/agents";
 
-const EditAgent = ({ useUser, usedIn }) => {
+const EditAgent = ({ useUser, usedIn = "muapiapp" }: HostProps) => {
   // Project-specific user detail extraction
   const userContext = useUser ? useUser() : {};
   let user = null;
@@ -26,11 +28,12 @@ const EditAgent = ({ useUser, usedIn }) => {
     // muapiapp
     user = userContext.user || null;
   }
-  const { id } = useParams();
+  const { id: idParam } = useParams();
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
   const router = useRouter();
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AgentFormData>({
     name: "",
     description: "",
     system_prompt: "",
@@ -41,15 +44,15 @@ const EditAgent = ({ useUser, usedIn }) => {
     is_template: false,
   });
   
-  const [availableSkills, setAvailableSkills] = useState([]);
+  const [availableSkills, setAvailableSkills] = useState<AgentSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [initialSkills, setInitialSkills] = useState([]);
+  const [initialSkills, setInitialSkills] = useState<string[]>([]);
   const [realignedPrompt, setRealignedPrompt] = useState("");
   const [isRealigning, setIsRealigning] = useState(false);
   const [showRealignModal, setShowRealignModal] = useState(false);
@@ -70,8 +73,8 @@ const EditAgent = ({ useUser, usedIn }) => {
       setError(null);
       
       const [agentRes, skillsRes] = await Promise.all([
-        axios.get(`${BASE_URL}/by-slug/${id}`),
-        axios.get(`${BASE_URL}/skills`)
+        axios.get<AgentDetails>(`${BASE_URL}/by-slug/${id}`),
+        axios.get<AgentSkill[]>(`${BASE_URL}/skills`)
       ]);
       
       const agent = agentRes.data;
@@ -83,33 +86,33 @@ const EditAgent = ({ useUser, usedIn }) => {
       setFormData({
         name: agent.name,
         description: agent.description || "",
-        system_prompt: agent.system_prompt,
+        system_prompt: agent.system_prompt || "",
         icon_url: agent.icon_url || "",
-        skill_ids: agent.skills.map(s => s.id),
-        theme: agent.theme || "cosmic",
+        skill_ids: (agent.skills || []).map(s => s.id),
+        theme: typeof agent.theme === "string" ? agent.theme : agent.theme?.id || "cosmic",
         is_published: agent.is_published || false,
         is_template: agent.is_template || false,
       });
-      setInitialSkills(agent.skills.map(s => s.id));
+      setInitialSkills((agent.skills || []).map(s => s.id));
       setAvailableSkills(skillsRes.data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error fetching data:", err);
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.detail || 
-        "Failed to load agent details."
-      );
+      if (axios.isAxiosError<{ message?: string; detail?: string }>(err)) {
+        setError(err.response?.data?.message || err.response?.data?.detail || err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load agent details.");
+      }
     } finally {
       setLoading(false);
     }
   };
   
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSkillToggle = (skillId) => {
+  const handleSkillToggle = (skillId: string) => {
     setFormData(prev => {
       const isSelected = prev.skill_ids.includes(skillId);
       if (isSelected) {
@@ -130,10 +133,10 @@ const EditAgent = ({ useUser, usedIn }) => {
       await axios.delete(`${BASE_URL}/by-slug/${id}`);
       toast.success("Agent deleted successfully");
       router.push("/agents");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Delete error:", err);
       toast.error("Failed to delete agent");
-      setError(err.response?.data?.detail || "Delete failed");
+      setError(axios.isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail || err.message : "Delete failed");
     } finally {
       setSaving(false);
     }
@@ -148,7 +151,7 @@ const EditAgent = ({ useUser, usedIn }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  const handleDragEnter = (e) => {
+  const handleDragEnter = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current += 1;
@@ -157,7 +160,7 @@ const EditAgent = ({ useUser, usedIn }) => {
     }
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current -= 1;
@@ -167,12 +170,12 @@ const EditAgent = ({ useUser, usedIn }) => {
     }
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current = 0;
@@ -180,14 +183,17 @@ const EditAgent = ({ useUser, usedIn }) => {
     handleFileUpload(e);
   };
 
-  const handleFileUpload = async (eOrFiles) => {
-    let file = null;
+  const handleFileUpload = async (
+    eOrFiles: ChangeEvent<HTMLInputElement> | DragEvent<HTMLElement> | File[],
+  ) => {
+    let file: File | null = null;
     if (Array.isArray(eOrFiles)) {
       file = eOrFiles[0];
-    } else if (eOrFiles?.dataTransfer?.files && eOrFiles.dataTransfer.files.length > 0) {
+    } else if ("dataTransfer" in eOrFiles && eOrFiles.dataTransfer.files.length > 0) {
       file = eOrFiles.dataTransfer.files[0];
     } else {
-      file = eOrFiles?.target?.files?.[0];
+      const input = eOrFiles.currentTarget;
+      file = input instanceof HTMLInputElement ? input.files?.[0] || null : null;
     }
     if (!file) return;
 
@@ -199,7 +205,7 @@ const EditAgent = ({ useUser, usedIn }) => {
     try {
       setUploading(true);
       setUploadProgress(0);
-      const { data: uploadParams } = await axios.get("/api/app/get_file_upload_url", {
+      const { data: uploadParams } = await axios.get<{ url: string; fields: UploadFields }>("/api/app/get_file_upload_url", {
         params: { filename: file.name }
       });
 
@@ -213,7 +219,7 @@ const EditAgent = ({ useUser, usedIn }) => {
       await axios.post(url, uploadData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
           setUploadProgress(percent);
         }
       });
@@ -230,7 +236,7 @@ const EditAgent = ({ useUser, usedIn }) => {
     }
   };
 
-  const handleGenerateIcon = async (customPrompt) => {
+  const handleGenerateIcon = async (customPrompt?: string) => {
     if (!formData.name && !customPrompt) {
       toast.error("Please enter an agent name first");
       return;
@@ -256,9 +262,9 @@ const EditAgent = ({ useUser, usedIn }) => {
       } else {
         throw new Error("No image generated");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Icon generation failed:", err);
-      toast.error(err.response?.data?.detail || "Failed to generate AI icon");
+      toast.error(axios.isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail || err.message : "Failed to generate AI icon");
     } finally {
       setGeneratingIcon(false);
     }
@@ -288,7 +294,7 @@ const EditAgent = ({ useUser, usedIn }) => {
     toast.success("New instructions applied!");
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       setSaving(true);
@@ -302,13 +308,13 @@ const EditAgent = ({ useUser, usedIn }) => {
       setTimeout(() => {
         router.push("/agents");
       }, 1500);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error updating agent:", err);
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.detail || 
-        "Failed to update agent."
-      );
+      if (axios.isAxiosError<{ message?: string; detail?: string }>(err)) {
+        setError(err.response?.data?.message || err.response?.data?.detail || err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to update agent.");
+      }
       toast.error("Failed to save changes");
     } finally {
       setSaving(false);

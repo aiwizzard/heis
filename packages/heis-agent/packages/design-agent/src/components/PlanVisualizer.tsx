@@ -1,17 +1,18 @@
 "use client";
 import React from "react";
 import { FiBox, FiArrowRight, FiZap } from "react-icons/fi";
+import type { ExecutionPlan, PlanNode } from "../types";
 
 /**
  * Renders a DAG (Directed Acyclic Graph) of plan nodes.
  * Groups nodes by their topological layers for a clean horizontal flow.
  */
-export default function PlanVisualizer({ plan, theme = "dark" }) {
+export default function PlanVisualizer({ plan, theme = "dark" }: { plan?: ExecutionPlan | null; theme?: string }) {
   if (!plan || !plan.nodes) return null;
 
   // Simple topological grouping by dependencies
-  const layers = [];
-  const processed = new Set();
+  const layers: PlanNode[][] = [];
+  const processed = new Set<string>();
   let remaining = [...plan.nodes];
 
   while (remaining.length > 0) {

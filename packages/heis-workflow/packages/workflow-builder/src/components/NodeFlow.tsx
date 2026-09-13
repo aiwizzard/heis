@@ -11,7 +11,19 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  ConnectionMode,
+  SelectionMode,
 } from "reactflow";
+import type {
+  Connection,
+  Edge,
+  Node,
+  OnConnect,
+  OnConnectEnd,
+  OnConnectStart,
+  XYPosition,
+} from "reactflow";
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 // import "reactflow/dist/style.css";
 import { BsArrowUpCircleFill } from "react-icons/bs";
 import { FiZoomIn, FiZoomOut } from "react-icons/fi";
@@ -42,6 +54,22 @@ import ChatWidget from "./ChatWidget";
 import { AiOutlineAudio } from "react-icons/ai";
 import VideoCombiner from "./VideoCombiner";
 import { useGenerationCost } from "./useGenerationCost";
+import type {
+  FormValue,
+  FormValues,
+  ModelDefinition,
+  NodeRunStatus,
+  OutputHistoryEntry,
+  NodeOutput,
+  SchemaProperties,
+  SerializedWorkflowNode,
+  WorkflowApiResponse,
+  WorkflowBuilderProps,
+  WorkflowChatMessage,
+  WorkflowNode,
+  WorkflowNodeData,
+  WorkflowNodeSchemas,
+} from "../types";
 
 const nodeTypes = {
   textNode: TextGeneration,
@@ -53,14 +81,22 @@ const nodeTypes = {
   apiNode: ApiNode
 }
 
-const initialNodes = [
-  { id: "text1", position: { x: 0, y: 100 }, data: {}, type: "textNode" },
-  { id: "image1", position: { x: 300, y: 100 }, data: {}, type: "imageNode" },
+const emptyNodeData: WorkflowNodeData = {
+  onDataChange: () => undefined,
+  duplicateNode: () => undefined,
+  handleSaveWorkFlow: async () => null,
+};
+
+const initialNodes: WorkflowNode[] = [
+  { id: "text1", position: { x: 0, y: 100 }, data: { ...emptyNodeData }, type: "textNode" },
+  { id: "image1", position: { x: 300, y: 100 }, data: { ...emptyNodeData }, type: "imageNode" },
 ];
 
-const initialEdges = [];
+const initialEdges: Edge[] = [];
 
-const edgeStyles = {
+type EdgeColor = "blue" | "green" | "orange" | "gray" | "yellow" | "white";
+
+const edgeStyles: Record<EdgeColor, CSSProperties> = {
   blue: {
     stroke: '#3b82f6', // blue-500
     strokeWidth: 2,
@@ -90,8 +126,15 @@ const edgeStyles = {
   }
 };
 
-const getEdgeColor = (sourceHandle, targetHandle, sourceNode = null, targetNode = null) => {
-  if (sourceHandle === "apiOutput" && sourceNode) {
+const getEdgeColor = (
+  sourceHandle?: string | null,
+  targetHandle?: string | null,
+  sourceNode: WorkflowNode | null = null,
+  targetNode: WorkflowNode | null = null,
+): EdgeColor => {
+  const sourceKey = sourceHandle ?? "";
+  const targetKey = targetHandle ?? "";
+  if (sourceKey === "apiOutput" && sourceNode) {
     const output = sourceNode.data.outputs?.[0];
     const modelType = sourceNode.data.formValues?.model_type;
 
@@ -101,15 +144,15 @@ const getEdgeColor = (sourceHandle, targetHandle, sourceNode = null, targetNode 
     return "green";
   }
 
-  if (["textOutput", "concatOutput"].includes(sourceHandle)) return "blue";
-  if (["imageOutput"].includes(sourceHandle)) return "green";
-  if (["videoOutput"].includes(sourceHandle)) return "orange";
-  if (["audioOutput"].includes(sourceHandle)) return "yellow";
+  if (["textOutput", "concatOutput"].includes(sourceKey)) return "blue";
+  if (["imageOutput"].includes(sourceKey)) return "green";
+  if (["videoOutput"].includes(sourceKey)) return "orange";
+  if (["audioOutput"].includes(sourceKey)) return "yellow";
 
-  if (["textInput", "textInput4", "imageInput", "videoInput", "audioInput2", "concatInput", "apiInput"].includes(targetHandle)) return "blue";
-  if (["textInput2", "textInput3", "imageInput2", "imageInput3", "videoInput2", "videoInput3", "videoInput6", "audioInput3", "apiInput2", "apiInput3"].includes(targetHandle)) return "green";
-  if (["videoInput4", "audioInput4", "videoInput7"].includes(targetHandle)) return "orange";
-  if (["audioInput", "videoInput5", "videoInput8"].includes(targetHandle)) return "yellow";
+  if (["textInput", "textInput4", "imageInput", "videoInput", "audioInput2", "concatInput", "apiInput"].includes(targetKey)) return "blue";
+  if (["textInput2", "textInput3", "imageInput2", "imageInput3", "videoInput2", "videoInput3", "videoInput6", "audioInput3", "apiInput2", "apiInput3"].includes(targetKey)) return "green";
+  if (["videoInput4", "audioInput4", "videoInput7"].includes(targetKey)) return "orange";
+  if (["audioInput", "videoInput5", "videoInput8"].includes(targetKey)) return "yellow";
 
   if (sourceNode) {
     const type = sourceNode.type;
@@ -122,7 +165,7 @@ const getEdgeColor = (sourceHandle, targetHandle, sourceNode = null, targetNode 
   return "white";
 };
 
-const iconMap = {
+const iconMap: Record<string, React.ReactNode> = {
   "plus": <FaPlus size={20} />,
   "image": <IoImageOutline size={20} />,
   "video": <IoVideocamOutline size={20} />,
@@ -130,16 +173,27 @@ const iconMap = {
   "text": <TfiText size={20} />,
 };
 
-const SPECIAL_MODEL_NAMES = {
+const SPECIAL_MODEL_NAMES: Record<string, string> = {
   "text-passthrough": "Input Text",
   "image-passthrough": "Input Image",
   "video-passthrough": "Input Video",
   "audio-passthrough": "Input Audio",
 };
 
-const formatName = (id) => id.replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+const formatName = (id: string) => id.replace(/-/g, ' ').split(' ').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
-const getModelObjStatic = (category, modelId, nodeSchemas) => {
+const getRequestErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError<{ detail?: string }>(error)) {
+    return error.response?.data?.detail || error.message || "Server error";
+  }
+  return error instanceof Error ? error.message : "Unknown error";
+};
+
+const getModelObjStatic = (
+  category: string,
+  modelId: string,
+  nodeSchemas: WorkflowNodeSchemas,
+): ModelDefinition | null => {
   if (category === "api") {
     // We can't easily access filteredApiNodeModels statically without passing it, 
     // but we can compute it on the fly or just return null and let useEffect handle it if needed.
@@ -159,34 +213,86 @@ const getModelObjStatic = (category, modelId, nodeSchemas) => {
   };
 };
 
-const processWorkflowData = (workflowData, nodeSchemas, id) => {
+interface ProcessedWorkflow {
+  nodes: WorkflowNode[];
+  edges: Edge[];
+  metadata: {
+    workflowId: string | null;
+    runId?: string;
+    workflowName?: string;
+    interactionMode?: boolean;
+    publishWorkflow?: boolean;
+    template: { showTemplateBtn?: boolean; isPublishedTemplate?: boolean };
+    category: string;
+  };
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  position: XYPosition;
+}
+
+interface DraggedEdgeState {
+  nodeId: string;
+  handleId: string;
+  handleColor?: string;
+  isOutput: boolean;
+}
+
+interface EdgePickerState {
+  sourceNodeId: string | null;
+  targetNodeId: string | null;
+  sourceHandleId: string | null;
+  targetHandleId: string | null;
+  handleColor?: string;
+  isOutput: boolean;
+  cursorPos: XYPosition;
+}
+
+interface ArchitectStatusResponse {
+  status: "completed" | "failed" | string;
+  message?: string;
+  suggestions?: string[];
+  workflow?: {
+    nodes?: SerializedWorkflowNode[];
+    edges?: Edge[];
+  };
+}
+
+const processWorkflowData = (
+  workflowData: WorkflowApiResponse | null | undefined,
+  nodeSchemas: WorkflowNodeSchemas | null | undefined,
+  id: string | null,
+): ProcessedWorkflow | null => {
   if (!workflowData || !nodeSchemas?.categories) return null;
 
   const workflow = workflowData?.data;
   if (!workflow?.nodes) return null;
 
-  const restoredNodes = workflow.nodes.map(n => ({
-    id: n.id,
-    type: n.category === "utility" 
-      ? (n.model === "video-combiner" ? "vidConcatNode" : "concatNode") 
-      : `${n.category}Node`,
+  const restoredNodes: WorkflowNode[] = workflow.nodes.map((node) => ({
+    id: node.id,
+    type: node.category === "utility"
+      ? (node.model === "video-combiner" ? "vidConcatNode" : "concatNode")
+      : `${node.category}Node`,
     position: {
-      x: n.position?.x ?? 350,
-      y: n.position?.y ?? 0
+      x: node.position?.x ?? 350,
+      y: node.position?.y ?? 0
     },
     data: {
+      ...emptyNodeData,
       nodeSchemas,
-      modelId: n.model,
-      selectedModel: getModelObjStatic(n.category, n.model, nodeSchemas),
-      outputs: n.output_params?.outputs || [],
-      resultUrl: n.output_params?.resultUrl || null,
-      formValues: n.input_params || {},
-      outputHistory: (workflowData.run_history?.[n.id] || [])
-        .sort((a, b) => new Date(a.started_at) - new Date(b.started_at)),
+      modelId: node.model,
+      selectedModel: getModelObjStatic(node.category, node.model, nodeSchemas),
+      outputs: node.output_params?.outputs || [],
+      resultUrl: node.output_params?.resultUrl || null,
+      formValues: node.input_params || {},
+      outputHistory: [...(workflowData.run_history?.[node.id] || [])]
+        .sort((a, b) => new Date(a.started_at || 0).getTime() - new Date(b.started_at || 0).getTime()),
     }
   }));
 
-  const restoredEdges = (workflowData.edges || []).map((e) => {
+  const restoredEdges: Edge[] = (workflowData.edges || []).map((e) => {
     const sourceNode = restoredNodes.find(n => n.id === e.source);
     const targetNode = restoredNodes.find(n => n.id === e.target);
     let edgeColor = getEdgeColor(e.sourceHandle, e.targetHandle, sourceNode, targetNode);
@@ -227,9 +333,10 @@ const NodeFlow = ({
   onGenerationEnd,
   onGenerationComplete,
   onGenerationError,
-}) => {
+}: WorkflowBuilderProps) => {
   const params = useParams();
-  const { id } = params;
+  const rawId = params?.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId ?? null;
 
   // The npm resolution for this package pulls in its own, separate `axios` module
   // instance from Open-Higgsfield-ai/node_modules (different version than the one
@@ -255,23 +362,23 @@ const NodeFlow = ({
     return processWorkflowData(initialWorkflowData, initialNodeSchemas, id);
   }, [initialWorkflowData, initialNodeSchemas, id]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialState?.nodes || []);
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>(initialState?.nodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialState?.edges || initialEdges);
-  const [activeHandleColor, setActiveHandleColor] = useState(null);
-  const [loadingNodes, setLoadingNodes] = useState({});
+  const [activeHandleColor, setActiveHandleColor] = useState<string | null>(null);
+  const [loadingNodes, setLoadingNodes] = useState<Record<string, boolean>>({});
   const [isRunning, setIsRunning] = useState(0);
   const [dropDown, setDropDown] = useState(0);
   const [workflowName, setWorkflowName] = useState(initialState?.metadata?.workflowName || "Untitled");
-  const [workflowId, setWorkflowId] = useState(id);
-  const [runId, setRunId] = useState(initialState?.metadata?.runId || null);
+  const [workflowId, setWorkflowId] = useState<string | null>(id);
+  const [runId, setRunId] = useState<string | null>(initialState?.metadata?.runId || null);
   const [hasFit, setHasFit] = useState(false);
-  const [nodeSchemas, setNodeSchemas] = useState(initialNodeSchemas || {});
-  const [contextMenu, setContextMenu] = useState(null);
+  const [nodeSchemas, setNodeSchemas] = useState<WorkflowNodeSchemas>(initialNodeSchemas || {});
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [draggedEdgeInfo, setDraggedEdgeInfo] = useState(null);
-  const [edgePicker, setEdgePicker] = useState(null);
+  const [draggedEdgeInfo, setDraggedEdgeInfo] = useState<DraggedEdgeState | null>(null);
+  const [edgePicker, setEdgePicker] = useState<EdgePickerState | null>(null);
   const connectionMadeRef = useRef(false);
-  const onConnectRef = useRef(null);
+  const onConnectRef = useRef<OnConnect | null>(null);
   const [interactionMode, setInteractionMode] = useState(initialState?.metadata?.interactionMode || false);
   const [publishWorkflow, setPublishWorkflow] = useState(initialState?.metadata?.publishWorkflow || false);
   const [template, setTemplate] = useState(initialState?.metadata?.template || {
@@ -286,28 +393,28 @@ const NodeFlow = ({
 
   useEffect(() => {
     const total = nodes.reduce((sum, node) => {
-      const cost = parseFloat(node.data?.cost) || 0;
+      const cost = Number(node.data?.cost) || 0;
       return sum + cost;
     }, 0);
-    setTotalWorkflowCost(total.toFixed(3));
+    setTotalWorkflowCost(Number(total.toFixed(3)));
   }, [nodes]);
 
   // Sync global store with initial data if provided
   useEffect(() => {
     if (initialState?.metadata) {
-      setWorkflowIds(id, initialState.metadata.runId);
+      setWorkflowIds(id, initialState.metadata.runId ?? null);
     }
   }, [id, initialState]);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([]);
+  const [chatMessages, setChatMessages] = useState<WorkflowChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [workflowCategory, setWorkflowCategory] = useState(initialState?.metadata?.category || "General");
   const [categoryInput, setCategoryInput] = useState(initialState?.metadata?.category || "General");
   const [isCategoryPopupOpen, setIsCategoryPopupOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isModelDropdownUp, setIsModelDropdownUp] = useState(false);
-  const modelDropdownTriggerRef = useRef(null);
+  const modelDropdownTriggerRef = useRef<HTMLButtonElement>(null);
 
   const { zoomIn, zoomOut, fitView, getNodes, screenToFlowPosition } = useReactFlow();
 
@@ -320,9 +427,12 @@ const NodeFlow = ({
     apiModelsFromBackend.includes(model.id)
   );
 
-  const loadPreset = (preset) => {
+  const loadPreset = (preset: (typeof presets)[number]) => {
     setIsPresetsDismissed(true);
-    setNodes(preset.nodes);
+    setNodes(preset.nodes.map((node) => ({
+      ...node,
+      data: { ...emptyNodeData, ...node.data } as WorkflowNodeData,
+    })));
     setEdges(preset.edges);
     setTimeout(() => fitView({ padding: 0.4, duration: 500 }), 100);
   };
@@ -336,7 +446,7 @@ const NodeFlow = ({
         .catch(err => console.error("Failed to load node schemas", err));
     }
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
 
@@ -368,32 +478,33 @@ const NodeFlow = ({
       }));
     });
   }, [nodeSchemas]);
-  const getModelObj = useCallback((category, modelId) => {
+  const getModelObj = useCallback((category: string, modelId: string) => {
     return getModelObjStatic(category, modelId, nodeSchemas);
   }, [nodeSchemas]);
 
-  const restoreWorkflow = useCallback((workflowData) => {
+  const restoreWorkflow = useCallback((workflowData: WorkflowApiResponse) => {
     const workflow = workflowData?.data;
     if (!workflow?.nodes) return;
 
-    const restoredNodes = workflow.nodes.map(n => ({
-      id: n.id,
-      type: n.category === "utility" 
-        ? (n.model === "video-combiner" ? "vidConcatNode" : "concatNode") 
-        : `${n.category}Node`,
+    const restoredNodes: WorkflowNode[] = workflow.nodes.map((node) => ({
+      id: node.id,
+      type: node.category === "utility"
+        ? (node.model === "video-combiner" ? "vidConcatNode" : "concatNode")
+        : `${node.category}Node`,
       position: {
-        x: n.position?.x ?? 350,
-        y: n.position?.y ?? 0
+        x: node.position?.x ?? 350,
+        y: node.position?.y ?? 0
       },
       data: {
+        ...emptyNodeData,
         nodeSchemas,
-        modelId: n.model,
-        selectedModel: getModelObj(n.category, n.model),
-        outputs: n.output_params?.outputs || [],
-        resultUrl: n.output_params?.resultUrl || null,
-        formValues: n.input_params || {},
-        outputHistory: (workflowData.run_history?.[n.id] || [])
-          .sort((a, b) => new Date(a.started_at) - new Date(b.started_at)),
+        modelId: node.model,
+        selectedModel: getModelObj(node.category, node.model),
+        outputs: node.output_params?.outputs || [],
+        resultUrl: node.output_params?.resultUrl || null,
+        formValues: node.input_params || {},
+        outputHistory: [...(workflowData.run_history?.[node.id] || [])]
+          .sort((a, b) => new Date(a.started_at || 0).getTime() - new Date(b.started_at || 0).getTime()),
       }
     }));
 
@@ -415,12 +526,12 @@ const NodeFlow = ({
     setNodes(restoredNodes);
     setEdges(restoredEdges);
     setWorkflowId(id);
-    setRunId(workflowData?.run_id);
-    setWorkflowName(workflowData.name);
+    setRunId(workflowData.run_id ?? null);
+    setWorkflowName(workflowData.name || "Untitled");
     setWorkflowCategory(workflowData?.category || "General");
-    setWorkflowIds(workflowData.workflow_id, workflowData?.run_id);
-    setInteractionMode(workflowData.is_owner);
-    setPublishWorkflow(workflowData.is_published);
+    setWorkflowIds(workflowData.workflow_id ?? null, workflowData.run_id ?? null);
+    setInteractionMode(workflowData.is_owner ?? false);
+    setPublishWorkflow(workflowData.is_published ?? false);
     setTemplate(prev => ({
       ...prev,
       showTemplateBtn: workflowData.show_temp_button,
@@ -479,7 +590,7 @@ const NodeFlow = ({
 
   useEffect(() => {
     setNodes((prevNodes) => {
-      const edgesBySource = {};
+      const edgesBySource: Record<string, Edge[]> = {};
       edges.forEach((edge) => {
         if (!edgesBySource[edge.source]) edgesBySource[edge.source] = [];
         edgesBySource[edge.source].push(edge);
@@ -506,7 +617,7 @@ const NodeFlow = ({
     });
   }, [edges, setNodes]);
 
-  const onDataChange = (id, newData, targetNodeId = null) => {
+  const onDataChange = (id: string, newData: Partial<WorkflowNodeData>, targetNodeId?: string) => {
     setNodes((prevNodes) => {
       let updatedNodes = prevNodes.map((node) => {
         const match = node.id.toLowerCase().replace(/\s+/g, '') === id.toLowerCase().replace(/\s+/g, '');
@@ -539,6 +650,7 @@ const NodeFlow = ({
         if (!edge) return node;
 
         const targetHandle = edge.targetHandle;
+        if (!targetHandle) return node;
         let updatedFormValues = { ...node.data.formValues };
 
         const sourceNode = updatedNodes.find((n) => n.id === edge.source);
@@ -547,18 +659,18 @@ const NodeFlow = ({
           : resultValue;
 
         if (["textInput", "imageInput", "videoInput", "audioInput2", "apiInput"].includes(targetHandle)) {
-          updatedFormValues.prompt = sourceValue;
+          updatedFormValues.prompt = sourceValue ?? null;
         }
 
         else if (targetHandle === "textInput4") {
-          updatedFormValues.system_prompt = sourceValue;
+          updatedFormValues.system_prompt = sourceValue ?? null;
         }
 
         else if (["textInput3", "imageInput2", "videoInput6"].includes(targetHandle)) {
           const list = Array.isArray(updatedFormValues.images_list)
             ? [...updatedFormValues.images_list]
             : [];
-          if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") list.push(resultValue);
+          if (resultValue !== undefined && !list.includes(resultValue) && typeof resultValue === "string" && resultValue.trim() !== "") list.push(resultValue);
           updatedFormValues.images_list = list;
         }
 
@@ -566,24 +678,24 @@ const NodeFlow = ({
           const list = Array.isArray(updatedFormValues.images)
             ? [...updatedFormValues.images]
             : [];
-          if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") list.push(resultValue);
+          if (resultValue !== undefined && !list.includes(resultValue) && typeof resultValue === "string" && resultValue.trim() !== "") list.push(resultValue);
           updatedFormValues.images = list;
         }
 
         else if (["textInput2", "videoInput2", "imageInput3", "audioInput3"].includes(targetHandle)) {
-          updatedFormValues.image_url = resultValue;
+          updatedFormValues.image_url = resultValue ?? null;
         }
 
         else if (targetHandle === "apiInput3") {
-          updatedFormValues.image = resultValue;
+          updatedFormValues.image = resultValue ?? null;
         }
 
         else if (targetHandle === "videoInput3") {
-          updatedFormValues.last_image = resultValue;
+          updatedFormValues.last_image = resultValue ?? null;
         }
 
         else if (["videoInput4", "audioInput4"].includes(targetHandle)) {
-          updatedFormValues.video_url = resultValue;
+          updatedFormValues.video_url = resultValue ?? null;
         }
 
         else if (targetHandle === "videoInput7") {
@@ -591,7 +703,7 @@ const NodeFlow = ({
           const list = Array.isArray(updatedFormValues[key])
             ? [...updatedFormValues[key]]
             : [];
-          if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") list.push(resultValue);
+          if (resultValue !== undefined && !list.includes(resultValue) && typeof resultValue === "string" && resultValue.trim() !== "") list.push(resultValue);
           updatedFormValues[key] = list;
         }
 
@@ -600,12 +712,12 @@ const NodeFlow = ({
           const list = Array.isArray(updatedFormValues[key])
             ? [...updatedFormValues[key]]
             : [];
-          if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") list.push(resultValue);
+          if (resultValue !== undefined && !list.includes(resultValue) && typeof resultValue === "string" && resultValue.trim() !== "") list.push(resultValue);
           updatedFormValues[key] = list;
         }
 
         else if (["videoInput5", "audioInput"].includes(targetHandle)) {
-          updatedFormValues.audio_url = resultValue;
+          updatedFormValues.audio_url = resultValue ?? null;
         }
 
         else if (node.type === "apiNode") {
@@ -616,12 +728,12 @@ const NodeFlow = ({
             const list = Array.isArray(updatedFormValues[targetHandle])
               ? [...updatedFormValues[targetHandle]]
               : [];
-            if (sourceValue && sourceValue.trim() !== "" && !list.includes(sourceValue)) {
+            if (typeof sourceValue === "string" && sourceValue.trim() !== "" && !list.includes(sourceValue)) {
               list.push(sourceValue);
             }
             updatedFormValues[targetHandle] = list;
           } else {
-            updatedFormValues[targetHandle] = sourceValue;
+            updatedFormValues[targetHandle] = sourceValue ?? null;
           }
         }
 
@@ -687,26 +799,32 @@ const NodeFlow = ({
     }
   };
 
-  const onConnect = useCallback(
-    (params) => {
-      const targetNodeExists = nodes.some(n => n.id === params.target);
+  const onConnect: OnConnect = useCallback(
+    (params: Connection) => {
+      if (!params.source || !params.target || !params.sourceHandle || !params.targetHandle) return;
+      const source = params.source;
+      const target = params.target;
+      const sourceHandle = params.sourceHandle;
+      const targetHandle = params.targetHandle;
+      const targetNodeExists = nodes.some(n => n.id === target);
       if (targetNodeExists) {
         connectionMadeRef.current = true;
       }
       setEdges((eds) => {
-        const sourceNode = nodes.find((n) => n.id === params.source) || {};
-        const targetNode = nodes.find((n) => n.id === params.target) || {};
-        let color = getEdgeColor(params.sourceHandle, params.targetHandle, sourceNode, targetNode);
+        const sourceNode = nodes.find((n) => n.id === source);
+        const targetNode = nodes.find((n) => n.id === target);
+        if (!sourceNode || !targetNode) return eds;
+        const color = getEdgeColor(sourceHandle, targetHandle, sourceNode, targetNode);
 
         if (color === "blue" && targetNode?.type !== "concatNode" && targetNode.type !== "apiNode") {
           const hasExistingBlueConnection = eds.some(edge => {
-            if (edge.target !== params.target) return false;
+            if (edge.target !== target) return false;
             // // Allow different handles to coexist even if they are both blue
-            if (edge.targetHandle !== params.targetHandle) return false;
+            if (edge.targetHandle !== targetHandle) return false;
 
             const edgeColor =
               ["textInput", "imageInput", "videoInput", "audioInput2", "concatInput", "textInput4"].includes(edge.targetHandle) ||
-                ["textOutput", "concatOutput"].includes(edge.sourceHandle)
+                ["textOutput", "concatOutput"].includes(edge.sourceHandle ?? "")
                 ? "blue"
                 : "other";
 
@@ -718,8 +836,7 @@ const NodeFlow = ({
           }
         }
 
-        const newEdges = addEdge({ ...params, style: edgeStyles[color] }, eds);
-        if (!sourceNode || !targetNode || !sourceNode.data) return newEdges;
+        const newEdges = addEdge({ ...params, source, target, sourceHandle, targetHandle, style: edgeStyles[color] }, eds);
 
         const sourceData = sourceNode.data;
         const resultValue = sourceData.viewingOutput !== undefined
@@ -737,29 +854,29 @@ const NodeFlow = ({
 
             let updatedFormValues = { ...n.data.formValues };
 
-            if (n.id === params.target && n.type === "apiNode") {
+            if (n.id === target && n.type === "apiNode") {
               const listFields = ["images", "image_urls", "images_list"];
-              const isList = listFields.includes(params.targetHandle) || n.data.taskData?.[params.targetHandle]?.type === "array";
+              const isList = listFields.includes(targetHandle) || n.data.taskData?.[targetHandle]?.type === "array";
 
               if (isList) {
-                const list = Array.isArray(updatedFormValues[params.targetHandle]) ? [...updatedFormValues[params.targetHandle]] : [];
-                if (sourceValue && sourceValue.trim() !== "" && !list.includes(sourceValue)) {
+                const list = Array.isArray(updatedFormValues[targetHandle]) ? [...updatedFormValues[targetHandle]] : [];
+                if (typeof sourceValue === "string" && sourceValue.trim() !== "" && !list.includes(sourceValue)) {
                   list.push(sourceValue);
                 }
-                updatedFormValues[params.targetHandle] = list;
+                updatedFormValues[targetHandle] = list;
               } else {
-                updatedFormValues[params.targetHandle] = sourceValue;
+                updatedFormValues[targetHandle] = sourceValue ?? null;
               }
             }
 
             if (color === "blue") {
-              if (targetNode.type === "concatNode" && params.targetHandle === "concatInput") {
+              if (targetNode.type === "concatNode" && targetHandle === "concatInput") {
                 const allConcatEdges = newEdges.filter((e) =>
                   e.target === targetNode.id && e.targetHandle === "concatInput"
                 );
 
                 const concatValues = allConcatEdges.map((e) => {
-                  if (e.source === params.source) return resultValue;
+                  if (e.source === source) return resultValue;
                   const sourceNode = prev.find((node) => node.id === e.source);
                   return sourceNode?.data?.resultUrl || sourceNode?.data?.outputs?.[0]?.value || "";
                 }).filter(v => v);
@@ -767,43 +884,43 @@ const NodeFlow = ({
                 updatedFormValues.prompt = concatValues.join(" ");
               }
 
-              else if (["textInput", "imageInput", "videoInput", "audioInput2", "apiInput"].includes(params.targetHandle)) {
+              else if (["textInput", "imageInput", "videoInput", "audioInput2", "apiInput"].includes(targetHandle)) {
                 updatedFormValues.prompt = sourceValue || "";
               }
-              else if (params.targetHandle === "textInput4") {
+              else if (targetHandle === "textInput4") {
                 updatedFormValues.system_prompt = sourceValue || "";
               }
             }
 
             if (color === "green") {
-              if (["textInput2", "videoInput2", "imageInput3", "audioInput3"].includes(params.targetHandle)) {
+              if (["textInput2", "videoInput2", "imageInput3", "audioInput3"].includes(targetHandle)) {
                 updatedFormValues.image_url = resultValue || null;
-              } else if (["textInput3", "imageInput2", "videoInput6"].includes(params.targetHandle)) {
+              } else if (["textInput3", "imageInput2", "videoInput6"].includes(targetHandle)) {
                 const list = Array.isArray(updatedFormValues.images_list) ? [...updatedFormValues.images_list] : [];
-                if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") {
+                if (typeof resultValue === "string" && !list.includes(resultValue) && resultValue.trim() !== "") {
                   list.push(resultValue);
                 }
                 updatedFormValues.images_list = list;
-              } else if (params.targetHandle === "apiInput2") {
+              } else if (targetHandle === "apiInput2") {
                 const list = Array.isArray(updatedFormValues.images) ? [...updatedFormValues.images] : [];
-                if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") {
+                if (typeof resultValue === "string" && !list.includes(resultValue) && resultValue.trim() !== "") {
                   list.push(resultValue);
                 }
                 updatedFormValues.images = list;
-              } else if (params.targetHandle === "videoInput3") {
+              } else if (targetHandle === "videoInput3") {
                 updatedFormValues.last_image = resultValue || null;
-              } else if (params.targetHandle === "apiInput3") {
+              } else if (targetHandle === "apiInput3") {
                 updatedFormValues.image = resultValue || null;
               }
             }
 
             if (color === "orange") {
-              if (["videoInput4", "audioInput4"].includes(params.targetHandle)) {
+              if (["videoInput4", "audioInput4"].includes(targetHandle)) {
                 updatedFormValues.video_url = resultValue || null;
-              } else if (params.targetHandle === "videoInput7") {
+              } else if (targetHandle === "videoInput7") {
                 const key = updatedFormValues.video_files ? "video_files" : "videos_list";
                 const list = Array.isArray(updatedFormValues[key]) ? [...updatedFormValues[key]] : [];
-                if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") {
+                if (typeof resultValue === "string" && !list.includes(resultValue) && resultValue.trim() !== "") {
                   list.push(resultValue);
                 }
                 updatedFormValues[key] = list;
@@ -811,13 +928,13 @@ const NodeFlow = ({
             }
 
             if (color === "yellow") {
-              if (["audioInput", "videoInput5"].includes(params.targetHandle)) {
+              if (["audioInput", "videoInput5"].includes(targetHandle)) {
                 updatedFormValues.audio_url = resultValue !== undefined ? resultValue : null;
               }
-              if (params.targetHandle === "videoInput8") {
+              if (targetHandle === "videoInput8") {
                 const key = updatedFormValues.audio_files ? "audio_files" : "audios_list";
                 const list = Array.isArray(updatedFormValues[key]) ? [...updatedFormValues[key]] : [];
-                if (!list.includes(resultValue) && resultValue && resultValue.trim() !== "") {
+                if (typeof resultValue === "string" && !list.includes(resultValue) && resultValue.trim() !== "") {
                   list.push(resultValue);
                 }
                 updatedFormValues[key] = list;
@@ -840,10 +957,10 @@ const NodeFlow = ({
     [nodes]
   );
 
-  const pollArchitectStatus = (request_id) => {
+  const pollArchitectStatus = (requestId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await api.get(`/api/workflow/poll-architect/${request_id}/result`);
+        const response = await api.get<ArchitectStatusResponse>(`/api/workflow/poll-architect/${requestId}/result`);
         const finalData = response.data;
         const status = finalData.status;
 
@@ -851,7 +968,7 @@ const NodeFlow = ({
           clearInterval(interval);
           const { message, suggestions, workflow } = finalData;
 
-          const newAgentMessage = {
+          const newAgentMessage: WorkflowChatMessage = {
             role: "agent",
             content: message || "Tasks complete. Your workflow has been updated.",
             suggestions: suggestions || [],
@@ -860,10 +977,10 @@ const NodeFlow = ({
           setChatMessages((prev) => [...prev, newAgentMessage]);
 
           if (workflow && workflow.nodes) {
-            const idMapping = {};
+            const idMapping: Record<string, string> = {};
             const counts = { text: 0, image: 0, video: 0, audio: 0 };
 
-            const newNodes = workflow.nodes.map((n) => {
+            const newNodes: WorkflowNode[] = workflow.nodes.map((n) => {
               let newId = n.id;
               const category = n.category;
 
@@ -892,6 +1009,7 @@ const NodeFlow = ({
                   y: n.position?.y ?? 0
                 },
                 data: {
+                  ...emptyNodeData,
                   ...existingNode?.data,
                   nodeSchemas,
                   modelId: n.model,
@@ -956,7 +1074,7 @@ const NodeFlow = ({
       } catch (error) {
         clearInterval(interval);
         console.error("Polling error:", error);
-        const errorMessage = {
+          const errorMessage: WorkflowChatMessage = {
           role: "agent",
           content: "Sorry, I encountered an error while updating your workflow.",
           timestamp: new Date().toISOString()
@@ -967,8 +1085,8 @@ const NodeFlow = ({
     }, 3000);
   };
 
-  const handleSendMessage = async (content) => {
-    const newMessage = {
+  const handleSendMessage = async (content: string) => {
+    const newMessage: WorkflowChatMessage = {
       role: "user",
       content,
       timestamp: new Date().toISOString()
@@ -994,7 +1112,7 @@ const NodeFlow = ({
       pollArchitectStatus(request_id);
     } catch (error) {
       console.error("Error sending message:", error);
-      const errorMessage = {
+      const errorMessage: WorkflowChatMessage = {
         role: "agent",
         content: "Sorry, I encountered an error processing your request.",
         timestamp: new Date().toISOString()
@@ -1008,7 +1126,7 @@ const NodeFlow = ({
     onConnectRef.current = onConnect;
   }, [onConnect]);
 
-  const onEdgeClick = (event, edge) => {
+  const onEdgeClick = (event: ReactMouseEvent, edge: Edge) => {
     event.stopPropagation();
     setEdges((eds) => {
       const updatedEdges = eds.filter((e) => e.id !== edge.id);
@@ -1094,23 +1212,26 @@ const NodeFlow = ({
       const model = node.data?.selectedModel?.id ? node.data?.selectedModel?.id : category === "utility" ? (isVideoCombiner ? "video-combiner" : "prompt-concatenator") : `${category}-passthrough`;
       const modelSchema = nodeSchemas?.categories?.[category]?.models?.[model]?.input_schema?.schemas?.input_data;
       const inputSchema = modelSchema?.properties || {};
-      const wavespeedSchema = nodeSchemas?.categories?.api?.models?.[model]?.input_schema;
-      const concatSchema = nodeSchemas?.categories?.utility?.models?.["prompt-concatenator"]?.input_schema;
+      const apiInputSchema = nodeSchemas?.categories?.api?.models?.[model]?.input_schema;
+      const wavespeedSchema: SchemaProperties = apiInputSchema && !("schemas" in apiInputSchema)
+        ? apiInputSchema as SchemaProperties
+        : {};
+      const concatSchema = nodeSchemas?.categories?.utility?.models?.["prompt-concatenator"]?.input_schema?.schemas?.input_data?.properties || {};
       const videoCombinerSchema = nodeSchemas?.categories?.utility?.models?.["video-combiner"]?.input_schema?.schemas?.input_data?.properties;
       const formValues = node.data?.formValues || {};
 
-      let dynamicPrompt = "";
+      let dynamicPrompt: FormValue = "";
 
       if (node.type === "concatNode") {
         const promptConnections = connectedEdges.filter((e) =>
-          ["concatInput"].includes(e.targetHandle)
+          e.targetHandle === "concatInput"
         );
         dynamicPrompt = promptConnections.length > 0
           ? promptConnections.map((conn) => `{{ ${conn.source}.outputs[0].value }}`)
           : [];
       } else {
         const promptConnections = connectedEdges.filter((e) =>
-          ["textInput", "imageInput", "videoInput", "audioInput2", "apiInput"].includes(e.targetHandle)
+          ["textInput", "imageInput", "videoInput", "audioInput2", "apiInput"].includes(e.targetHandle ?? "")
         );
         dynamicPrompt = promptConnections.length > 0
           ? `{{ ${promptConnections[0].source}.outputs[0].value }}`
@@ -1126,7 +1247,7 @@ const NodeFlow = ({
           : formValues?.system_prompt || null;
 
       const imageListConnections = connectedEdges.filter((e) =>
-        ["textInput3", "imageInput2", "videoInput6", "apiInput2"].includes(e.targetHandle)
+        ["textInput3", "imageInput2", "videoInput6", "apiInput2"].includes(e.targetHandle ?? "")
       );
 
       const dynamicImagesList =
@@ -1137,11 +1258,11 @@ const NodeFlow = ({
           : formValues?.images_list || []; // || [node.data?.outputs?.[0]?.value] 
 
       const imageUrlConnections = connectedEdges.filter((e) =>
-        ["textInput2", "videoInput2", "imageInput3", "audioInput3", "apiInput3"].includes(e.targetHandle)
+        ["textInput2", "videoInput2", "imageInput3", "audioInput3", "apiInput3"].includes(e.targetHandle ?? "")
       );
 
       const videoUrlConnections = connectedEdges.filter((e) =>
-        ["videoInput4", "audioInput4"].includes(e.targetHandle)
+        ["videoInput4", "audioInput4"].includes(e.targetHandle ?? "")
       );
 
       const videoListConnections = connectedEdges.filter((e) =>
@@ -1165,7 +1286,7 @@ const NodeFlow = ({
           : formValues[dynamicAudiosKey] || [];
 
       const audioUrlConnections = connectedEdges.filter((e) =>
-        ["audioInput", "videoInput5"].includes(e.targetHandle)
+        ["audioInput", "videoInput5"].includes(e.targetHandle ?? "")
       );
 
       const dynamicImageUrl =
@@ -1192,7 +1313,7 @@ const NodeFlow = ({
           ? `{{ ${lastImageConnections[0].source}.outputs[0].value }}`
           : formValues?.last_image || null; // || node.data?.outputs?.[0]?.value 
 
-      const localSources = {
+      const localSources: FormValues = {
         ...formValues,
         prompt: dynamicPrompt ? dynamicPrompt : formValues?.prompt,
         system_prompt: dynamicSystemPrompt,
@@ -1213,7 +1334,7 @@ const NodeFlow = ({
       if (node.type === "apiNode") {
         const listFields = ["images", "image_urls", "images_list"];
         connectedEdges.forEach((edge) => {
-          if (edge.target === node.id) {
+          if (edge.target === node.id && edge.targetHandle) {
             const val = `{{ ${edge.source}.outputs[0].value }}`;
             const isList = listFields.includes(edge.targetHandle) || wavespeedSchema?.[edge.targetHandle]?.type === "array";
 
@@ -1221,8 +1342,9 @@ const NodeFlow = ({
               if (!Array.isArray(localSources[edge.targetHandle])) {
                 localSources[edge.targetHandle] = [];
               }
-              if (!localSources[edge.targetHandle].includes(val)) {
-                localSources[edge.targetHandle].push(val);
+              const currentValues = localSources[edge.targetHandle];
+              if (Array.isArray(currentValues) && !currentValues.includes(val)) {
+                currentValues.push(val);
               }
             } else {
               localSources[edge.targetHandle] = val;
@@ -1231,9 +1353,9 @@ const NodeFlow = ({
         });
       }
 
-      let params = {};
+      const params: FormValues = {};
       const input_params = formValues || {};
-      let output_params = {};
+      let output_params: { resultUrl?: FormValue; outputs?: NodeOutput[] } = {};
 
       if (node.type === "apiNode") {
         for (const [key, meta] of Object.entries(wavespeedSchema)) {
@@ -1250,13 +1372,16 @@ const NodeFlow = ({
           )
         );
 
-        params["params"] = filteredInputParams;
+        params.params = filteredInputParams;
 
         for (const [key, meta] of Object.entries(filteredInputParams)) {
           if (localSources[key] !== undefined && localSources[key] !== null) {
-            params.params[key] = localSources[key];
+            filteredInputParams[key] = localSources[key];
           } else {
-            params.params[key] = meta?.default ?? null;
+            const metaValue = typeof meta === "object" && meta !== null && !Array.isArray(meta) && !(meta instanceof File)
+              ? meta.default ?? null
+              : null;
+            filteredInputParams[key] = metaValue;
           }
         }
       } else if (node.type === "vidConcatNode") {
@@ -1291,7 +1416,7 @@ const NodeFlow = ({
           resultUrl: node.data?.resultUrl || "",
           outputs: node.data?.outputs || [],
         }
-      } else if (["imageNode", "videoNode", "audioNode", "apiNode", "concatNode", "vidConcatNode"].includes(node.type)) {
+      } else if (["imageNode", "videoNode", "audioNode", "apiNode", "concatNode", "vidConcatNode"].includes(node.type ?? "")) {
         output_params = {
           resultUrl: node.data?.resultUrl || null,
           outputs: node.data?.outputs || [],
@@ -1336,11 +1461,7 @@ const NodeFlow = ({
       return response.data.workflow_id;
     } catch (error) {
       console.log(error);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
     }
   };
 
@@ -1356,16 +1477,12 @@ const NodeFlow = ({
     } catch (error) {
       console.log(error);
       setIsRunning(0);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
     }
   };
 
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (_event: BeforeUnloadEvent) => {
       handleSaveWorkFlow();
     };
 
@@ -1375,12 +1492,12 @@ const NodeFlow = ({
     };
   }, [handleSaveWorkFlow]);
 
-  const pollRunIdStatus = (runId) => {
+  const pollRunIdStatus = (runId: string) => {
     const interval = setInterval(() => {
-      api.get(`/api/workflow/run/${runId}/status`)
+      api.get<{ nodes?: NodeRunStatus }>(`/api/workflow/run/${runId}/status`)
         .then((response) => {
           const runData = response.data;
-          const nodesStatus = runData?.nodes || {};
+          const nodesStatus: NodeRunStatus = runData?.nodes || {};
           setWorkflowIds(workflowId, runId);
 
           Object.entries(nodesStatus).forEach(([id, runs]) => {
@@ -1415,7 +1532,7 @@ const NodeFlow = ({
                   const nodeIdMatch = id.toLowerCase().replace(/\s+/g, '') === node.id.toLowerCase().replace(/\s+/g, '');
                   if (!nodeIdMatch || !result) return node;
 
-                  if (["textNode", "imageNode", "videoNode", "audioNode", "concatNode", "apiNode", "vidConcatNode"].includes(node.type)) {
+                  if (["textNode", "imageNode", "videoNode", "audioNode", "concatNode", "apiNode", "vidConcatNode"].includes(node.type ?? "")) {
                     const currentHistory = node.data.outputHistory || [];
                     const isAlreadyInHistory = currentHistory.some(h => h.result?.id === result.id);
                     const newHistory = isAlreadyInHistory
@@ -1519,11 +1636,7 @@ const NodeFlow = ({
       pollRunIdStatus(newRunId);
     } catch (error) {
       console.log(error);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
       setLoadingNodes({});
       setIsRunning(0);
       onGenerationEnd?.();
@@ -1544,11 +1657,7 @@ const NodeFlow = ({
       setPublishWorkflow(response.data.publish);
     } catch (error) {
       console.log(error);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
       setLoadingNodes({});
       setIsRunning(0);
     }
@@ -1569,11 +1678,7 @@ const NodeFlow = ({
       setTemplate(prev => ({ ...prev, isPublishedTemplate: is_template }));
     } catch (error) {
       console.log(error);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
       setIsRunning(0);
     }
   };
@@ -1594,15 +1699,11 @@ const NodeFlow = ({
       toast.success("Category updated successfully");
     } catch (error) {
       console.error("Error updating category:", error);
-      if (error.response) {
-        toast.error(`Failed: ${error.response.data.detail || "Server error"}`);
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Failed: ${getRequestErrorMessage(error)}`);
     }
   };
 
-  const runNodeFromFlow = (nodeId) => {
+  const runNodeFromFlow = (nodeId: string) => {
     setNodes((nds) =>
       nds.map((n) =>
         n.id === nodeId
@@ -1612,7 +1713,7 @@ const NodeFlow = ({
     );
   };
 
-  const runNodeInputsFromFlow = (nodeId) => {
+  const runNodeInputsFromFlow = (nodeId: string) => {
     setNodes((nds) =>
       nds.map((n) =>
         n.id === nodeId
@@ -1622,8 +1723,8 @@ const NodeFlow = ({
     );
   };
 
-  const getNextId = (type) => {
-    const baseType = type.replace("Node","");
+  const getNextId = (type?: string) => {
+    const baseType = (type || "node").replace("Node","");
     const existingIds = nodes.map(n => n.id);
     let count = 1;
     while (existingIds.includes(`${baseType}${count}`)) {
@@ -1632,7 +1733,7 @@ const NodeFlow = ({
     return `${baseType}${count}`;
   };
 
-  const duplicateNode = useCallback((nodeId) => {
+  const duplicateNode = useCallback((nodeId: string) => {
     const nodeToDuplicate = nodes.find(n => n.id === nodeId);
     if (!nodeToDuplicate) return;
 
@@ -1688,13 +1789,13 @@ const NodeFlow = ({
         imageInput: "blue", imageInput2: "green", imageInput3: "green", imageOutput: "green",
         videoInput: "blue", videoInput2: "green", videoInput3: "green", videoInput4: "orange", videoInput5: "yellow", videoInput6: "green", videoInput7: "orange", videoInput8: "yellow", videoOutput: "orange",
         audioInput: "yellow", audioInput2: "blue", audioInput3: "green", audioInput4: "orange", audioOutput: "yellow",
-      }
+      } as Record<string, string>
     },
   }));
 
-  const isValidConnection = (connection) => {
+  const isValidConnection = (connection: Connection) => {
     const { source, target, sourceHandle, targetHandle } = connection;
-    if (source === target) return false;
+    if (!source || !target || !sourceHandle || !targetHandle || source === target) return false;
 
     const sourceNode = nodesWithHandlers.find(n => n.id === source);
     const targetNode = nodesWithHandlers.find(n => n.id === target);
@@ -1711,7 +1812,7 @@ const NodeFlow = ({
     if (!isSourceOutput || !isTargetInput) return false;
 
     const formValues = targetNode.data?.formValues || {};
-    let validHandles = [];
+    let validHandles: string[] = [];
 
     switch (targetNode.type) {
       case "textNode":
@@ -1724,7 +1825,7 @@ const NodeFlow = ({
           hasTextImageUrl && "textInput2",
           hasTextImagesList && "textInput3",
           hasTextSystemPrompt && "textInput4",
-        ].filter(Boolean);
+        ].filter((handle): handle is string => typeof handle === "string");
         break;
 
       case "imageNode":
@@ -1735,7 +1836,7 @@ const NodeFlow = ({
           hasImagePrompt && "imageInput",
           hasImagesList && "imageInput2",
           hasImageImageUrl && "imageInput3",
-        ].filter(Boolean);
+        ].filter((handle): handle is string => typeof handle === "string");
         break;
 
       case "videoNode":
@@ -1756,7 +1857,7 @@ const NodeFlow = ({
           hasVideoImagesList && "videoInput6",
           hasVideosList && "videoInput7",
           hasAudiosList && "videoInput8",
-        ].filter(Boolean);
+        ].filter((handle): handle is string => typeof handle === "string");
         break;
 
       case "audioNode":
@@ -1769,7 +1870,7 @@ const NodeFlow = ({
           hasAudioPrompt && "audioInput2",
           hasAudioImageUrl && "audioInput3",
           hasAudioVideoUrl && "audioInput4",
-        ].filter(Boolean);
+        ].filter((handle): handle is string => typeof handle === "string");
         break;
 
       case "apiNode":
@@ -1793,10 +1894,11 @@ const NodeFlow = ({
     return true;
   };
 
-  const onConnectStart = (event, params) => {
+  const onConnectStart: OnConnectStart = (_event, params) => {
+    if (!params.nodeId || !params.handleId) return;
     const node = nodesWithHandlers.find(n => n.id === params.nodeId);
     const handleColor = node?.data?.handleTypes?.[params.handleId];
-    setActiveHandleColor(handleColor);
+    setActiveHandleColor(handleColor ?? null);
 
     const isOutput = params.handleId.toLowerCase().includes("output");
     setDraggedEdgeInfo({
@@ -1807,12 +1909,12 @@ const NodeFlow = ({
     });
   };
 
-  const onConnectEnd = useCallback((event) => {
+  const onConnectEnd: OnConnectEnd = useCallback((event) => {
     setActiveHandleColor(null);
 
     if (draggedEdgeInfo && !connectionMadeRef.current) {
-      const cursorX = event?.clientX || mousePos.x;
-      const cursorY = event?.clientY || mousePos.y;
+      const cursorX = event instanceof MouseEvent ? event.clientX : event.changedTouches[0]?.clientX ?? mousePos.x;
+      const cursorY = event instanceof MouseEvent ? event.clientY : event.changedTouches[0]?.clientY ?? mousePos.y;
 
       setEdgePicker({
         sourceNodeId: draggedEdgeInfo.isOutput ? draggedEdgeInfo.nodeId : null,
@@ -1829,11 +1931,11 @@ const NodeFlow = ({
     connectionMadeRef.current = false;
   }, [draggedEdgeInfo, nodesWithHandlers, mousePos]);
 
-  const handleSelectNodeFromEdgePicker = (nodeType, position = null, initialData = {}) => {
+  const handleSelectNodeFromEdgePicker = (nodeType: string, _position: XYPosition | null = null, initialData: Partial<WorkflowNodeData> = {}) => {
     if (!edgePicker) return;
     const newNodeId = getNextId(nodeType);
 
-    const handleTypesMap = {
+    const handleTypesMap: Record<string, string> = {
       concatInput: "blue", concatOutput: "blue",
       apiInput: "blue", apiInput2: "green", apiInput3: "green", apiOutput: "green",
       textInput: "blue", textInput2: "green", textInput3: "green", textInput4: "blue", textOutput: "blue",
@@ -1847,21 +1949,21 @@ const NodeFlow = ({
       y: edgePicker.cursorPos.y,
     });
 
-    const newNode = {
+    const newNode: WorkflowNode = {
       id: newNodeId,
       type: nodeType,
       position: {
         x: flowPosition.x - 160,
         y: flowPosition.y - 100,
       },
-      data: { ...initialData },
+      data: { ...emptyNodeData, ...initialData },
     };
 
     setNodes((prev) => [...prev, newNode]);
-    let connection;
+    let connection: Connection | null = null;
 
     if (edgePicker.isOutput) {
-      const nodeTypeToHandles = {
+      const nodeTypeToHandles: Record<string, string[]> = {
         textNode: ["textInput", "textInput2", "textInput3", "textInput4"],
         imageNode: ["imageInput", "imageInput2", "imageInput3"],
         videoNode: ["videoInput", "videoInput2", "videoInput3", "videoInput4", "videoInput5", "videoInput6", "videoInput7", "videoInput8"],
@@ -1871,7 +1973,7 @@ const NodeFlow = ({
         vidConcatNode: ["videoInput7"],
       };
 
-      const sourceHandleColor = handleTypesMap[edgePicker.sourceHandleId];
+      const sourceHandleColor = edgePicker.sourceHandleId ? handleTypesMap[edgePicker.sourceHandleId] : undefined;
       const compatibleHandles = nodeTypeToHandles[nodeType] || [];
       const targetHandle = compatibleHandles.find(h =>
         handleTypesMap[h] === sourceHandleColor
@@ -1886,7 +1988,7 @@ const NodeFlow = ({
         };
       }
     } else {
-      const nodeTypeToHandles = {
+      const nodeTypeToHandles: Record<string, string[]> = {
         textNode: ["textOutput"],
         imageNode: ["imageOutput"],
         videoNode: ["videoOutput"],
@@ -1896,7 +1998,7 @@ const NodeFlow = ({
         vidConcatNode: ["videoOutput"],
       };
 
-      const targetHandleColor = handleTypesMap[edgePicker.targetHandleId];
+      const targetHandleColor = edgePicker.targetHandleId ? handleTypesMap[edgePicker.targetHandleId] : undefined;
       const compatibleHandles = nodeTypeToHandles[nodeType] || [];
       const sourceHandle = compatibleHandles.find(h =>
         handleTypesMap[h] === targetHandleColor
@@ -1915,7 +2017,7 @@ const NodeFlow = ({
     if (connection) {
       setTimeout(() => {
         connectionMadeRef.current = false;
-        onConnectRef.current(connection);
+        onConnectRef.current?.(connection);
       }, 100);
     }
 
@@ -1923,27 +2025,27 @@ const NodeFlow = ({
     setDraggedEdgeInfo(null);
   };
 
-  const getCompatibleNodeTypes = (handleColor, isOutput) => {
+  const getCompatibleNodeTypes = (handleColor: string | undefined, isOutput: boolean): string[] => {
     if (isOutput) {
-      const compatibilityMap = {
+      const compatibilityMap: Record<string, string[]> = {
         blue: ['textNode', 'imageNode', 'videoNode', 'audioNode', 'apiNode', 'concatNode'],
         green: ['imageNode', 'videoNode', 'apiNode'],
         orange: ['videoNode', 'vidConcatNode'],
         yellow: ['audioNode', 'videoNode']
       };
-      return compatibilityMap[handleColor] || [];
+      return handleColor ? compatibilityMap[handleColor] || [] : [];
     } else {
-      const compatibilityMap = {
+      const compatibilityMap: Record<string, string[]> = {
         blue: ['textNode', 'concatNode', 'apiNode'],
         green: ['imageNode', 'apiNode'],
         orange: ['videoNode', 'vidConcatNode'],
         yellow: ['audioNode']
       };
-      return compatibilityMap[handleColor] || [];
+      return handleColor ? compatibilityMap[handleColor] || [] : [];
     }
   };
 
-  const onPaneContextMenu = useCallback((event) => {
+  const onPaneContextMenu = useCallback((event: ReactMouseEvent) => {
     event.preventDefault();
 
     const position = screenToFlowPosition({
@@ -1962,7 +2064,7 @@ const NodeFlow = ({
     setContextMenu(null);
   }, []);
 
-  const getNewNodePosition = (lastNode) => {
+  const getNewNodePosition = (lastNode?: WorkflowNode): XYPosition => {
     if (!lastNode) return { x: 250, y: 250 };
 
     const NODE_WIDTH = 320;
@@ -1992,7 +2094,7 @@ const NodeFlow = ({
     };
   };
 
-  const addNode = (nodeType, position = null, initialData = {}) => {
+  const addNode = (nodeType: string, position: XYPosition | null = null, initialData: Partial<WorkflowNodeData> = {}) => {
     const isEmptyCanvas = nodes.length === 0;
     const id = getNextId(nodeType);
     let nodePosition;
@@ -2003,11 +2105,11 @@ const NodeFlow = ({
       nodePosition = getNewNodePosition(lastNode);
     }
 
-    const newNode = {
+    const newNode: WorkflowNode = {
       id,
       type: nodeType,
       position: nodePosition,
-      data: { ...initialData },
+      data: { ...emptyNodeData, ...initialData },
     };
 
     setNodes((prev) => [...prev, newNode]);
@@ -2018,7 +2120,7 @@ const NodeFlow = ({
     }
   };
 
-  const onKeyDown = useCallback((e) => {
+  const onKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Delete") {
       setNodes((nds) => {
         const deletedIds = nds.filter((n) => n.selected).map((n) => n.id);
@@ -2035,7 +2137,7 @@ const NodeFlow = ({
   const selectedNode = selectedNodes.length === 1 ? selectedNodes[0] : null;
   const { generationCost, isRefreshingCost } = useGenerationCost(selectedNode?.data?.selectedModel, selectedNode?.data?.formValues);
   
-  const updateNodeFromPanel = useCallback((key, value) => {
+  const updateNodeFromPanel = useCallback((key: string, value: FormValue) => {
     if (!selectedNode) return;
 
     setNodes((nds) =>
@@ -2057,7 +2159,7 @@ const NodeFlow = ({
     );
   }, [selectedNode, setNodes]);
 
-  const updateModel = useCallback((model) => {
+  const updateModel = useCallback((model: ModelDefinition) => {
     if (!selectedNode) return;
 
     setNodes((nds) =>
@@ -2077,10 +2179,10 @@ const NodeFlow = ({
     setDropDown(0);
   }, [selectedNode, setNodes]);
 
-  const getModelsForNode = (node) => {
+  const getModelsForNode = (node: WorkflowNode | null): ModelDefinition[] => {
     if (!node || !nodeSchemas?.categories) return [];
 
-    const mapModels = (modelsMap) =>
+    const mapModels = (modelsMap?: Record<string, ModelDefinition>): ModelDefinition[] =>
       modelsMap ? Object.entries(modelsMap).map(([id, model]) => ({
         ...model,
         id,
@@ -2095,7 +2197,7 @@ const NodeFlow = ({
     return [];
   };
 
-  const getFilteredModelsForNode = (node) => {
+  const getFilteredModelsForNode = (node: WorkflowNode | null): ModelDefinition[] => {
     const models = getModelsForNode(node);
 
     if (!modelSearch.trim()) return models;
@@ -2242,7 +2344,7 @@ const NodeFlow = ({
                     </>
                   ) : (
                     <>
-                      <FaPlay size={16} /> Run All {parseFloat(totalWorkflowCost) > 0 && `($${totalWorkflowCost})`}
+                      <FaPlay size={16} /> Run All {totalWorkflowCost > 0 && `($${totalWorkflowCost})`}
                     </>
                   )}
                 </button>
@@ -2353,7 +2455,7 @@ const NodeFlow = ({
         <button
           type="button"
           suppressHydrationWarning={true}
-          onClick={zoomIn}
+          onClick={() => zoomIn()}
           className="p-3 rounded-full hover:bg-[#1b1e23] cursor-pointer outline-none text-gray-300 active:bg-gray-600 hover:text-white transition"
         >
           <FiZoomIn size={18} />
@@ -2361,7 +2463,7 @@ const NodeFlow = ({
         <button
           type="button"
           suppressHydrationWarning={true}
-          onClick={zoomOut}
+          onClick={() => zoomOut()}
           className="p-3 rounded-full hover:bg-[#1b1e23] cursor-pointer outline-none text-gray-300 active:bg-gray-600 hover:text-white transition"
         >
           <FiZoomOut size={18} />
@@ -2389,15 +2491,15 @@ const NodeFlow = ({
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onConnect={interactionMode ? onConnect : null}
+          onConnect={interactionMode ? onConnect : undefined}
           isValidConnection={isValidConnection}
-          connectionMode="loose"
-          onConnectStart={interactionMode ? onConnectStart : null}
-          onConnectEnd={interactionMode ? onConnectEnd : null}
+          connectionMode={ConnectionMode.Loose}
+          onConnectStart={interactionMode ? onConnectStart : undefined}
+          onConnectEnd={interactionMode ? onConnectEnd : undefined}
           nodeTypes={nodeTypes}
-          onEdgeClick={interactionMode ? onEdgeClick : null}
-          onPaneContextMenu={interactionMode ? onPaneContextMenu : null}
-          onPaneClick={interactionMode ? onPaneClick : null}
+          onEdgeClick={interactionMode ? onEdgeClick : undefined}
+          onPaneContextMenu={interactionMode ? onPaneContextMenu : undefined}
+          onPaneClick={interactionMode ? onPaneClick : undefined}
           nodesDraggable={interactionMode}
           nodesConnectable={interactionMode}
           elementsSelectable={interactionMode}
@@ -2405,10 +2507,10 @@ const NodeFlow = ({
           maxZoom={4}
           selectionOnDrag={!isDragging}
           panOnDrag={isDragging}
-          selectionMode={!isDragging ? "partial" : null}
+          selectionMode={!isDragging ? SelectionMode.Partial : undefined}
           multiSelectionKeyCode="Shift"
           connectionLineStyle={connectionLineStyle}
-          fitView={() => fitView({ padding: 0.4, duration: 500, minZoom: 0.2 })}
+          fitView
           proOptions={{ hideAttribution: true }}
         >
           <Background />
@@ -2442,7 +2544,7 @@ const NodeFlow = ({
           })()}
         </ReactFlow>
       </div>
-      {selectedNode && !["concatNode"].includes(selectedNode.type) && (
+      {selectedNode && !["concatNode"].includes(selectedNode.type ?? "") && (
         <div className="absolute right-2 top-16 z-50 w-80 h-full max-h-[90%] bg-[#09090b]/80 backdrop-blur-xl border border-white/20 rounded-2xl flex transition-all duration-300 ease-in-out shadow-2xl">
           <button
             type="button"
@@ -2527,8 +2629,12 @@ const NodeFlow = ({
                 {selectedNode?.data?.selectedModel ? (
                   (() => {
                     const nodeType = selectedNode.id.startsWith("text") ? "text" : selectedNode.id.startsWith("image") ? "image" : selectedNode.id.startsWith("video") ? "video" : selectedNode.id.startsWith("audio") ? "audio": "utility";
-                    const fullSchema = nodeSchemas?.categories?.[nodeType]?.models[selectedNode?.data?.selectedModel?.id]?.input_schema;
-                    const inputSchema = fullSchema?.schemas?.input_data || fullSchema || {};
+                    const selectedModelId = selectedNode.data.selectedModel?.id;
+                    const fullSchema = selectedModelId
+                      ? nodeSchemas.categories?.[nodeType]?.models?.[selectedModelId]?.input_schema
+                      : undefined;
+                    const inputSchema: { properties?: SchemaProperties; required?: string[] } = fullSchema?.schemas?.input_data || {};
+                    const inputProperties = inputSchema.properties || {};
 
                     return selectedNode?.data?.loading === 1 ? (
                       <div className="flex flex-col items-center justify-center gap-2 h-full w-full">
@@ -2590,7 +2696,7 @@ const NodeFlow = ({
                                 );
                               }}
                               exposedHandles={selectedNode?.data?.exposedHandles || []}
-                              onToggleHandle={isHardcoded ? null : (field) => {
+                              onToggleHandle={isHardcoded ? undefined : (field) => {
                                 const current = selectedNode?.data?.exposedHandles || [];
                                 const isRemoving = current?.includes(field);
                                 if (isRemoving) {
@@ -2628,9 +2734,8 @@ const NodeFlow = ({
                           );
                         })}
                       </div>
-                    ) : (inputSchema?.properties || (inputSchema && Object.keys(inputSchema).length > 0)) ? (
-                      Object.entries(inputSchema?.properties || inputSchema).map(([key, meta], idx) => {
-                        if (key === "schemas") return null;
+                    ) : Object.keys(inputProperties).length > 0 ? (
+                      Object.entries(inputProperties).map(([key, meta], idx) => {
                         return (
                           <RenderField
                             key={key}
@@ -2658,7 +2763,7 @@ const NodeFlow = ({
                             }}
                             handleChange={updateNodeFromPanel}
                             data={inputSchema}
-                            modelName={selectedNode?.data?.selectedModel?.name}
+                            modelName={selectedNode.data.selectedModel?.name || ""}
                           />
                         );
                       }).filter(Boolean)

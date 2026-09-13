@@ -11,6 +11,8 @@ import { TfiText } from "react-icons/tfi";
 import NodeSendButton from "./NodeSendButton";
 import NodeOptionsMenu from "./NodeOptionsMenu";
 import { useGenerationCost } from "./useGenerationCost";
+import type { FormValues, ModelDefinition, SchemaProperties, WorkflowNodeProps } from "../types";
+import type { CSSProperties, MouseEvent } from "react";
 
 const inputHandles = [
   "textInput",
@@ -23,16 +25,16 @@ const outputHandles = [
   "textOutput",
 ];
 
-const TextGeneration = ({ id, data, selected }) => {
+const TextGeneration = ({ id, data, selected }: WorkflowNodeProps) => {
   const models = useMemo(() => {
     return data.nodeSchemas?.categories?.text?.models 
       ? Object.values(data.nodeSchemas.categories.text.models) 
       : [];
   }, [data.nodeSchemas]);
-  const [selectedModel, setSelectedModel] = useState(data.selectedModel || models[1] || models[0] || {});
-  const [connectedInputs, setConnectedInputs] = useState({});
-  const [connectedOutputs, setConnectedOutputs] = useState({});
-  const [formValues, setFormValues] = useState(data.formValues || {});
+  const [selectedModel, setSelectedModel] = useState<ModelDefinition>(data.selectedModel || models[1] || models[0] || { id: "" });
+  const [connectedInputs, setConnectedInputs] = useState<Record<string, boolean>>({});
+  const [connectedOutputs, setConnectedOutputs] = useState<Record<string, boolean>>({});
+  const [formValues, setFormValues] = useState<FormValues>(data.formValues || {});
   const [dropDown, setDropDown] = useState(0);
   const [loading, setLoading] = useState(0);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
@@ -54,10 +56,10 @@ const TextGeneration = ({ id, data, selected }) => {
     }
   }, [id, generationCost, data.cost]);
 
-  const textareaRef = useRef(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const initializeFormData = (schemaProperties) => {
-    const initialData = {};
+  const initializeFormData = (schemaProperties: SchemaProperties): FormValues => {
+    const initialData: FormValues = {};
     const fieldEntries = Object.entries(schemaProperties || {});
 
     fieldEntries.forEach(([fieldName, fieldSchema]) => {
@@ -65,7 +67,11 @@ const TextGeneration = ({ id, data, selected }) => {
         if (fieldSchema.items?.type === "object") {
           const examples = fieldSchema.examples;
           if (Array.isArray(examples) && examples.length > 0) {
-            initialData[fieldName] = examples.map((ex) => ({ ...ex }));
+            initialData[fieldName] = examples.map((example) =>
+              typeof example === "object" && example !== null && !Array.isArray(example) && !(example instanceof File)
+                ? { ...example }
+                : {},
+            );
           } else {
             initialData[fieldName] = [];
           }
@@ -101,20 +107,24 @@ const TextGeneration = ({ id, data, selected }) => {
     return initialData;
   };
 
-  const addFormValuesInTaskData = (properties) => {
+  const addFormValuesInTaskData = (properties: SchemaProperties) => {
     const defaults = initializeFormData(properties);
 
     const validKeys = Object.keys(properties);
-    const filteredFormValues = Object.entries(data.formValues || {}).reduce((acc, [key, val]) => {
+    const filteredFormValues = Object.entries(data.formValues || {}).reduce<FormValues>((acc, [key, val]) => {
       if (validKeys.includes(key)) acc[key] = val;
       return acc;
     }, {});
 
-    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce(
+    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce<FormValues>(
       (acc, [key, val]) => {
         const meta = properties[key];
-        if (meta?.enum && !meta.enum.includes(val)) {
-          acc[key] = meta.default ?? meta.enum[0] ?? "";
+        const enumContainsValue = meta?.enum?.some((option) =>
+          typeof option === "object" && option !== null ? option.value === val : option === val,
+        );
+        if (meta?.enum && !enumContainsValue) {
+          const firstOption = meta.enum[0];
+          acc[key] = meta.default ?? (typeof firstOption === "object" && firstOption !== null ? firstOption.value : firstOption) ?? "";
         } else {
           acc[key] = val;
         }
@@ -174,7 +184,7 @@ const TextGeneration = ({ id, data, selected }) => {
     
     const timer = setTimeout(() => {
       if (Object.entries(data.formValues || {}).length > 0) {
-        setFormValues(data.formValues);
+        setFormValues(data.formValues || {});
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -186,12 +196,12 @@ const TextGeneration = ({ id, data, selected }) => {
     }
   }, [selectedModel, formValues, loading]);
 
-  const handleChange = (key, value) => {
+  const handleChange = (key: string, value: import("../types").FormValue) => {
     setFormValues(prev => ({ ...prev, [key]: value }));
     setDropDown(-1);
   };
 
-  const pollNodeStatus = (run_id) => {
+  const pollNodeStatus = (run_id: string) => {
     const interval = setInterval(() => {
       axios.get(`/api/workflow/run/${run_id}/status`)
       .then((response) => {
@@ -258,13 +268,13 @@ const TextGeneration = ({ id, data, selected }) => {
         return;
       }
 
-      const modelSchema = nodeSchemas?.categories?.text?.models[selectedModel.id]?.input_schema?.schemas?.input_data;
+      const modelSchema = nodeSchemas?.categories?.text?.models?.[selectedModel.id]?.input_schema?.schemas?.input_data;
       if (!modelSchema || !modelSchema.properties) {
         toast.error("No input schema found for this model");
         data.onDataChange(id, { isLoading: false });
         return;
       }
-      const params = {};
+      const params: FormValues = {};
       const inputSchema = modelSchema.properties;
       const localSources = formValues || {};
       for (const [key, meta] of Object.entries(inputSchema)) {
@@ -283,9 +293,9 @@ const TextGeneration = ({ id, data, selected }) => {
         node_id: "AI Text"
       });
       pollNodeStatus(response.data.run_id);
-    } catch(error) {
+    } catch(error: unknown) {
       data.onDataChange(id, { isLoading: false });
-      toast.error(error.response?.data?.detail || "Error running node");
+      toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Error running node");
       console.error(error);
     };
   };
@@ -310,12 +320,12 @@ const TextGeneration = ({ id, data, selected }) => {
         hasImageUrl && "textInput2",
         hasImagesList && "textInput3",
         hasSystemPrompt && "textInput4",
-      ].filter(Boolean);
+      ].filter((handle): handle is string => Boolean(handle));
 
       setEdges((prevEdges) =>
         prevEdges.filter((edge) => {
           if (edge.target !== id) return true;
-          return validHandles.includes(edge.targetHandle);
+          return typeof edge.targetHandle === "string" && validHandles.includes(edge.targetHandle);
         })
       );
       }, 2000);
@@ -323,14 +333,14 @@ const TextGeneration = ({ id, data, selected }) => {
   }, [hasPrompt, hasImageUrl, hasImagesList, hasSystemPrompt, id, setEdges]);
 
   useEffect(() => {
-    const connectedInputs = {};
+    const connectedInputs: Record<string, boolean> = {};
     inputHandles.forEach((h) => {
       connectedInputs[h] = edges.some(
         (e) => e.target === id && e.targetHandle === h
       );
     });
 
-    const connectedOutputs = {};
+    const connectedOutputs: Record<string, boolean> = {};
     outputHandles.forEach((h) => {
       connectedOutputs[h] = edges.some(
         (e) => e.source === id && e.sourceHandle === h
@@ -341,7 +351,7 @@ const TextGeneration = ({ id, data, selected }) => {
     setConnectedOutputs(connectedOutputs);
   }, [edges, id]);
 
-  const handlePrev = (e) => {
+  const handlePrev = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex > 0) {
       const newIndex = currentHistoryIndex - 1;
@@ -358,7 +368,7 @@ const TextGeneration = ({ id, data, selected }) => {
     }
   };
 
-  const handleNext = (e) => {
+  const handleNext = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex < outputHistory.length - 1) {
       const newIndex = currentHistoryIndex + 1;
@@ -375,7 +385,7 @@ const TextGeneration = ({ id, data, selected }) => {
     }
   };
 
-  const handleDeleteHistory = async (e) => {
+  const handleDeleteHistory = async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const currentHistory = outputHistory[currentHistoryIndex];
     if (!currentHistory || !currentHistory.node_run_id) return;
@@ -396,8 +406,8 @@ const TextGeneration = ({ id, data, selected }) => {
           setCurrentHistoryIndex(Math.max(0, currentHistoryIndex - 1));
         }
         toast.success("History entry deleted");
-      } catch (error) {
-        toast.error(error.response?.data?.detail || "Failed to delete history entry");
+      } catch (error: unknown) {
+        toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Failed to delete history entry");
         console.error(error);
       }
     }
@@ -410,6 +420,7 @@ const TextGeneration = ({ id, data, selected }) => {
   const currentOutput = currentOutputList.length > 0
     ? currentOutputList[currentOutputIndex]?.value || currentOutputList[0]?.value || data.resultUrl
     : data.resultUrl;
+  const currentOutputText = typeof currentOutput === "string" ? currentOutput : "";
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -422,7 +433,7 @@ const TextGeneration = ({ id, data, selected }) => {
 
   return (
     <div 
-      style={{ minHeight: 280, '--loader-color': '#2563eb' }} 
+      style={{ minHeight: 280, '--loader-color': '#2563eb' } as CSSProperties & Record<`--${string}`, string | number>}
       className={`
         nowheel group flex flex-col flex-1 w-80 
         rounded-2xl border-2 relative transition-all duration-300 ease-in-out 
@@ -543,7 +554,7 @@ const TextGeneration = ({ id, data, selected }) => {
               <textarea
                 ref={textareaRef}
                 readOnly
-                value={currentOutput || ""}
+                value={currentOutputText}
                 placeholder="Output will appear here..."
                 className="w-full h-full max-h-96 text-xs leading-relaxed outline-none bg-transparent resize-none text-zinc-100 overflow-hidden font-medium placeholder:italic placeholder:opacity-50"
               />

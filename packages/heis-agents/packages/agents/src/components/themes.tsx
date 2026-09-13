@@ -1,5 +1,7 @@
 
-export const themes = {
+import type { AgentTheme } from "../types";
+
+export const themes: Record<string, AgentTheme> = {
   cosmic: {
     id: 'cosmic',
     name: 'Cosmic',

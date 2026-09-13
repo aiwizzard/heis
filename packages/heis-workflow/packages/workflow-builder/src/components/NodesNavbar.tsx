@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { AiOutlineAudio, AiOutlineSearch, AiOutlineCloudUpload } from "react-icons/ai";
 import { FaAngleLeft, FaAngleRight, FaLayerGroup } from "react-icons/fa6";
 import { IoImageOutline, IoVideocamOutline, IoAddCircleOutline } from "react-icons/io5";
@@ -16,21 +17,65 @@ import {
 import { TbArrowMerge } from "react-icons/tb";
 import { RiInputMethodLine } from "react-icons/ri";
 import { LuUpload } from "react-icons/lu";
+import type { ModelDefinition, WorkflowNodeData, WorkflowNodeSchemas } from "../types";
 
-const formatName = (id) => id.replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-const SPECIAL_MODEL_NAMES = {
+type NodePosition = { x: number; y: number };
+type NodeModel = ModelDefinition & { type?: string };
+
+interface NodesNavbarProps {
+  addNode: (
+    nodeType: string,
+    position?: NodePosition | null,
+    initialData?: Partial<WorkflowNodeData>,
+  ) => void;
+  apiNodeModels: ModelDefinition[];
+  filterNodeTypes?: string[] | null;
+  nodeSchemas?: WorkflowNodeSchemas;
+}
+
+interface MenuItem {
+  label: string;
+  icon: ReactNode;
+  id: string;
+  hasSubmenu?: boolean;
+  action?: () => void;
+  shortcut?: string;
+}
+
+interface MenuSection {
+  label: string;
+  items: MenuItem[];
+}
+
+interface SubmenuItem {
+  label?: string;
+  model: NodeModel;
+  type: string;
+}
+
+interface SubmenuProps {
+  activeSubMenu: string;
+  menuStructure: MenuSection[];
+  getSubmenuItems: (id: string) => SubmenuItem[];
+  handleAddNode: (type: string, model: NodeModel) => void;
+  parentRef: RefObject<HTMLDivElement | null>;
+  onBack: () => void;
+}
+
+const formatName = (id: string) => id.replace(/-/g, ' ').split(' ').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+const SPECIAL_MODEL_NAMES: Record<string, string> = {
   "text-passthrough": "Input Text",
   "image-passthrough": "Input Image",
   "video-passthrough": "Input Video",
   "audio-passthrough": "Input Audio",
 };
 
-const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchemas = {} }) => {
-  const [activeSubMenu, setActiveSubMenu] = useState(null);
+const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchemas = {} }: NodesNavbarProps) => {
+  const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const getNodeTypeFromSubmenuId = (id) => {
+  const getNodeTypeFromSubmenuId = (id: string): string | string[] | null => {
     if (id === 'inputs') return ['textNode', 'imageNode', 'videoNode', 'audioNode'];
     if (id.includes('text-llms') || id === 'text-llms') return 'textNode';
     if (id === 'concat' || id === 'text-utils' || id === 'utilities') return ['concatNode', 'vidConcatNode'];
@@ -42,8 +87,8 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
   };
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && event.target instanceof Node && !menuRef.current.contains(event.target)) {
         setActiveSubMenu(null);
       }
     };
@@ -59,7 +104,7 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
   const getCategorizedModels = () => {
     const categories = nodeSchemas?.categories || {};
     
-    const mapModels = (modelsMap) => 
+    const mapModels = (modelsMap?: Record<string, ModelDefinition>): NodeModel[] =>
       modelsMap ? Object.entries(modelsMap).map(([id, model]) => ({
         ...model,
         id,
@@ -81,7 +126,7 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
       }
     });
 
-    const isPassthrough = (m) => m?.id && m.id.includes("passthrough");
+    const isPassthrough = (model: NodeModel) => model.id.includes("passthrough");
 
     const inputsModels = [
       ...textModels.filter(isPassthrough).map(m => ({ ...m, type: 'textNode' })),
@@ -115,13 +160,13 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
 
   const categorizedModels = getCategorizedModels();
 
-  const handleAddNode = (type, model) => {
+  const handleAddNode = (type: string, model: NodeModel) => {
     addNode(type, null, { selectedModel: model });
     setActiveSubMenu(null);
     setSearchQuery("");
   };
 
-  const menuStructure = [
+  const menuStructure: MenuSection[] = [
     {
       label: "Inputs",
       items: [
@@ -165,7 +210,7 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
     }
   ];
 
-  const getSubmenuItems = (id) => {
+  const getSubmenuItems = (id: string): SubmenuItem[] => {
     switch (id) {
       case "inputs": return categorizedModels.inputs.map(m => ({ label: m.name, model: m, type: m.type }));
       case "text-utils": 
@@ -235,8 +280,8 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
     );
   };
 
-  const anchorRef = useRef(null);
-  const [menuStyle, setMenuStyle] = useState({ opacity: 0 });
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({ opacity: 0 });
 
   useLayoutEffect(() => {
     if (anchorRef.current && menuRef.current) {
@@ -286,7 +331,7 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
           if (Array.isArray(nodeType)) {
             return nodeType.some(type => filterNodeTypes.includes(type));
           }
-          return filterNodeTypes.includes(nodeType);
+          return nodeType !== null && filterNodeTypes.includes(nodeType);
         })
       })).filter(section => section.items.length > 0)
     : menuStructure;
@@ -366,9 +411,9 @@ const NodesNavbar = ({ addNode, apiNodeModels, filterNodeTypes = null, nodeSchem
   );
 };
 
-const Submenu = ({ activeSubMenu, menuStructure, getSubmenuItems, handleAddNode, parentRef, onBack }) => {
-  const [position, setPosition] = useState({ side: "right", top: 0 });
-  const submenuRef = useRef(null);
+const Submenu = ({ activeSubMenu, menuStructure, getSubmenuItems, handleAddNode, parentRef, onBack }: SubmenuProps) => {
+  const [position, setPosition] = useState<{ side: "right" | "left" | "overlay"; top: number }>({ side: "right", top: 0 });
+  const submenuRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (parentRef.current && submenuRef.current) {
@@ -377,7 +422,7 @@ const Submenu = ({ activeSubMenu, menuStructure, getSubmenuItems, handleAddNode,
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
-      let newSide = "right";
+      let newSide: "right" | "left" | "overlay" = "right";
 
       if (windowWidth < 640) {
         newSide = "overlay";
@@ -408,7 +453,7 @@ const Submenu = ({ activeSubMenu, menuStructure, getSubmenuItems, handleAddNode,
     return "right-full mr-2";
   };
 
-  const getLabelIcon = (label) => {
+  const getLabelIcon = (label?: string): ReactNode => {
     switch (label) {
       case "Input Models":
         return <LuUpload />;

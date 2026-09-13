@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import type { ModelDefinition } from "../types";
 
 export const imageModels = [
   {
@@ -703,7 +704,7 @@ export const videoCombinerModels = [
   }
 ];
 
-export const apiNodeModels = [
+export const apiNodeModels: ModelDefinition[] = [
   {
     id: "wavespeed",
     name: "Wavespeed API",
@@ -717,7 +718,7 @@ export const apiNodeModels = [
           "required": true
         },
         "api_key": {
-          "examples": "",
+          "examples": [],
           "description": "API Key of the wavespeed ai.",
           "type": "string",
           "format": "text",
@@ -747,7 +748,7 @@ export const apiNodeModels = [
           "required": true
         },
         "api_key": {
-          "examples": "",
+          "examples": [],
           "description": "API Key for Straico.",
           "type": "string",
           "format": "text",
@@ -821,7 +822,7 @@ export const apiNodeModels = [
   }
 ];
 
-export const downloadFile = async (file_url, filename = "download") => {
+export const downloadFile = async (file_url: string, filename = "download"): Promise<void> => {
   if (!file_url) {
     toast.error("File URL not found");
     return;

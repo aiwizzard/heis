@@ -5,10 +5,12 @@ import { BiLoaderAlt } from "react-icons/bi";
 import { RiRobot2Fill } from "react-icons/ri";
 import { IoArrowBackOutline } from "react-icons/io5";
 import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
+import type { HostProps } from "../types";
 
 const BASE_URL = "/api/agents";
 
-const CreateAgent = ({ useUser, usedIn }) => {
+const CreateAgent = ({ useUser, usedIn = "muapiapp" }: HostProps) => {
   const userContext = useUser ? useUser() : {};
   let user = null;
 
@@ -24,9 +26,9 @@ const CreateAgent = ({ useUser, usedIn }) => {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleArchitectAgent = async (e) => {
+  const handleArchitectAgent = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!prompt.trim()) return;
 
@@ -54,14 +56,13 @@ const CreateAgent = ({ useUser, usedIn }) => {
         const createdAgent = createResponse.data;
         router.push(`/agents/edit/${createdAgent.agent_id}`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Agent creation failed:", err);
-      setError(
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.message ||
-        "Failed to architect agent. Please try again.",
-      );
+      if (axios.isAxiosError<{ message?: string; detail?: string }>(err)) {
+        setError(err.response?.data?.message || err.response?.data?.detail || err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to architect agent. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

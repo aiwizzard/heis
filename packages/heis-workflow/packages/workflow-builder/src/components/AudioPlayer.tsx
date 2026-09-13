@@ -1,8 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { FaPause, FaPlay, FaVolumeMute, FaVolumeUp } from "react-icons/fa";
 
-const AudioPlayer = ({ src, className }) => {
-  const audioRef = useRef(null);
+interface AudioPlayerProps {
+  src: string;
+  className?: string;
+}
+
+const AudioPlayer = ({ src, className }: AudioPlayerProps) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -48,18 +54,18 @@ const AudioPlayer = ({ src, className }) => {
     };
   }, [src]); // Re-run effect if src changes
 
-  const handleSeek = (e) => {
+  const handleSeek = (e: ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const value = e.target.value;
+    const value = Number(e.target.value);
     audio.currentTime = (value / 100) * audio.duration;
     setProgress(value);
   };
 
-  const handleVolumeChange = (e) => {
+  const handleVolumeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     setVolume(val);
-    audioRef.current.volume = val;
+    if (audioRef.current) audioRef.current.volume = val;
     setIsMuted(val === 0);
   };
 
@@ -74,7 +80,7 @@ const AudioPlayer = ({ src, className }) => {
     }
   };
 
-  const formatTime = (seconds = 0) => {
+  const formatTime = (seconds = 0): string => {
     if (isNaN(seconds) || seconds === Infinity) return "00:00";
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
@@ -159,14 +165,11 @@ const AudioPlayer = ({ src, className }) => {
                 min="0" 
                 max="1" 
                 step="0.01" 
-                vertical="true"
                 value={volume} 
                 onChange={handleVolumeChange}
                 className="h-full w-1 accent-blue-500 cursor-pointer appearance-none bg-white/10 rounded-full"
                 style={{
-                  WebkitAppearance: 'slider-vertical',
-                  appearance: 'slider-vertical',
-                  writingMode: 'bt-lr'
+                  WebkitAppearance: 'slider-vertical'
                 }}
               />
             </div>
@@ -178,4 +181,3 @@ const AudioPlayer = ({ src, className }) => {
 };
 
 export default AudioPlayer;
-

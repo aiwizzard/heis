@@ -5,32 +5,45 @@ import axios from "axios";
 import AudioPlayer from "./AudioPlayer";
 import VideoPlayer from "./VideoPlayer";
 import { IoImageOutline, IoTrashOutline } from "react-icons/io5";
+import type { ChangeEvent, Dispatch, DragEvent, SetStateAction } from "react";
+import type { FormValues, ModelDefinition, NodeOutput, UploadFields, WorkflowNodeData } from "../types";
 
-const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loading, uploadType, acceptType }) => {
+interface UploadNodeProps {
+  id: string;
+  data: WorkflowNodeData;
+  formValues: FormValues;
+  setFormValues: Dispatch<SetStateAction<FormValues>>;
+  selectedModel: ModelDefinition;
+  loading: number;
+  uploadType: "text" | "upload";
+  acceptType: "image" | "video" | "audio" | "text";
+}
+
+const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loading, uploadType, acceptType }: UploadNodeProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [imageMetadata, setImageMetadata] = useState({ width: 0, height: 0, size: null });
-  const videoRef = useRef(null);
+  const [imageMetadata, setImageMetadata] = useState<{ width: number; height: number; size: string | null }>({ width: 0, height: 0, size: null });
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const prevFormValues = useRef(formValues);
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     handleFileUpload(e);
   };
 
-  const handleFileUpload = (e) => {
-    let file = null;
+  const handleFileUpload = (e: DragEvent<HTMLElement> | ChangeEvent<HTMLInputElement>) => {
+    let file: File | null = null;
 
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    if ("dataTransfer" in e && e.dataTransfer.files.length > 0) {
       file = e.dataTransfer.files[0];
-    } else if (e.target.files && e.target.files.length > 0) {
-      file = e.target.files[0];
+    } else if (e.currentTarget instanceof HTMLInputElement && e.currentTarget.files?.length) {
+      file = e.currentTarget.files[0];
     } else {
       return;
     }
 
-    let acceptedTypes = [];
+    let acceptedTypes: string[] = [];
 
     if (acceptType === "image") {
       acceptedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
@@ -48,7 +61,7 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
     };
 
     setUploading(true);
-    axios.get("/api/app/get_file_upload_url", {
+    axios.get<{ url: string; fields: UploadFields }>("/api/app/get_file_upload_url", {
       params: { filename: file.name }
     })
     .then((response) => {
@@ -62,7 +75,7 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
       axios.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
           setUploadProgress(percentCompleted);
         }
       })
@@ -85,17 +98,17 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
     })  
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
   }; 
 
-  const handleTextChange = (e) => {
+  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const textValue = e.target.value;
     setFormValues(prev => ({ ...prev, prompt: textValue }));
   };
 
-  const handleWorkflowInputChange = (e) => {
+  const handleWorkflowInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const workflowInputValue = e.target.checked;
     setFormValues(prev => ({ ...prev, is_workflow_input: workflowInputValue }));
   };
@@ -106,36 +119,36 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
   };
 
   useEffect(() => {
-    let outputs = [{
+    let outputs: NodeOutput[] = [{
       type: "",
       value: null
     }];
-    let resultUrl;
+    let resultUrl: string | null;
 
     if (acceptType === "image") {
       outputs = [{ 
         type: "image_url", 
         value: formValues.image_url ? formValues.image_url: null,
       }];
-      resultUrl = formValues.image_url ? formValues.image_url: null;
+      resultUrl = typeof formValues.image_url === "string" ? formValues.image_url : null;
     } else if (acceptType === "video") {
       outputs = [{ 
         type: "video_url", 
         value: formValues.video_url ? formValues.video_url: null,
       }];
-      resultUrl = formValues.video_url ? formValues.video_url: null;
+      resultUrl = typeof formValues.video_url === "string" ? formValues.video_url : null;
     } else if (acceptType === "audio") {
       outputs = [{ 
         type: "audio_url", 
         value: formValues.audio_url ? formValues.audio_url: null,
       }];
-      resultUrl = formValues.audio_url ? formValues.audio_url: null;
+      resultUrl = typeof formValues.audio_url === "string" ? formValues.audio_url : null;
     } else {
       outputs = [{ 
         type: "text", 
         value: formValues.prompt ? formValues.prompt: "",
       }];
-      resultUrl = formValues.prompt ? formValues.prompt: "";
+      resultUrl = typeof formValues.prompt === "string" ? formValues.prompt : "";
     };
 
     if (acceptType === "image" && resultUrl) {
@@ -183,8 +196,11 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
     }
   }, [formValues, selectedModel, loading, id, data, acceptType]);
 
-  const hasFileUrl = formValues?.image_url || formValues?.video_url || formValues?.audio_url;
-  const textareaRef = useRef(null);
+  const imageUrl = typeof formValues.image_url === "string" ? formValues.image_url : "";
+  const videoUrl = typeof formValues.video_url === "string" ? formValues.video_url : "";
+  const audioUrl = typeof formValues.audio_url === "string" ? formValues.audio_url : "";
+  const hasFileUrl = imageUrl || videoUrl || audioUrl;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -203,7 +219,7 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
             ref={textareaRef}
             className="bg-transparent border border-gray-800 w-full h-full max-h-96 p-2 text-xs text-white resize-none overflow-y-auto custom-scrollbar"
             placeholder="Enter your text prompt here..."
-            value={formValues?.prompt || ""}
+            value={typeof formValues.prompt === "string" ? formValues.prompt : ""}
             onChange={handleTextChange}
           />
         ) : uploadType === "upload" && (
@@ -220,17 +236,17 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
               </div>
             ) : hasFileUrl ? (
               <div className="flex-1 w-full h-full group z-0">
-                {formValues?.video_url ? (
+                {videoUrl ? (
                   <div className="relative w-full h-full">
                     <VideoPlayer 
-                      src={formValues?.video_url}
+                      src={videoUrl}
                       accentColor="#f97316"
                     />
                   </div>
-                ) : formValues?.image_url ? (
+                ) : imageUrl ? (
                   <div className="relative w-full h-full group/image">
                     <img
-                      src={formValues?.image_url}
+                      src={imageUrl}
                       alt="Uploaded"
                       className="w-full h-full object-contain"
                     />
@@ -254,8 +270,7 @@ const UploadNode = ({ id, data, formValues, setFormValues, selectedModel, loadin
                 ) : (
                   <div className="w-full h-full relative group/audio flex flex-col items-center justify-center">
                     <AudioPlayer 
-                      nodeId={id}
-                      src={formValues?.audio_url} 
+                      src={audioUrl}
                       className="flex flex-col items-center justify-center px-5 py-4 w-full h-full relative group transition-all duration-500 select-none bg-black/10 rounded-b-2xl"
                     />
                   </div>

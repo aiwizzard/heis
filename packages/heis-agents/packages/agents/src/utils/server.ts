@@ -1,4 +1,12 @@
-export const getAgentDetails = async (agentId, options = {}) => {
+interface AgentRequestOptions {
+  baseUrl?: string;
+  fetchOptions?: RequestInit;
+}
+
+export const getAgentDetails = async <T>(
+  agentId: string,
+  options: AgentRequestOptions = {},
+): Promise<T> => {
   const {
     baseUrl = "http://127.0.0.1:8000/agents", // Default relative URL for internal API, or provide full URL
     fetchOptions = {}
@@ -20,7 +28,7 @@ export const getAgentDetails = async (agentId, options = {}) => {
       throw new Error(`Failed to fetch agent details: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    return await response.json() as T;
   } catch (error) {
     console.error("Error fetching agent details:", error);
     throw error;

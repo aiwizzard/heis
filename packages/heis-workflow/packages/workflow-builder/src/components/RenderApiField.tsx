@@ -8,26 +8,48 @@ import AudioPlayer from "./AudioPlayer";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import { Handle, Position } from "reactflow";
 import { TbBoxModel2, TbExternalLink } from "react-icons/tb";
+import type { CSSProperties, Dispatch, DragEvent, ChangeEvent, SetStateAction } from "react";
+import type { FormValue, FormValues, SchemaField, UploadFields } from "../types";
 
-const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handleChange, hasHandle = false, exposedHandles = [], onToggleHandle }) => {
+interface RenderApiFieldProps {
+  fieldName: string;
+  meta: SchemaField;
+  idx: number;
+  formValues: FormValues;
+  setFormValues: Dispatch<SetStateAction<FormValues>>;
+  handleChange: (field: string, value: FormValue) => void;
+  hasHandle?: boolean;
+  exposedHandles?: string[];
+  onToggleHandle?: (field: string) => void;
+}
+
+const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handleChange, hasHandle = false, exposedHandles = [], onToggleHandle }: RenderApiFieldProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dropDown, setDropDown] = useState(-1);
   const [uploading, setUploading] = useState(false);
   const [isOpeningUp, setIsOpeningUp] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState({});
-  const containerRef = useRef(null);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const isImageUrl = (url) => {
+  const isImageUrl = (url: FormValue | undefined): boolean => {
     if (typeof url !== 'string') return false;
     return url.match(/\.(jpeg|jpg|gif|png|webp|avif|HEIC)(\?.*)?$/i) !== null || url.startsWith('https://cdn.muapi.ai/');
   };
 
-  const isImageField = ['image', 'last_image', 'image_url'].includes(meta.field) || 
+  const isImageField = ['image', 'last_image', 'image_url'].includes(meta.field || "") ||
                        ['image', 'last_image', 'image_url'].includes(fieldName);
   const isImagesListField = ['images', 'image_urls', 'images_list'].includes(fieldName) || meta.field === 'images_list';
-  const isVideoField = ['video', 'video_url'].includes(meta.field) || ['video', 'video_url'].includes(fieldName);
-  const isAudioField = ['audio', 'audio_url'].includes(meta.field) || ['audio', 'audio_url'].includes(fieldName);
+  const isVideoField = ['video', 'video_url'].includes(meta.field || "") || ['video', 'video_url'].includes(fieldName);
+  const isAudioField = ['audio', 'audio_url'].includes(meta.field || "") || ['audio', 'audio_url'].includes(fieldName);
   const value = formValues[fieldName] ?? meta.default ?? "";
+  const stringValue = typeof value === "string" ? value : "";
+  const scalarValue = typeof value === "string" || typeof value === "number" ? value : "";
+  const optionValue = (option: NonNullable<SchemaField["enum"]>[number]) =>
+    typeof option === "object" && option !== null ? option.value : option;
+  const optionLabel = (option: NonNullable<SchemaField["enum"]>[number]): string =>
+    typeof option === "object" && option !== null
+      ? option.label || option.name || String(option.value)
+      : String(option ?? "");
   const isRequired = meta.required || false;
   const label = (
     <div className="flex items-center justify-between w-full group/label">
@@ -58,13 +80,13 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
     }
   }, [dropDown, idx]);
 
-  const handleFileUpload = (field, fieldSchema, e) => {
-    let file = null;
+  const handleFileUpload = (field: string, fieldSchema: SchemaField, e: DragEvent<HTMLElement> | ChangeEvent<HTMLInputElement>) => {
+    let file: File | null = null;
 
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    if ("dataTransfer" in e && e.dataTransfer.files.length > 0) {
       file = e.dataTransfer.files[0];
-    } else if (e.target.files && e.target.files.length > 0) {
-      file = e.target.files[0];
+    } else if (e.currentTarget instanceof HTMLInputElement && e.currentTarget.files?.length) {
+      file = e.currentTarget.files[0];
     } else {
       return;
     }
@@ -80,7 +102,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
     };
 
     setUploading(true);
-    axios.get("/api/app/get_file_upload_url", {
+    axios.get<{ url: string; fields: UploadFields }>("/api/app/get_file_upload_url", {
       params: { filename: file.name }
     })
     .then((response) => {
@@ -94,7 +116,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
       axios.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
           setUploadProgress(percentCompleted);
         }
       })
@@ -103,7 +125,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
         setFormValues((prev) => { 
           const current = prev[field];
           const updatedValue = fieldSchema.type === 'array'
-            ? [...(current || []), uploadedUrl]
+            ? [...(Array.isArray(current) ? current : []), uploadedUrl]
             : uploadedUrl
 
             return { ...prev, [field]: updatedValue };
@@ -135,7 +157,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
   if (meta.enum) {
     const isManual = meta.allowManual || false;
     const filteredOptions = isManual && value 
-      ? meta.enum.filter(opt => (opt || "").toString().toLowerCase().includes((value || "").toString().toLowerCase()))
+      ? meta.enum.filter(opt => optionLabel(opt).toLowerCase().includes(String(value || "").toLowerCase()))
       : meta.enum;
 
     return (
@@ -172,7 +194,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
             {isManual ? (
               <input
                 type="text"
-                value={value}
+                value={stringValue}
                 onChange={(e) => handleChange(fieldName, e.target.value)}
                 onFocus={() => setDropDown(idx + 1)}
                 placeholder="Select or type..."
@@ -188,9 +210,8 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
                 <div className="flex items-center gap-2 truncate">
                   <span className="truncate">
                     {(() => {
-                      if (typeof value === 'object') return value.label || value.value;
-                      const option = meta.enum?.find(opt => (typeof opt === 'object' ? opt.value : opt) === value);
-                      return typeof option === 'object' ? option.label : value;
+                      const option = meta.enum?.find(opt => optionValue(opt) === value);
+                      return option ? optionLabel(option) : scalarValue;
                     })()}
                   </span>
                 </div>
@@ -227,14 +248,14 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
                   suppressHydrationWarning={true}
                   key={i}
                   className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg transition-all ${
-                    (typeof option === "object" ? formValues[fieldName] === option.value : formValues[fieldName] === option)
+                    formValues[fieldName] === optionValue(option)
                       ? "bg-blue-500/10 text-blue-400"
                       : "text-zinc-400 hover:bg-white/5 hover:text-white"
                   }`}
-                  onClick={() => {handleChange(fieldName, typeof option === "object" ? option.value : option); setDropDown(-1)}}
+                  onClick={() => {handleChange(fieldName, optionValue(option)); setDropDown(-1)}}
                 >
-                  <span className="truncate">{typeof option === "object" ? option.label || option.value : option}</span>
-                  {(typeof option === "object" ? formValues[fieldName] === option.value : formValues[fieldName] === option) && (
+                  <span className="truncate">{optionLabel(option)}</span>
+                  {formValues[fieldName] === optionValue(option) && (
                     <span className="ml-auto text-blue-400 font-bold">✓</span>
                   )}
                 </button>
@@ -264,7 +285,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
         <div className="flex items-center gap-1">
           <input 
             type="text" 
-            value={formValues[fieldName] || ''} 
+            value={stringValue}
             readOnly
             // onChange={(e) => handleChange(fieldName, e.target.value)} 
             className="bg-zinc-900/50 text-white text-xs py-2 px-3 rounded-lg border border-white/10 hover:border-white/20 transition-all w-full outline-none focus:border-blue-500/50" 
@@ -301,15 +322,15 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
             <div className="bg-blue-500 h-full" style={{ width: `${uploadProgress}%` }}></div>
           </div>
         )}
-        {formValues[fieldName] && (
+        {stringValue && (
           <div className="flex items-center gap-2 relative group overflow-hidden self-start w-full">
             {isImageField || isImageUrl(value) ? (
-              <img src={value} alt="Preview" className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" width={0} height={0} />
+              <img src={stringValue} alt="Preview" className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" width={0} height={0} />
             ) : isVideoField ? (
-              <video src={value} className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" />
+              <video src={stringValue} className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" />
             ) : isAudioField && (
               <div className="flex flex-col w-full h-16 border border-white/10 rounded-xl overflow-hidden shadow-lg">
-                <AudioPlayer src={value} />
+                <AudioPlayer src={stringValue} />
               </div>
             )}
             <button 
@@ -327,7 +348,9 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
   };
 
   if (isImagesListField) {
-    const imageList = Array.isArray(formValues[fieldName]) ? formValues[fieldName] : [];
+    const imageList = Array.isArray(formValues[fieldName])
+      ? formValues[fieldName].filter((item): item is string => typeof item === "string")
+      : [];
     return (
       <div key={fieldName} className="flex flex-col gap-1 relative">
         {hasHandle && (
@@ -451,8 +474,8 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
         {label}
         <input
           type="number"
-          value={value}
-          onChange={(e) => handleChange(fieldName, parseFloat(e.target.value || 0))}
+          value={scalarValue}
+          onChange={(e) => handleChange(fieldName, parseFloat(e.target.value || "0"))}
           placeholder={meta.description || ""}
           className="bg-zinc-900/50 text-white text-xs p-2 rounded-lg border border-white/10 hover:border-white/20 transition-all outline-none focus:border-blue-500/50"
         />
@@ -478,7 +501,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
         <input
           type="text"
           id={fieldName}
-          value={value}
+          value={scalarValue}
           placeholder={meta.placeholder || meta.description || fieldName}
           onChange={(e) => handleChange(fieldName, e.target.value)}
           className="bg-zinc-900/50 text-white text-xs py-2 px-3 rounded-lg border border-white/10 hover:border-white/20 transition-all w-full outline-none focus:border-blue-500/50"
@@ -533,7 +556,7 @@ const RenderApiField = ({ fieldName, meta, idx, formValues, setFormValues, handl
       )}
       {label}
       <textarea
-        value={value}
+        value={stringValue}
         readOnly
         // onChange={(e) => handleChange(fieldName, e.target.value)}
         placeholder={meta.description || ""}

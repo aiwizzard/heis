@@ -6,6 +6,8 @@ import { IoClose } from "react-icons/io5";
 import { concatModels } from "./utility";
 import { TbArrowMerge } from "react-icons/tb";
 import NodeOptionsMenu from "./NodeOptionsMenu";
+import type { CSSProperties } from "react";
+import type { FormValue, FormValues, ModelDefinition, SchemaProperties, WorkflowNodeProps } from "../types";
 
 const inputHandles = [
   "concatInput",
@@ -15,23 +17,23 @@ const outputHandles = [
   "concatOutput",
 ];
 
-const PromptConcate = ({ id, data, selected }) => {  
-  const [selectedModel, setSelectedModel] = useState(concatModels[0]);
-  const [connectedInputs, setConnectedInputs] = useState({});
-  const [connectedOutputs, setConnectedOutputs] = useState({});
-  const [formValues, setFormValues] = useState({});
+const PromptConcate = ({ id, data, selected }: WorkflowNodeProps) => {
+  const [selectedModel, setSelectedModel] = useState<ModelDefinition>(concatModels[0]);
+  const [connectedInputs, setConnectedInputs] = useState<Record<string, boolean>>({});
+  const [connectedOutputs, setConnectedOutputs] = useState<Record<string, boolean>>({});
+  const [formValues, setFormValues] = useState<FormValues>({});
   const [dropDown, setDropDown] = useState(0);
   const workflowId = getWorkflowId();
   const runId = data.runId ?? getRunId();
   const nodeSchemas = data.nodeSchemas || {};
-  const textareaRef = useRef(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { setNodes, setEdges } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const edges = useStore((state) => state.edges);
   const properties = selectedModel?.input_params?.properties || {};
 
-  const initializeFormData = (schemaProperties) => {
-    const initialData = {};
+  const initializeFormData = (schemaProperties: SchemaProperties): FormValues => {
+    const initialData: FormValues = {};
     const fieldEntries = Object.entries(schemaProperties || {});
 
     fieldEntries.forEach(([fieldName, fieldSchema]) => {
@@ -39,7 +41,11 @@ const PromptConcate = ({ id, data, selected }) => {
         if (fieldSchema.items?.type === "object") {
           const examples = fieldSchema.examples;
           if (Array.isArray(examples) && examples.length > 0) {
-            initialData[fieldName] = examples.map((ex) => ({ ...ex }));
+            initialData[fieldName] = examples.map((example) =>
+              typeof example === "object" && example !== null && !Array.isArray(example) && !(example instanceof File)
+                ? { ...example }
+                : {},
+            );
           } else {
             initialData[fieldName] = [];
           }
@@ -79,16 +85,24 @@ const PromptConcate = ({ id, data, selected }) => {
     const defaults = initializeFormData(properties);
 
     const validKeys = Object.keys(properties);
-    const filteredFormValues = Object.entries(data.formValues || {}).reduce((acc, [key, val]) => {
+    const filteredFormValues = Object.entries(data.formValues || {}).reduce<FormValues>((acc, [key, val]) => {
       if (validKeys?.includes(key)) acc[key] = val;
       return acc;
     }, {});
 
-    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce(
+    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce<FormValues>(
       (acc, [key, val]) => {
         const meta = properties[key];
-        if (meta?.enum && !meta.enum?.includes(val)) {
-          acc[key] = meta.default ?? meta.enum[0] ?? "";
+        const enumContainsValue = meta?.enum?.some((option) =>
+          typeof option === "object" && option !== null ? option.value === val : option === val,
+        );
+        if (meta?.enum && !enumContainsValue) {
+          const firstOption = meta.enum[0];
+          acc[key] = meta.default ?? (
+            typeof firstOption === "object" && firstOption !== null
+              ? firstOption.value
+              : firstOption
+          ) ?? "";
         } else {
           acc[key] = val;
         }
@@ -118,7 +132,7 @@ const PromptConcate = ({ id, data, selected }) => {
 
     const timer = setTimeout(() => {
       if (Object.entries(data.formValues || {}).length > 0) {
-        setFormValues(data.formValues);
+        setFormValues(data.formValues || {});
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -154,12 +168,12 @@ const PromptConcate = ({ id, data, selected }) => {
     const timeout = setTimeout(() => {
       const validHandles = [
         hasPrompt && "concatInput",
-      ].filter(Boolean);
+      ].filter((handle): handle is string => Boolean(handle));
 
       setEdges((prevEdges) =>
         prevEdges.filter((edge) => {
           if (edge.target !== id) return true;
-          return validHandles?.includes(edge.targetHandle);
+          return typeof edge.targetHandle === "string" && validHandles.includes(edge.targetHandle);
         })
       );
     }, 2000);
@@ -167,14 +181,14 @@ const PromptConcate = ({ id, data, selected }) => {
   }, [hasPrompt, id, setEdges]);
 
   useEffect(() => {
-    const connectedInputs = {};
+    const connectedInputs: Record<string, boolean> = {};
     inputHandles.forEach((h) => {
       connectedInputs[h] = edges.some(
         (e) => e.target === id && e.targetHandle === h
       );
     });
 
-    const connectedOutputs = {};
+    const connectedOutputs: Record<string, boolean> = {};
     outputHandles.forEach((h) => {
       connectedOutputs[h] = edges.some(
         (e) => e.source === id && e.sourceHandle === h
@@ -196,7 +210,7 @@ const PromptConcate = ({ id, data, selected }) => {
 
   return (
     <div 
-      style={{ minHeight: 280, '--loader-color': '#2563eb' }} 
+      style={{ minHeight: 280, '--loader-color': '#2563eb' } as CSSProperties & Record<`--${string}`, string | number>}
       className={`
         nowheel group flex flex-col flex-1 w-80 
         rounded-2xl border-2 relative transition-all duration-300 ease-in-out 
@@ -221,17 +235,16 @@ const PromptConcate = ({ id, data, selected }) => {
           </div>
           <NodeOptionsMenu 
             nodeId={id}
-            onDuplicate={data.duplicateNode}
+            onDuplicate={data.duplicateNode || (() => undefined)}
             onDelete={handleDeleteNode}
           />
         </div>
       </div>
       <div className="relative flex flex-col gap-2 bg-zinc-900/30 rounded-xl border border-zinc-800/50 w-full h-full p-2">
         <textarea
-          type="text"
           ref={textareaRef}
           readOnly
-          value={formValues?.prompt || ""}
+          value={typeof formValues.prompt === "string" ? formValues.prompt : ""}
           className="w-full h-full max-h-96 text-xs leading-relaxed outline-none bg-transparent resize-none text-zinc-100 font-medium placeholder:italic placeholder:opacity-50"
         />
       </div>

@@ -7,25 +7,25 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { FaRegCirclePause, FaRegCopy, FaRobot } from "react-icons/fa6";
 import { FiMaximize2, FiMinimize2 } from "react-icons/fi";
+import type { FormEvent } from "react";
+import type { WorkflowChatMessage } from "../types";
 
-const preprocessContent = (content) => {
+const preprocessContent = (content: string): string => {
   if (!content) return "";
 
   let lines = content.split("\n");
-  let processedLines = [];
+  const processedLines: string[] = [];
   let inTable = false;
-  let tableRows = [];
+  let tableRows: string[] = [];
 
-  const isTableLine = (line) => {
+  const isTableLine = (line: string) => {
     const trimmed = line.trim();
     if (trimmed.startsWith("+")) return true;
     const pipes = (trimmed.match(/\|/g) || []).length;
     return pipes >= 2;
   };
 
-  const isBorder = (line) => /^[\s]*\+[-+]+\+[\s]*$/.test(line);
-
-  const normalizeTableLine = (line) => {
+  const normalizeTableLine = (line: string): string | null => {
     const trimmed = line.trim();
     if (trimmed.startsWith("+")) return null; // Ignore decorative borders
     let row = trimmed;
@@ -89,7 +89,7 @@ const preprocessContent = (content) => {
   if (!processed.includes("```")) {
     const lines = processed.split("\n");
     let isInsideCode = false;
-    let newProcessedLines = [];
+    const newProcessedLines: string[] = [];
     let currentLang = "javascript";
     
     // Patterns that strongly indicate a state change at line start
@@ -150,7 +150,7 @@ const preprocessContent = (content) => {
   return processed;
 };
 
-const CodeBlock = ({ language, value }) => {
+const CodeBlock = ({ language, value }: { language?: string; value: string }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -200,19 +200,28 @@ const DEFAULT_SUGGESTIONS = [
   "Can you create a multi-model image generation grid?"
 ];
 
-const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, onClearHistory }) => {
+interface ChatWidgetProps {
+  isOpen: boolean;
+  toggleChat: () => void;
+  messages: WorkflowChatMessage[];
+  onSendMessage: (message: string) => void;
+  isLoading: boolean;
+  onClearHistory: () => void;
+}
+
+const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, onClearHistory }: ChatWidgetProps) => {
   const [inputValue, setInputValue] = useState("");
   const [loadingStep, setLoadingStep] = useState(0);
-  const [copiedId, setCopiedId] = useState(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isWide, setIsWide] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const loadingTexts = ["Thinking", "Analyzing", "Generating", "Refining", "Processing", "Running"];
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const widgetRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let interval;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isLoading) {
       interval = setInterval(() => {
         setLoadingStep((prev) => (prev + 1) % loadingTexts.length);
@@ -238,8 +247,8 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
   }, [messages, isOpen]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (widgetRef.current && event.target instanceof Node && !widgetRef.current.contains(event.target)) {
         if (isOpen) {
           toggleChat();
         }
@@ -255,7 +264,7 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
     };
   }, [isOpen, toggleChat]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement> | React.KeyboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     if (inputValue.trim()) {
       onSendMessage(inputValue);
@@ -266,18 +275,18 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
     }
   };
 
-  const formatMessageDate = (isoString) => {
+  const formatMessageDate = (isoString: string): string => {
     if (!isoString) return "";
     const date = new Date(isoString);
     const now = new Date();
-    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
-  const formatMessageTime = (isoString) => {
+  const formatMessageTime = (isoString: string): string => {
     if (!isoString) return "";
     return new Date(isoString).toLocaleTimeString([], {
       hour: "2-digit",
@@ -285,7 +294,7 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
     });
   };
 
-  const handleCopy = (text, id) => {
+  const handleCopy = (text: string, id: number) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -408,10 +417,10 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
                             strong: ({node, ...props}) => <strong className="font-extrabold text-white" {...props} />,
                             em: ({node, ...props}) => <em className="italic text-gray-400" {...props} />,
                             a: ({node, ...props}) => <a className="text-blue-400 hover:text-blue-300 underline underline-offset-4 decoration-blue-500/30 break-all transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
-                            code: ({node, inline, className, children, ...props}) => {
+                            code: ({node, className, children, ...props}) => {
                               const match = /language-(\w+)/.exec(className || "");
                               const lang = match ? match[1] : "";
-                              return inline ? (
+                              return !className ? (
                                 <code className="bg-white/10 rounded-md px-1.5 py-0.5 text-[13px] font-mono text-pink-400" {...props}>{children}</code>
                               ) : (
                                 <CodeBlock language={lang} value={String(children).replace(/\n$/, "")} />
@@ -513,8 +522,8 @@ const ChatWidget = ({ isOpen, toggleChat, messages, onSendMessage, isLoading, on
                 className="flex-1 bg-transparent outline-none text-sm text-gray-200 placeholder-gray-500 resize-none p-1 max-h-32 scrollbar-none border-none"
                 style={{ height: "auto" }}
                 onInput={(e) => {
-                  e.target.style.height = "auto";
-                  e.target.style.height = `${e.target.scrollHeight}px`;
+                  e.currentTarget.style.height = "auto";
+                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                 }}
               />
               <button

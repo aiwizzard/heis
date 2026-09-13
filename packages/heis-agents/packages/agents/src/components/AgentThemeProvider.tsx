@@ -3,7 +3,7 @@
 import React from 'react'
 import { ThemeProvider } from 'next-themes'
 
-export const AgentThemeProvider = ({ children }) => {
+export const AgentThemeProvider = ({ children }: React.PropsWithChildren) => {
   return (
     <ThemeProvider 
       attribute="class" 

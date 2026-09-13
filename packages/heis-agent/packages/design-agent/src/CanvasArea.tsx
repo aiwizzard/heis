@@ -20,8 +20,63 @@ import {
   Arc,
 } from "react-konva";
 import toast from "react-hot-toast";
+import type { Dispatch, SetStateAction } from "react";
+import type { ActiveTask, CanvasAreaHandle, CanvasItem, CanvasMove, CanvasSnapshot } from "./types";
 
-const MenuButton = ({ label, shortcut, onClick, theme }) => (
+type CanvasEvent = Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+
+interface MenuButtonProps {
+  label: string;
+  shortcut?: string;
+  onClick: () => void;
+  theme: string;
+}
+
+interface CanvasObjectProps {
+  isSelected: boolean;
+  onSelect: (event?: CanvasEvent) => void;
+  onChange: (item: CanvasItem) => void;
+  onDragMove: (event: CanvasEvent) => void;
+  onDragEnd: (event: CanvasEvent, item: CanvasItem) => void;
+}
+
+interface ImageObjectProps extends CanvasObjectProps { imageObj: CanvasItem }
+interface VideoObjectProps extends CanvasObjectProps { videoObj: CanvasItem }
+interface AudioObjectProps extends CanvasObjectProps { audioObj: CanvasItem }
+interface TextObjectProps extends CanvasObjectProps {
+  textObj: CanvasItem;
+  onDblClick: (id: string) => void;
+}
+
+interface LoaderNodeProps {
+  task: ActiveTask;
+  isSelected: boolean;
+  onSelect: (event: CanvasEvent) => void;
+  onChange: (task: ActiveTask) => void;
+  theme: string;
+}
+
+interface CanvasAreaProps {
+  theme?: string;
+  colors?: { textSecondary: string; border: string };
+  activeTasks?: ActiveTask[];
+  setActiveTasks?: Dispatch<SetStateAction<ActiveTask[]>>;
+  onZoomChange?: (zoom: number) => void;
+}
+
+interface ContextMenuState {
+  type?: "canvas" | "node";
+  nodeId?: string;
+  x: number;
+  y: number;
+  stagePos: { x: number; y: number };
+}
+
+interface AlignmentGuide { points: number[]; stroke: string; strokeWidth: number; dash: number[] }
+interface GuideMatch { lineGuide: number; diff: number }
+type ItemSetter = Dispatch<SetStateAction<CanvasItem[]>>;
+
+const MenuButton = ({ label, shortcut, onClick, theme }: MenuButtonProps) => (
   <button
     className={`w-full text-left px-4 py-1.5 flex justify-between items-center transition-colors ${
       theme === "dark" ? "hover:bg-bg-page" : "hover:bg-bg-page"
@@ -38,7 +93,7 @@ const MenuButton = ({ label, shortcut, onClick, theme }) => (
   </button>
 );
 
-const MenuDivider = ({ theme }) => (
+const MenuDivider = ({ theme }: { theme: string }) => (
   <div
     className={`h-[1px] w-full my-1 ${theme === "dark" ? "bg-border-main" : "bg-border-main"}`}
   />
@@ -51,10 +106,10 @@ const URLImage = ({
   onChange,
   onDragMove,
   onDragEnd,
-}) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
-  const { zIndex, ...restImageObj } = imageObj;
+}: ImageObjectProps) => {
+  const shapeRef = useRef<Konva.Image>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+  const { zIndex, image, ...restImageObj } = imageObj;
 
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [pos, setPos] = useState({ x: imageObj.x, y: imageObj.y });
@@ -64,9 +119,9 @@ const URLImage = ({
   }, [imageObj.x, imageObj.y]);
 
   useEffect(() => {
-    if (isSelected && shapeRef.current) {
+    if (isSelected && shapeRef.current && trRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
       const node = shapeRef.current;
       setDims({
         w: Math.round(node.width() * node.scaleX()),
@@ -99,6 +154,7 @@ const URLImage = ({
           if (!imageObj.locked) onSelect(e);
         }}
         ref={shapeRef}
+        image={image as CanvasImageSource | undefined}
         {...restImageObj}
         id={imageObj.id}
         name="konva-item"
@@ -111,6 +167,7 @@ const URLImage = ({
         onDragEnd={(e) => onDragEnd(e, imageObj)}
         onTransformEnd={(e) => {
           const node = shapeRef.current;
+          if (!node) return;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
           node.scaleX(1);
@@ -197,18 +254,18 @@ const URLVideo = ({
   onChange,
   onDragMove,
   onDragEnd,
-}) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
-  const [video, setVideo] = useState(null);
+}: VideoObjectProps) => {
+  const shapeRef = useRef<Konva.Image>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const videoE = document.createElement("video");
     
-    const tryLoad = (useCors) => {
+    const tryLoad = (useCors: boolean) => {
       if (useCors) videoE.crossOrigin = "anonymous";
       else videoE.removeAttribute("crossOrigin");
-      videoE.src = videoObj.src;
+      videoE.src = videoObj.src || "";
       videoE.loop = true;
       videoE.muted = true;
       videoE.playsInline = true;
@@ -241,7 +298,7 @@ const URLVideo = ({
     };
   }, [videoObj.src]);
 
-  const { zIndex, ...restVideoObj } = videoObj;
+  const { zIndex, image: _image, ...restVideoObj } = videoObj;
 
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [pos, setPos] = useState({ x: videoObj.x, y: videoObj.y });
@@ -251,9 +308,9 @@ const URLVideo = ({
   }, [videoObj.x, videoObj.y]);
 
   useEffect(() => {
-    if (isSelected && shapeRef.current) {
+    if (isSelected && shapeRef.current && trRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
       const node = shapeRef.current;
       setDims({
         w: Math.round(node.width() * node.scaleX()),
@@ -286,7 +343,7 @@ const URLVideo = ({
           if (!videoObj.locked) onSelect(e);
         }}
         ref={shapeRef}
-        image={video}
+        image={video || undefined}
         {...restVideoObj}
         id={videoObj.id}
         name="konva-item"
@@ -299,6 +356,7 @@ const URLVideo = ({
         onDragEnd={(e) => onDragEnd(e, videoObj)}
         onTransformEnd={(e) => {
           const node = shapeRef.current;
+          if (!node) return;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
           node.scaleX(1);
@@ -377,20 +435,20 @@ const URLAudio = ({
   onChange,
   onDragMove,
   onDragEnd,
-}) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
+}: AudioObjectProps) => {
+  const shapeRef = useRef<Konva.Group>(null);
+  const trRef = useRef<Konva.Transformer>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [audio, setAudio] = useState(null);
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const a = new window.Audio();
     
-    const tryLoad = (useCors) => {
+    const tryLoad = (useCors: boolean) => {
       if (useCors) a.crossOrigin = "anonymous";
       else a.removeAttribute("crossOrigin");
-      a.src = audioObj.src;
+      a.src = audioObj.src || "";
       a.loop = true;
       a.load();
     };
@@ -435,7 +493,7 @@ const URLAudio = ({
     };
   }, [audioObj.src]);
 
-  const handleTogglePlay = (e) => {
+  const handleTogglePlay = (e?: CanvasEvent) => {
     if (e && e.cancelBubble !== undefined) {
       e.cancelBubble = true;
     }
@@ -456,9 +514,9 @@ const URLAudio = ({
   };
 
   useEffect(() => {
-    if (isSelected && trRef.current) {
+    if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
 
@@ -575,15 +633,15 @@ const URLText = ({
   onDragMove,
   onDragEnd,
   onDblClick,
-}) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
+}: TextObjectProps) => {
+  const shapeRef = useRef<Konva.Text>(null);
+  const trRef = useRef<Konva.Transformer>(null);
   const { zIndex, ...restTextObj } = textObj;
 
   useEffect(() => {
-    if (isSelected) {
+    if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
 
@@ -613,6 +671,7 @@ const URLText = ({
         }}
         onTransformEnd={(e) => {
           const node = shapeRef.current;
+          if (!node) return;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
           node.scaleX(1);
@@ -646,27 +705,30 @@ const URLText = ({
   );
 };
 
-const LoaderNode = ({ task, isSelected, onSelect, onChange, theme }) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
-  const arcRef = useRef();
+const LoaderNode = ({ task, isSelected, onSelect, onChange, theme }: LoaderNodeProps) => {
+  const shapeRef = useRef<Konva.Group>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+  const arcRef = useRef<Konva.Arc>(null);
 
   useEffect(() => {
-    if (isSelected && trRef.current) {
+    if (isSelected && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
+      trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
 
   useEffect(() => {
     if (arcRef.current) {
+      const arc = arcRef.current;
       const anim = new Konva.Animation((frame) => {
         const angleDiff = frame.timeDiff * 0.36; // roughly 360 degrees per second
-        arcRef.current.rotate(angleDiff);
-      }, arcRef.current.getLayer());
+        arc.rotate(angleDiff);
+      }, arc.getLayer());
 
       anim.start();
-      return () => anim.stop();
+      return () => {
+        anim.stop();
+      };
     }
   }, []);
 
@@ -756,26 +818,26 @@ const CanvasArea = forwardRef(
       activeTasks = [],
       setActiveTasks = () => {},
       onZoomChange,
-    },
-    ref,
+    }: CanvasAreaProps,
+    ref: React.ForwardedRef<CanvasAreaHandle>,
   ) => {
-    const [images, setImages] = useState([]);
-    const [videos, setVideos] = useState([]);
-    const [audios, setAudios] = useState([]);
-    const [texts, setTexts] = useState([]);
-    const [selectedId, setSelectedId] = useState(null);
+    const [images, setImages] = useState<CanvasItem[]>([]);
+    const [videos, setVideos] = useState<CanvasItem[]>([]);
+    const [audios, setAudios] = useState<CanvasItem[]>([]);
+    const [texts, setTexts] = useState<CanvasItem[]>([]);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
     const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
     const [zoom, setZoom] = useState(1);
-    const [editingTextId, setEditingTextId] = useState(null);
-    const [contextMenu, setContextMenu] = useState(null);
-    const [clipboardNode, setClipboardNode] = useState(null);
-    const [guides, setGuides] = useState([]);
+    const [editingTextId, setEditingTextId] = useState<string | null>(null);
+    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [clipboardNode, setClipboardNode] = useState<CanvasItem | null | undefined>(null);
+    const [guides, setGuides] = useState<AlignmentGuide[]>([]);
 
-    const stageWrapperRef = useRef();
-    const stageRef = useRef();
-    const containerRef = useRef();
+    const stageWrapperRef = useRef<HTMLDivElement>(null);
+    const stageRef = useRef<Konva.Stage>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    const updateZoom = (newZoom, pos = null) => {
+    const updateZoom = (newZoom: number, pos: { x: number; y: number } | null = null) => {
       if (!newZoom || isNaN(newZoom)) return;
       setZoom(newZoom);
       onZoomChange?.(Math.round(newZoom * 100));
@@ -811,7 +873,7 @@ const CanvasArea = forwardRef(
         minY = Infinity,
         maxX = -Infinity,
         maxY = -Infinity;
-      const checkItem = (item) => {
+      const checkItem = (item: CanvasItem) => {
         minX = Math.min(minX, item.x);
         minY = Math.min(minY, item.y);
         maxX = Math.max(maxX, item.x + (item.width || 150));
@@ -838,10 +900,10 @@ const CanvasArea = forwardRef(
       updateZoom(newZoom, newPos);
     };
 
-    const handleExport = (format) => {
+    const handleExport = (format: "JPG" | "PNG" | "SVG") => {
       if (!contextMenu?.nodeId) return;
       const id = contextMenu.nodeId;
-      const node = stageRef.current.findOne("#" + id);
+      const node = stageRef.current?.findOne("#" + id);
       if (node) {
         try {
           const dataURL = node.toDataURL({
@@ -949,7 +1011,7 @@ const CanvasArea = forwardRef(
       setContextMenu(null);
     };
 
-    const addImage = (src, x, y, width, height, onLoaded, assetLabel) => {
+    const addImage = (src: string, x?: number, y?: number, width?: number, height?: number, onLoaded?: () => void, assetLabel?: string) => {
       if (!src) return;
       const stage = stageRef.current;
       if (!stage) {
@@ -970,7 +1032,7 @@ const CanvasArea = forwardRef(
       const img = new window.Image();
       img.crossOrigin = "anonymous";
       
-      const commitImage = (loadedImg) => {
+      const commitImage = (loadedImg: HTMLImageElement) => {
         let finalWidth = width;
         let finalHeight = height;
         if (!finalWidth && !finalHeight && loadedImg.width) {
@@ -993,8 +1055,8 @@ const CanvasArea = forwardRef(
             x: targetX,
             y: targetY,
             image: loadedImg,
-            width: finalWidth / 2 || 200,
-            height: finalHeight / 2 || 200,
+            width: (finalWidth ?? 400) / 2,
+            height: (finalHeight ?? 400) / 2,
             rotation: 0,
           },
         ]);
@@ -1020,7 +1082,7 @@ const CanvasArea = forwardRef(
       img.src = src;
     };
 
-    const addVideo = (src, x, y, width, height, onLoaded, assetLabel) => {
+    const addVideo = (src: string, x?: number, y?: number, width?: number, height?: number, onLoaded?: () => void, assetLabel?: string) => {
       if (!src) return;
       const stage = stageRef.current;
       if (!stage) {
@@ -1038,7 +1100,7 @@ const CanvasArea = forwardRef(
           : (-stage.y() + (canvasSize?.height || 600) / 2) / zoom - 100;
       const id = `vid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      const tryLoad = (useCors) => {
+      const tryLoad = (useCors: boolean) => {
         const video = document.createElement("video");
         if (useCors) video.crossOrigin = "anonymous";
         video.loop = true;
@@ -1047,7 +1109,7 @@ const CanvasArea = forwardRef(
         video.preload = "metadata";
         let settled = false;
 
-        const commitVideo = (v) => {
+        const commitVideo = (v: HTMLVideoElement) => {
           let finalWidth = width;
           let finalHeight = height;
           const vW = v.videoWidth;
@@ -1074,8 +1136,8 @@ const CanvasArea = forwardRef(
               src,
               x: targetX,
               y: targetY,
-              width: finalWidth / 2 || 300,
-              height: finalHeight / 2 || 200,
+              width: (finalWidth ?? 600) / 2,
+              height: (finalHeight ?? 400) / 2,
               rotation: 0,
             },
           ]);
@@ -1125,7 +1187,7 @@ const CanvasArea = forwardRef(
       tryLoad(true);
     };
 
-    const addAudio = (src, x, y, label, assetLabel) => {
+    const addAudio = (src: string, x?: number, y?: number, label?: string, assetLabel?: string) => {
       console.log("audio url", src);
       
       if (!src) return;
@@ -1154,8 +1216,9 @@ const CanvasArea = forwardRef(
       setSelectedId(id);
     };
 
-    const addNewText = (text, x, y) => {
+    const addNewText = (text = "", x?: number, y?: number) => {
       const stage = stageRef.current;
+      if (!stage) return;
       const targetX =
         x !== undefined ? x : (-stage.x() + canvasSize.width / 2) / zoom - 50;
       const targetY =
@@ -1179,10 +1242,10 @@ const CanvasArea = forwardRef(
 
     // Snapshot the canvas in the shape the agent expects (see SYSTEM_PROMPT).
     // Coordinates are in canvas (pre-zoom) space, origin top-left.
-    const getCanvasState = () => {
+    const getCanvasState = (): CanvasSnapshot => {
       const stage = stageRef.current;
-      const nodes = [];
-      const push = (n, kind) => {
+      const nodes: CanvasSnapshot["nodes"] = [];
+      const push = (n: CanvasItem, kind: string) => {
         if (!n.assetLabel) return;   // only assets the agent knows about
         nodes.push({
           asset_id: n.assetLabel,
@@ -1215,8 +1278,8 @@ const CanvasArea = forwardRef(
 
     // Move a node by asset_label using functional setters so it works without
     // fresh state in the closure.
-    const moveNode = (assetLabel, x, y) => {
-      const patch = (arr) =>
+    const moveNode = (assetLabel: string, x: number, y: number) => {
+      const patch = (arr: CanvasItem[]) =>
         arr.map((n) => (n.assetLabel === assetLabel ? { ...n, x, y } : n));
       setImages(patch);
       setVideos(patch);
@@ -1228,9 +1291,9 @@ const CanvasArea = forwardRef(
     // at (sx, sy); new asset lands at (sx + sw + 32, sy) with the source's
     // size as a hint. If the source isn't on canvas (URL input, etc.),
     // falls back to default centre placement.
-    const placeNextToSource = (sourceLabel, newUrl, newKind, newAssetLabel) => {
-      let frame = null;
-      const findIn = (arr) => arr.find((n) => n.assetLabel === sourceLabel);
+    const placeNextToSource = (sourceLabel: string, newUrl: string, newKind: string, newAssetLabel: string) => {
+      let frame: CanvasItem | undefined;
+      const findIn = (arr: CanvasItem[]) => arr.find((n) => n.assetLabel === sourceLabel);
       frame = findIn(images) || findIn(videos) || findIn(audios);
 
       if (!frame) {
@@ -1255,10 +1318,10 @@ const CanvasArea = forwardRef(
     };
 
     // Apply an arrange_assets payload from the agent ([{asset_id, x, y}, ...]).
-    const arrangeNodes = (moves) => {
+    const arrangeNodes = (moves: CanvasMove[]) => {
       if (!Array.isArray(moves) || moves.length === 0) return 0;
       const byLabel = new Map(moves.map((m) => [m.asset_id, m]));
-      const patch = (arr) =>
+      const patch = (arr: CanvasItem[]) =>
         arr.map((n) => {
           const m = n.assetLabel ? byLabel.get(n.assetLabel) : null;
           return m ? { ...n, x: m.x, y: m.y } : n;
@@ -1293,20 +1356,24 @@ const CanvasArea = forwardRef(
 
     // Global Paste & Keyboard listeners
     useEffect(() => {
-      const handlePasteAction = (e) => {
+      const handlePasteAction = (e: ClipboardEvent) => {
+        const activeTag = document.activeElement?.tagName;
         if (
-          document.activeElement.tagName === "INPUT" ||
-          document.activeElement.tagName === "TEXTAREA"
+          activeTag === "INPUT" ||
+          activeTag === "TEXTAREA"
         )
           return;
         const items = e.clipboardData?.items;
+        if (!items) return;
         for (let i = 0; i < items.length; i++) {
           if (items[i].type.indexOf("image") !== -1) {
             e.preventDefault();
             const file = items[i].getAsFile();
             const reader = new FileReader();
-            reader.onload = (event) => addImage(event.target.result);
-            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+              if (typeof event.target?.result === "string") addImage(event.target.result);
+            };
+            if (file) reader.readAsDataURL(file);
           } else if (items[i].type === "text/plain") {
             e.preventDefault();
             items[i].getAsString((text) => {
@@ -1354,8 +1421,8 @@ const CanvasArea = forwardRef(
               t.taskId === task.taskId ? { ...t, addedToCanvas: true } : t,
             ),
           );
-          const items =
-            task.resultUrl.rawOutputs || task.resultUrl.examples || [];
+          const taskResult = task.resultUrl;
+          const items = taskResult?.rawOutputs || taskResult?.examples || [];
           if (items.length > 0) {
             let loadedCount = 0;
             const handleItemLoaded = () => {
@@ -1403,7 +1470,7 @@ const CanvasArea = forwardRef(
     }, [activeTasks, zoom, canvasSize]);
 
     // Context Menu Helpers
-    const getActiveNode = (id) =>
+    const getActiveNode = (id: string): CanvasItem | undefined =>
       images.find((i) => i.id === id) ||
       videos.find((v) => v.id === id) ||
       audios.find((a) => a.id === id) ||
@@ -1472,7 +1539,9 @@ const CanvasArea = forwardRef(
             if (type.startsWith("image/")) {
               const blob = await item.getType(type);
               const reader = new FileReader();
-              reader.onload = (e) => addImage(e.target.result, x - 50, y - 50);
+              reader.onload = (e) => {
+                if (typeof e.target?.result === "string") addImage(e.target.result, x - 50, y - 50);
+              };
               reader.readAsDataURL(blob);
               foundSomething = true;
             } else if (type === "text/plain") {
@@ -1509,7 +1578,7 @@ const CanvasArea = forwardRef(
       setContextMenu(null);
     };
 
-    const handleZIndex = (action) => {
+    const handleZIndex = (action: "front" | "back" | "up" | "down") => {
       const id = contextMenu?.nodeId || selectedId;
       if (!id) return;
       const allItems = [...images, ...videos, ...audios, ...texts].sort(
@@ -1520,7 +1589,7 @@ const CanvasArea = forwardRef(
       const allZ = allItems.map((i) => i.zIndex || 0);
       const maxZ = Math.max(...allZ, 0);
       const minZ = Math.min(...allZ, 0);
-      const updateItem = (arr, setter) => {
+      const updateItem = (arr: CanvasItem[], setter: ItemSetter) => {
         const idx = arr.findIndex((i) => i.id === id);
         if (idx !== -1) {
           const item = { ...arr[idx] };
@@ -1548,10 +1617,10 @@ const CanvasArea = forwardRef(
       setContextMenu(null);
     };
 
-    const handleToggleState = (field) => {
+    const handleToggleState = (field: "locked" | "hidden") => {
       const id = contextMenu?.nodeId || selectedId;
       if (!id) return;
-      const updateItem = (arr, setter) => {
+      const updateItem = (arr: CanvasItem[], setter: ItemSetter) => {
         const idx = arr.findIndex((i) => i.id === id);
         if (idx !== -1) {
           const newArr = [...arr];
@@ -1567,10 +1636,10 @@ const CanvasArea = forwardRef(
       setContextMenu(null);
     };
 
-    const handleFlip = (direction) => {
+    const handleFlip = (direction: "horizontal" | "vertical") => {
       const id = contextMenu?.nodeId || selectedId;
       if (!id) return;
-      const updateItem = (arr, setter) => {
+      const updateItem = (arr: CanvasItem[], setter: ItemSetter) => {
         const idx = arr.findIndex((i) => i.id === id);
         if (idx !== -1) {
           const item = { ...arr[idx] };
@@ -1622,10 +1691,11 @@ const CanvasArea = forwardRef(
 
     // Keyboard Shortcuts
     useEffect(() => {
-      const handleKeyDown = (e) => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        const activeTag = document.activeElement?.tagName;
         if (
-          document.activeElement.tagName === "INPUT" ||
-          document.activeElement.tagName === "TEXTAREA"
+          activeTag === "INPUT" ||
+          activeTag === "TEXTAREA"
         )
           return;
         if (e.ctrlKey || e.metaKey) {
@@ -1667,11 +1737,12 @@ const CanvasArea = forwardRef(
     }, [zoom, images, videos, texts, selectedId, clipboardNode]);
 
     // Snapping Guides
-    const getLineGuide = (node) => {
+    const getLineGuide = (node: Konva.Node): { vertical: GuideMatch[]; horizontal: GuideMatch[] } => {
       const stage = node.getStage();
       const layer = node.getLayer();
+      if (!stage || !layer) return { vertical: [], horizontal: [] };
       const box = node.getClientRect({ relativeTo: layer });
-      const result = { vertical: [], horizontal: [] };
+      const result: { vertical: GuideMatch[]; horizontal: GuideMatch[] } = { vertical: [], horizontal: [] };
       const otherNodes = stage.find(".konva-item").filter((n) => n !== node);
       const GUIDELINE_OFFSET = 5 / zoom;
       otherNodes.forEach((otherNode) => {
@@ -1729,10 +1800,10 @@ const CanvasArea = forwardRef(
       return result;
     };
 
-    const handleDragMove = (e) => {
+    const handleDragMove = (e: CanvasEvent) => {
       const node = e.target;
       const guidesFound = getLineGuide(node);
-      const newGuides = [];
+      const newGuides: AlignmentGuide[] = [];
       if (guidesFound.vertical.length > 0) {
         const g = guidesFound.vertical[0];
         node.x(node.x() + g.diff);
@@ -1756,10 +1827,10 @@ const CanvasArea = forwardRef(
       setGuides(newGuides);
     };
 
-    const handleDragEnd = (e, item) => {
+    const handleDragEnd = (e: CanvasEvent, item: CanvasItem) => {
       const node = e.target;
       const id = item.id;
-      const update = (arr, setter) => {
+      const update = (arr: CanvasItem[], setter: ItemSetter) => {
         const idx = arr.findIndex((i) => i.id === id);
         if (idx !== -1) {
           const next = [...arr];
@@ -1773,7 +1844,7 @@ const CanvasArea = forwardRef(
       setGuides([]);
     };
 
-    const handleWheel = (e) => {
+    const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
       e.evt.preventDefault();
       const stage = stageRef.current;
       if (!stage) return;
@@ -1795,7 +1866,7 @@ const CanvasArea = forwardRef(
       setContextMenu(null);
     };
 
-    const handleDrop = (e) => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       const url = e.dataTransfer.getData("text/plain");
       const files = e.dataTransfer.files;
@@ -1807,6 +1878,7 @@ const CanvasArea = forwardRef(
         const file = files[0];
         const reader = new FileReader();
         reader.onload = (ev) => {
+          if (typeof ev.target?.result !== "string") return;
           if (file.type.startsWith("video/")) addVideo(ev.target.result);
           else if (file.type.startsWith("audio/")) addAudio(ev.target.result);
           else addImage(ev.target.result);
@@ -1834,13 +1906,14 @@ const CanvasArea = forwardRef(
             onContextMenu={(e) => {
               e.evt.preventDefault();
               const stage = e.target.getStage();
+              if (!stage) return;
               const id = e.target.id();
               setContextMenu({
                 type: e.target === stage ? "canvas" : "node",
                 nodeId: id,
                 x: e.evt.clientX,
                 y: e.evt.clientY,
-                stagePos: stage.getPointerPosition(),
+                stagePos: stage.getPointerPosition() || { x: e.evt.clientX, y: e.evt.clientY },
               });
               if (id) setSelectedId(id);
             }}

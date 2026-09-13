@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import type { FormValues, ModelDefinition } from "../types";
 
-export const useGenerationCost = (selectedModel, formValues) => {
-  const [generationCost, setGenerationCost] = useState(null);
+export const useGenerationCost = (selectedModel?: ModelDefinition | null, formValues: FormValues = {}) => {
+  const [generationCost, setGenerationCost] = useState<number | null>(null);
   const [isRefreshingCost, setIsRefreshingCost] = useState(false);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export const useGenerationCost = (selectedModel, formValues) => {
         task_name: selectedModel.id,
         payload: formValues
       })
-      .then((response) => {
+      .then((response: { data: { cost: number } }) => {
         setGenerationCost(response.data.cost);
         setIsRefreshingCost(false);
       })

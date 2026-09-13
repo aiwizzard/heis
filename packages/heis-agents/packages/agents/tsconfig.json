@@ -11,7 +11,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "jsx": "react-jsx",
-    "isolatedModules": false
+    "isolatedModules": false,
+    "strict": true,
+    "noCheck": false
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["dist", "node_modules"]

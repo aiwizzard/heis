@@ -5,6 +5,15 @@ import { MdOutlineFileDownload } from "react-icons/md";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { downloadFile } from "./utility";
 
+interface NodeOptionsMenuProps {
+  nodeId: string;
+  onDuplicate: (nodeId: string) => void;
+  onDelete: () => void;
+  downloadUrl?: string;
+  onSetThumbnail?: () => void;
+  showThumbnailOption?: boolean;
+}
+
 const NodeOptionsMenu = ({ 
   nodeId, 
   onDuplicate, 
@@ -12,13 +21,13 @@ const NodeOptionsMenu = ({
   downloadUrl, 
   onSetThumbnail, 
   showThumbnailOption 
-}) => {
+}: NodeOptionsMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: PointerEvent) => {
+      if (menuRef.current && event.target instanceof Node && !menuRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };

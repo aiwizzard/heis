@@ -17,6 +17,7 @@ import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
 import toast, { Toaster } from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import PlanVisualizer from "./components/PlanVisualizer";
 import Link from "next/link";
@@ -31,17 +32,29 @@ const SyntaxHighlighter = dynamic(
 import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { HiOutlineArrowUpTray, HiOutlineTrash } from "react-icons/hi2";
 import Image from "next/image";
+import type {
+  ActiveTask,
+  AgentEvent,
+  Asset,
+  CanvasAreaHandle,
+  ChatMessage,
+  DesignUser,
+  EventEnvelope,
+  NavLink,
+  Session,
+  Skill,
+} from "./types";
 
 
 const API = "/api/v1/creative-agent";
 
-const formatTime = (dateStr) => {
+const formatTime = (dateStr?: string) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const formatDateHeader = (dateStr) => {
+const formatDateHeader = (dateStr?: string) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   const now = new Date();
@@ -59,6 +72,17 @@ const TypingDots = () => (
     <span></span>
   </div>
 );
+
+interface CreativeCanvasProps {
+  user?: DesignUser | null;
+  theme?: string;
+  setTheme?: (theme: string) => void;
+  creditConversionRate?: number;
+  embedCode?: string | null;
+  isEmbed?: boolean;
+  navLinks?: NavLink[] | null;
+  userBalanceLabel?: string | null;
+}
 
 export default function CreativeCanvas({
   user,
@@ -80,54 +104,54 @@ export default function CreativeCanvas({
   // userBalanceLabel: string like "$ 5.00" or "1200 credits" to show in the dropdown.
   // If not provided, falls back to "$ {user.balance}".
   userBalanceLabel = null,
-}) {
+}: CreativeCanvasProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inEmbedMode = isEmbed && !!embedCode;
   const embedStorageKey = inEmbedMode ? `muapi_agent_session_${embedCode}` : null;
-  const [embedSessionId, setEmbedSessionId] = useState(() => {
+  const [embedSessionId, setEmbedSessionId] = useState<string | null>(() => {
     if (typeof window === "undefined" || !embedStorageKey) return null;
     return window.localStorage.getItem(embedStorageKey) || null;
   });
   const sessionId = inEmbedMode ? embedSessionId : searchParams.get("session");
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [assets, setAssets] = useState([]);
-  const [activeTasks, setActiveTasks] = useState([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
   const [busy, setBusy] = useState(false);
   const [openProfile, setOpenProfile] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState<Asset[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionName, setCurrentSessionName] = useState("Creative Canvas");
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [showSessions, setShowSessions] = useState(false);
-  const [skills, setSkills] = useState([]);
-  const [activeSkill, setActiveSkill] = useState(null);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [activeSkill, setActiveSkill] = useState<Skill | null>(null);
   const [showSkillsMenu, setShowSkillsMenu] = useState(false);
   const [showAssetsMenu, setShowAssetsMenu] = useState(false);
   const [showMentionPopup, setShowMentionPopup] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
-  const [hoveredAsset, setHoveredAsset] = useState(null);
+  const [hoveredAsset, setHoveredAsset] = useState<Asset | null>(null);
 
   // Left Sidebar and Session Management
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
-  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionName, setEditingSessionName] = useState("");
-  const [hoveredSessionId, setHoveredSessionId] = useState(null);
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 
   // Layout resizing
   const [sidebarWidth, setSidebarWidth] = useState(350);
   const [showChat, setShowChat] = useState(true);
   const [prevWidth, setPrevWidth] = useState(350);
-  const isResizing = useRef(false);
+  const isResizing = useRef<boolean>(false);
 
   const handleToggleSidebar = () => {
     if (showChat) {
@@ -146,15 +170,15 @@ export default function CreativeCanvas({
   const setTheme = forcedSetTheme || nextSetTheme;
   const [mounted, setMounted] = useState(false);
 
-  const canvasRef = useRef(null);
-  const chatEndRef = useRef(null);
-  const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const syncedUrlsRef = useRef(new Set());
+  const canvasRef = useRef<CanvasAreaHandle>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const syncedUrlsRef = useRef<Set<string>>(new Set());
   const justCreatedSessionRef = useRef(false);
   const initialHandoffProcessed = useRef(false);
 
-  const getHeaders = useCallback(() => {
+  const getHeaders = useCallback((): Record<string, string> => {
     if (inEmbedMode) {
       return { "x-agent-embed-code": embedCode };
     }
@@ -163,7 +187,7 @@ export default function CreativeCanvas({
   }, [inEmbedMode, embedCode]);
 
   // Persist embed session_id across page reloads so the conversation resumes.
-  const setActiveEmbedSession = useCallback((id) => {
+  const setActiveEmbedSession = useCallback((id: string | null) => {
     setEmbedSessionId(id);
     if (typeof window !== "undefined" && embedStorageKey) {
       if (id) window.localStorage.setItem(embedStorageKey, id);
@@ -270,7 +294,7 @@ export default function CreativeCanvas({
 
   const fetchSessions = async () => {
     try {
-      const { data } = await axios.get(`${API}/sessions`, { headers: getHeaders() });
+      const { data } = await axios.get<Session[]>(`${API}/sessions`, { headers: getHeaders() });
       setSessions(data);
       if (sessionId) {
         const current = data.find(s => s.id === sessionId);
@@ -281,14 +305,14 @@ export default function CreativeCanvas({
 
   const fetchSkills = async () => {
     try {
-      const { data } = await axios.get(`${API}/agent-skills`, { headers: getHeaders() });
+      const { data } = await axios.get<Skill[]>(`${API}/agent-skills`, { headers: getHeaders() });
       setSkills(data);
     } catch (err) {
       console.error("Failed to fetch skills:", err);
     }
   };
 
-  const processEvent = (ev, msgIdx) => {
+  const processEvent = (ev: EventEnvelope, msgIdx: number) => {
     const p = ev.payload || {};
 
     // Canvas mutation events — apply directly to the live canvas, don't push
@@ -298,15 +322,23 @@ export default function CreativeCanvas({
       const args = p.args || {};
       const c = canvasRef.current;
       if (!c) return;
-      if (op === "move" && typeof c.moveNode === "function") {
+      if (op === "move" && typeof args.asset_id === "string" && typeof args.x === "number" && typeof args.y === "number") {
         c.moveNode(args.asset_id, args.x, args.y);
       } else if (op === "arrange" && typeof c.arrangeNodes === "function") {
-        c.arrangeNodes(args.moves || []);
+        const moves = Array.isArray(args.moves)
+          ? args.moves.filter((move): move is { asset_id: string; x: number; y: number } => (
+              typeof move === "object" && move !== null &&
+              "asset_id" in move && typeof move.asset_id === "string" &&
+              "x" in move && typeof move.x === "number" &&
+              "y" in move && typeof move.y === "number"
+            ))
+          : [];
+        c.arrangeNodes(moves);
       }
       return;
     }
 
-    const flat = (() => {
+    const flat: AgentEvent = (() => {
       switch (ev.type) {
         case "text":         return { type: "text", content: p.content };
         case "info":         return { type: "info", content: p.content };
@@ -368,14 +400,16 @@ export default function CreativeCanvas({
       return arr;
     });
 
-    if (flat.type === "tool_call" && ["generate_image", "generate_video", "image_to_video", "edit_image", "edit_video", "enhance_image"].includes(flat.name)) {
+    if (flat.type === "tool_call" && flat.name && ["generate_image", "generate_video", "image_to_video", "edit_image", "edit_video", "enhance_image"].includes(flat.name)) {
+      const toolName = flat.name;
       // For edit-style tools, spawn the loader at the same spot the result
       // will land at — beside the source asset (32px to its right). The
       // source stays visible throughout. Keeps the loader and the final
       // asset position in sync — no visual jump on completion.
       //
       // generate_* (no source) keeps the default centre placement.
-      let x, y;
+      let x: number | undefined;
+      let y: number | undefined;
       const a = flat.args || {};
       const srcLabel = a.image || a.video || a.audio;
       if (srcLabel && typeof srcLabel === "string" && srcLabel.startsWith("asset_")) {
@@ -390,7 +424,7 @@ export default function CreativeCanvas({
       }
       setActiveTasks(prev => [...prev, {
         taskId: `task-${Date.now()}-${Math.random()}`,
-        modelName: flat.name,
+        modelName: toolName,
         status: "processing",
         x, y,
       }]);
@@ -408,18 +442,19 @@ export default function CreativeCanvas({
       });
       
       if (flat.asset) {
+        const asset = flat.asset;
         setAssets(pa => {
           // Use a combination of label and url for reliable identification
           const idx = pa.findIndex(a =>
-            (flat.asset.asset_label && a.asset_label === flat.asset.asset_label) ||
-            (a.url === flat.asset.url)
+            (asset.asset_label && a.asset_label === asset.asset_label) ||
+            (a.url === asset.url)
           );
           if (idx !== -1) {
             const next = [...pa];
-            next[idx] = { ...next[idx], ...flat.asset };
+            next[idx] = { ...next[idx], ...asset };
             return next;
           }
-          return [...pa, flat.asset];
+          return [...pa, asset];
         });
 
         // Side-by-side placement: when a tool result carries source_asset_id,
@@ -427,10 +462,11 @@ export default function CreativeCanvas({
         // visible. Source is preserved (the user can still see / branch
         // from it). Mark the new label-url as synced so the auto-sync
         // effect doesn't also drop it at canvas centre.
-        const srcLabel = flat.result?.source_asset_id;
-        const newLabel = flat.asset.asset_label;
-        const newUrl = flat.asset.url;
-        const newKind = flat.asset.kind || "image";
+        const sourceAssetId = flat.result?.source_asset_id;
+        const srcLabel = typeof sourceAssetId === "string" ? sourceAssetId : undefined;
+        const newLabel = asset.asset_label;
+        const newUrl = asset.url;
+        const newKind = asset.kind || "image";
         const place = canvasRef.current?.placeNextToSource || canvasRef.current?.replaceAt;
         if (srcLabel && newLabel && newUrl && place) {
           place(srcLabel, newUrl, newKind, newLabel);
@@ -440,7 +476,7 @@ export default function CreativeCanvas({
     }
   };
 
-  const resumePolling = async (jobId, assistantIdx) => {
+  const resumePolling = async (jobId: string, assistantIdx: number) => {
     let cursor = 0;
     const POLL_INTERVAL = 1200;
     const MAX_DEAD_AIR = 6 * 60 * 1000;
@@ -449,12 +485,12 @@ export default function CreativeCanvas({
     setBusy(true);
     while (true) {
       try {
-        const { data } = await axios.get(`${API}/jobs/${jobId}/events`, {
+        const { data } = await axios.get<{ events?: EventEnvelope[]; cursor?: number; done?: boolean; approved?: boolean | null }>(`${API}/jobs/${jobId}/events`, {
           params: { since: cursor },
           headers: getHeaders(),
         });
         if (data.events?.length) {
-          data.events.forEach(ev => processEvent({ ...ev, approved: data.approved }, assistantIdx));
+          data.events.forEach((ev) => processEvent({ ...ev, approved: data.approved }, assistantIdx));
           cursor = data.cursor || cursor;
           lastProgress = Date.now();
         }
@@ -463,7 +499,7 @@ export default function CreativeCanvas({
       } catch (err) {
         if (Date.now() - lastProgress > MAX_DEAD_AIR) break;
       }
-      await new Promise(r => setTimeout(r, POLL_INTERVAL));
+      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL));
     }
     setBusy(false);
     loadAssets();
@@ -475,7 +511,7 @@ export default function CreativeCanvas({
     });
   };
 
-  const handleJobAction = async (jobId, action) => {
+  const handleJobAction = async (jobId: string, action: "approve" | "reject") => {
     try {
       await axios.post(`${API}/jobs/${jobId}/${action}`, {}, { headers: getHeaders() });
       toast.success(`Job ${action}ed`);
@@ -493,13 +529,14 @@ export default function CreativeCanvas({
         )
       })));
     } catch (err) {
-      toast.error(err.response?.data?.detail || `Failed to ${action} job`);
+      const detail = axios.isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail : undefined;
+      toast.error(detail || `Failed to ${action} job`);
     }
   };
 
   const loadHistory = async () => {
     try {
-      const { data } = await axios.get(`${API}/sessions/${sessionId}/messages`, { headers: getHeaders() });
+      const { data } = await axios.get<ChatMessage[]>(`${API}/sessions/${sessionId}/messages`, { headers: getHeaders() });
       if (data && data.length > 0) {
         // Cleanup: Hide approval cards that already have results or are for inactive jobs
         const cleaned = data.map(m => ({
@@ -524,10 +561,10 @@ export default function CreativeCanvas({
     }
   };
 
-  const checkActiveJobs = async (currentMessages) => {
+  const checkActiveJobs = async (currentMessages: ChatMessage[]) => {
     if (!sessionId) return;
     try {
-      const { data } = await axios.get(`${API}/sessions/${sessionId}/jobs`, { headers: getHeaders() });
+      const { data } = await axios.get<Array<{ id: string; status: string }>>(`${API}/sessions/${sessionId}/jobs`, { headers: getHeaders() });
       const active = data.find(j => (j.status === "pending" || j.status === "processing") && j.id);
       if (active) {
         // If the last message is assistant but empty/no events, it might be the one for this job.
@@ -535,7 +572,7 @@ export default function CreativeCanvas({
         if (aIdx < 0 || currentMessages[aIdx].role !== "assistant") {
           // No assistant bubble to resume into, create a new one.
           setMessages(prev => {
-            const next = [...prev, { role: "assistant", content: "", events: [], timestamp: new Date().toISOString() }];
+            const next: ChatMessage[] = [...prev, { role: "assistant", content: "", events: [], timestamp: new Date().toISOString() }];
             resumePolling(active.id, next.length - 1);
             return next;
           });
@@ -549,7 +586,7 @@ export default function CreativeCanvas({
   const loadAssets = async () => {
     if (!sessionId) return;
     try {
-      const { data } = await axios.get(`${API}/sessions/${sessionId}/assets`, { headers: getHeaders() });
+      const { data } = await axios.get<Asset[]>(`${API}/sessions/${sessionId}/assets`, { headers: getHeaders() });
       setAssets(data);
     } catch {}
   };
@@ -571,7 +608,7 @@ export default function CreativeCanvas({
     return data.id;
   };
 
-  const processFile = async (file) => {
+  const processFile = async (file?: File) => {
     if (!file) return;
 
     setUploading(true);
@@ -582,7 +619,7 @@ export default function CreativeCanvas({
       const activeSessionId = await ensureSession();
 
       // 1. Get signed URL
-      const { data: signData } = await axios.get("/api/v1/get_upload_url", {
+      const { data: signData } = await axios.get<{ url: string; fields: Record<string, string> }>("/api/v1/get_upload_url", {
         params: { filename: file.name },
         headers: getHeaders()
       });
@@ -601,7 +638,7 @@ export default function CreativeCanvas({
       await axios.post("/api/v1/upload-binary", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (pe) => {
-          setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
+          setUploadProgress(pe.total ? Math.round((pe.loaded * 100) / pe.total) : 0);
         }
       });
 
@@ -612,7 +649,7 @@ export default function CreativeCanvas({
       const kind = file.type?.startsWith("video/") ? "video"
                  : file.type?.startsWith("audio/") ? "audio"
                  : "image";
-      const { data: registered } = await axios.post(
+      const { data: registered } = await axios.post<{ asset_label: string }>(
         `${API}/sessions/${activeSessionId}/assets`,
         { url: uploadedUrl, kind, source_tool: "upload" },
         { headers: getHeaders() },
@@ -636,22 +673,22 @@ export default function CreativeCanvas({
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     processFile(e.target.files?.[0]);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (busy || uploading) return;
     setIsDragging(true);
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (busy || uploading) return;
@@ -659,11 +696,11 @@ export default function CreativeCanvas({
     if (file) processFile(file);
   };
 
-  const removeAttachment = (label) => {
+  const removeAttachment = (label: string) => {
     setAttachments(prev => prev.filter(a => a.asset_label !== label));
   };
 
-  const sendMessage = async (textOverride = null, skillOverride = null, attachmentsOverride = null) => {
+  const sendMessage = async (textOverride: string | null = null, skillOverride: Skill | null = null, attachmentsOverride: Asset[] | null = null) => {
     const typed = (typeof textOverride === 'string' ? textOverride : input).trim();
     const currentAttachments = attachmentsOverride || attachments;
     if ((!typed && currentAttachments.length === 0) || busy) return;
@@ -691,7 +728,7 @@ export default function CreativeCanvas({
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "24px";
     
-    const userMsg = { 
+    const userMsg: ChatMessage = {
       role: "user", 
       content: msg, 
       attachments: msgAttachments,
@@ -712,7 +749,7 @@ export default function CreativeCanvas({
       } catch {}
 
       let endpoint = `${API}/sessions/${activeSessionId}/chat`;
-      let payload = {
+      let payload: Record<string, unknown> = {
         message: typed,
         model: "gpt-5-mini",
         messages_snapshot: updatedMessages,
@@ -733,12 +770,13 @@ export default function CreativeCanvas({
         if (!skillOverride) setActiveSkill(null); // Clear skill after sending if not override
       }
 
-      const enqueueRes = await axios.post(endpoint, payload, { headers: getHeaders() });
+      const enqueueRes = await axios.post<{ job_id: string }>(endpoint, payload, { headers: getHeaders() });
       await resumePolling(enqueueRes.data.job_id, aIdx);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       setMessages(prev => {
         const arr = [...prev];
-        if (aIdx >= 0) arr[aIdx] = { ...arr[aIdx], content: `❌ ${err.message || err}` };
+        if (aIdx >= 0 && arr[aIdx]) arr[aIdx] = { ...arr[aIdx], content: `❌ ${message}` };
         return arr;
       });
     } finally {
@@ -754,8 +792,8 @@ export default function CreativeCanvas({
     }
   };
 
-  const markdownComponents = useMemo(() => ({
-    a: ({ node, ...props }) => {
+  const markdownComponents = useMemo<Components>(() => ({
+    a: (props) => {
       const isMedia = props.href?.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i);
       const isVideo = props.href?.match(/\.(mp4|webm|mov)$/i);
       if (isMedia) {
@@ -777,14 +815,14 @@ export default function CreativeCanvas({
       }
       return <a {...props} className="text-primary hover:underline underline-offset-4 font-bold" target="_blank" rel="noreferrer" />;
     },
-    div: ({ node, ...props }) => <div {...props} />, 
-    p: ({ node, ...props }) => <div className="mb-2 last:mb-0" {...props} />,
-    pre: ({ node, ...props }) => <div className="my-3 overflow-x-auto rounded border border-divider" {...props} />,
-    code: ({ node, inline, className, children, ...props }) => {
+    div: (props) => <div {...props} />,
+    p: (props) => <p className="mb-2 last:mb-0" {...props} />,
+    pre: (props) => <pre className="my-3 overflow-x-auto rounded border border-divider" {...props} />,
+    code: ({ className, children, style: _inlineStyle, ...props }) => {
       const match = /language-(\w+)/.exec(className || '');
-      return !inline && match ? (
+      return match ? (
         <SyntaxHighlighter
-          style={resolvedTheme === 'dark' ? oneDark : oneLight}
+          style={(resolvedTheme === 'dark' ? oneDark : oneLight) as Record<string, React.CSSProperties>}
           language={match[1]}
           showLineNumbers
           PreTag="div"
@@ -815,6 +853,7 @@ export default function CreativeCanvas({
     let attempts = 0;
     const sync = () => {
       if (canvasRef.current) {
+        const canvas = canvasRef.current;
         newAssets.forEach(a => {
           const syncKey = `${a.asset_label || "no-label"}-${a.url}`;
           if (!a.url || syncedUrlsRef.current.has(syncKey)) return;
@@ -822,9 +861,9 @@ export default function CreativeCanvas({
           
           const kind = a.kind || (a.url.match(/\.(mp4|webm|mov)$/i) ? "video" : a.url.match(/\.(mp3|wav|ogg|m4a)$/i) ? "audio" : "image");
           const label = a.asset_label || null;
-          if (kind === "image") canvasRef.current.addImage(a.url, undefined, undefined, undefined, undefined, undefined, label);
-          else if (kind === "video") canvasRef.current.addVideo(a.url, undefined, undefined, undefined, undefined, undefined, label);
-          else if (kind === "audio") canvasRef.current.addAudio(a.url, undefined, undefined, undefined, label);
+          if (kind === "image") canvas.addImage(a.url, undefined, undefined, undefined, undefined, undefined, label || undefined);
+          else if (kind === "video") canvas.addVideo(a.url, undefined, undefined, undefined, undefined, undefined, label || undefined);
+          else if (kind === "audio") canvas.addAudio(a.url, undefined, undefined, undefined, label || undefined);
         });
         return true;
       }
@@ -840,7 +879,7 @@ export default function CreativeCanvas({
     }
   }, [assets, sessionId]);
 
-  const renameSession = async (id = null, name = null) => {
+  const renameSession = async (id: string | null = null, name: string | null = null) => {
     const targetId = id || sessionId;
     const targetName = name || newName;
     const currentName = id ? (sessions.find(s => s.id === id)?.name) : currentSessionName;
@@ -864,7 +903,7 @@ export default function CreativeCanvas({
     }
   };
 
-  const deleteSession = async (id) => {
+  const deleteSession = async (id: string) => {
     // We use a simple confirm for safety, but with a premium look via toast if we had a custom one.
     // For now, standard confirm is reliable.
     if (!window.confirm("Are you sure you want to delete this session?")) return;
@@ -884,7 +923,7 @@ export default function CreativeCanvas({
     }
   };
 
-  const handleMouseMove = useCallback((e) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
     const newWidth = window.innerWidth - e.clientX;
     if (newWidth > 300 && newWidth < 800) {
@@ -900,7 +939,7 @@ export default function CreativeCanvas({
     document.body.style.userSelect = "auto";
   }, [handleMouseMove]);
 
-  const startResizing = useCallback((e) => {
+  const startResizing = useCallback((_event: React.MouseEvent) => {
     isResizing.current = true;
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", stopResizing);
@@ -908,16 +947,16 @@ export default function CreativeCanvas({
     document.body.style.userSelect = "none";
   }, [handleMouseMove, stopResizing]);
 
-  const selectMention = (item, type) => {
+  const selectMention = (item: Skill | Asset, type: "skill" | "asset") => {
     const before = input.substring(0, mentionCursorPos);
     // mentionCursorPos is where @ is. query is after @.
-    const after = input.substring(textareaRef.current.selectionStart);
+    const after = input.substring(textareaRef.current?.selectionStart || input.length);
     
     if (type === "skill") {
-      setActiveSkill(item);
+      setActiveSkill(item as Skill);
       setInput(before + after); 
     } else {
-      const insertion = `@${item.asset_label}`;
+      const insertion = `@${(item as Asset).asset_label}`;
       setInput(before + insertion + after);
     }
     
@@ -925,7 +964,7 @@ export default function CreativeCanvas({
     setTimeout(() => textareaRef.current?.focus(), 10);
   };
 
-  const copyToClipboard = async (text) => {
+  const copyToClipboard = async (text: string) => {
     if (!text) return;
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -949,7 +988,7 @@ export default function CreativeCanvas({
     }
   };
 
-  const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
   
   const filteredSkills = skills.filter(s => s.name.toLowerCase().includes(mentionQuery.toLowerCase()));
   const filteredAssets = assets.filter(a => (a.asset_label || "").toLowerCase().includes(mentionQuery.toLowerCase()));
@@ -1502,7 +1541,7 @@ export default function CreativeCanvas({
                   }
                 }}
                 onKeyDown={handleKey}
-                onInput={e => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
+                onInput={(e) => { e.currentTarget.style.height = "auto"; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 120) + "px"; }}
                 placeholder={activeSkill ? `Oh, Let us create ${activeSkill.name.toLowerCase()}s, start with your ${activeSkill.inputs?.[0]?.replace(/_/g, ' ') || 'idea'}?` : "Start with an idea or mention assets using @..."}
                 className="w-full bg-transparent px-3 py-3 text-[13px] resize-none focus:outline-none min-h-[50px] max-h-[120px] scrollbar-subtle"
                 rows={1}
@@ -1745,7 +1784,7 @@ export default function CreativeCanvas({
 
 
 // ── Event pills ────────────────────────────────────────────────────────────────
-const TOOL_ICONS = {
+const TOOL_ICONS: Record<string, string> = {
   generate_image: "🎨", edit_image: "✏️", generate_video: "🎬",
   image_to_video: "🎥", edit_video: "🎞️", lipsync_video: "💋",
   concat_videos: "🔗", generate_audio: "🎵", enhance_image: "✨",
@@ -1753,10 +1792,10 @@ const TOOL_ICONS = {
   propose_plan: "📋", list_assets: "📁", get_asset: "🔍", remaining_budget: "💰",
 };
 
-function EventPill({ event }) {
+function EventPill({ event }: { event: AgentEvent }) {
   if (event.type === "tool_call") return (
     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-primary/10 border border-primary text-primary text-[11px] mt-1 shadow-sm">
-      <span>{TOOL_ICONS[event.name] || "🔧"}</span>
+      <span>{event.name ? TOOL_ICONS[event.name] || "🔧" : "🔧"}</span>
       <span className="font-semibold">{event.name}</span>
     </div>
   );
@@ -1812,16 +1851,16 @@ function EventPill({ event }) {
     if (event.handled) return null;
     return (
     <div className="flex flex-col gap-2">
-      <PlanVisualizer plan={event} />
+      <PlanVisualizer plan={{ title: event.title || "Execution plan", nodes: event.nodes || [], total_credits: event.total_credits || 0 }} />
       <div className="flex items-center gap-2 px-2 pb-2">
         <button 
-          onClick={() => event.onAction?.(event.job_id, "approve")}
+          onClick={() => event.job_id && event.onAction?.(event.job_id, "approve")}
           className="flex-1 py-2 rounded bg-primary text-white text-[12px] font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2"
         >
           <FiCheck /> Approve & Execute
         </button>
         <button 
-          onClick={() => event.onAction?.(event.job_id, "reject")}
+          onClick={() => event.job_id && event.onAction?.(event.job_id, "reject")}
           className="px-4 py-2 rounded bg-bg-card border border-divider text-secondary-text text-[12px] hover:bg-bg-page transition-all"
         >
           Cancel
@@ -1851,13 +1890,13 @@ function EventPill({ event }) {
         {isApproval && !event.handled && (
           <div className="flex items-center gap-1 ml-4">
             <button 
-              onClick={() => event.onAction?.(event.job_id, "approve")}
+              onClick={() => event.job_id && event.onAction?.(event.job_id, "approve")}
               className="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:brightness-110 transition-all"
             >
               Approve
             </button>
             <button 
-              onClick={() => event.onAction?.(event.job_id, "reject")}
+              onClick={() => event.job_id && event.onAction?.(event.job_id, "reject")}
               className="px-2 py-1 rounded bg-bg-card border border-divider text-secondary-text text-[10px] hover:bg-bg-page transition-all"
             >
               Reject

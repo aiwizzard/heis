@@ -6,19 +6,34 @@ import { FiUpload } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import AudioPlayer from "./AudioPlayer";
 import { IoCloudUploadOutline } from "react-icons/io5";
+import type { CSSProperties, Dispatch, DragEvent, ChangeEvent, SetStateAction } from "react";
+import type { FormValue, FormValues, SchemaField, UploadFields } from "../types";
 
-const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleChange, data, modelName }) => {
+interface RenderFieldProps {
+  fieldName: string;
+  meta: SchemaField;
+  idx: number;
+  formValues: FormValues;
+  setFormValues: Dispatch<SetStateAction<FormValues>>;
+  handleChange: (field: string, value: FormValue) => void;
+  data: { required?: string[] };
+  modelName: string;
+}
+
+const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleChange, data, modelName }: RenderFieldProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dropDown, setDropDown] = useState(-1);
   const [uploading, setUploading] = useState(false);
   const [isOpeningUp, setIsOpeningUp] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState({});
-  const buttonRef = useRef(null);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  const isImageField = ['image', 'images_list'].includes(meta.field);
+  const isImageField = ['image', 'images_list'].includes(meta.field || "");
   const isVideoField = meta.field === 'video';
   const isAudioField = meta.field === 'audio';
   const value = formValues[fieldName] ?? meta.default ?? "";
+  const stringValue = typeof value === "string" ? value : "";
+  const scalarValue = typeof value === "string" || typeof value === "number" ? value : "";
   const isRequired = data.required && data.required.includes(fieldName);
   const label = (
     <label className="text-[10px] font-bold text-zinc-500 text-start px-1 mb-1">
@@ -27,7 +42,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
     </label>
   );
 
-  const handleDropdownToggle = (value) => {
+  const handleDropdownToggle = (value: number) => {
     setDropDown((prev) => (prev === value ? -1 : value));
   };
 
@@ -40,13 +55,13 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
     }
   }, [dropDown, idx]);
 
-  const handleFileUpload = (field, fieldSchema, e) => {
-    let file = null;
+  const handleFileUpload = (field: string, fieldSchema: SchemaField, e: DragEvent<HTMLElement> | ChangeEvent<HTMLInputElement>) => {
+    let file: File | null = null;
 
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    if ("dataTransfer" in e && e.dataTransfer.files.length > 0) {
       file = e.dataTransfer.files[0];
-    } else if (e.target.files && e.target.files.length > 0) {
-      file = e.target.files[0];
+    } else if (e.currentTarget instanceof HTMLInputElement && e.currentTarget.files?.length) {
+      file = e.currentTarget.files[0];
     } else {
       return;
     }
@@ -62,7 +77,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
     };
 
     setUploading(true);
-    axios.get("/api/app/get_file_upload_url", {
+    axios.get<{ url: string; fields: UploadFields }>("/api/app/get_file_upload_url", {
       params: { filename: file.name }
     })
     .then((response) => {
@@ -76,7 +91,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
       axios.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
           setUploadProgress(percentCompleted);
         }
       })
@@ -85,7 +100,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
         setFormValues((prev) => { 
           const current = prev[field];
           const updatedValue = fieldSchema.type === 'array'
-            ? [...(current || []), uploadedUrl]
+            ? [...(Array.isArray(current) ? current : []), uploadedUrl]
             : uploadedUrl
 
             return { ...prev, [field]: updatedValue };
@@ -134,7 +149,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
             className="flex items-center justify-between gap-1 text-xs text-center text-white w-full h-full cursor-pointer whitespace-nowrap px-3 py-1.5 bg-zinc-900/50 border border-white/10 hover:border-white/20 focus:outline-none rounded-lg transition-all"
           >
             <div className="flex items-center gap-2 truncate">
-              <span className="truncate">{value}</span>
+              <span className="truncate">{scalarValue}</span>
             </div>
             <FaAngleDown
               size={14}
@@ -152,38 +167,42 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
                 : `opacity-0 scale-95 invisible ${isOpeningUp ? "translate-y-2" : "-translate-y-2"}`
             }`}
           >
-            {meta.enum.map((option, i) => (
+            {meta.enum.map((option, i) => {
+              const optionValue = typeof option === "object" && option !== null ? option.value : option;
+              const optionLabel = typeof option === "object" && option !== null ? option.label || option.name || String(option.value) : String(option);
+              return (
               <button
                 type="button"
                 suppressHydrationWarning={true}
                 key={i}
                 className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer rounded-lg transition-all ${
-                  formValues[fieldName] === option
+                  formValues[fieldName] === optionValue
                     ? "bg-blue-500/10 text-blue-400"
                     : "text-zinc-400 hover:bg-white/5 hover:text-white"
                 }`}
-                onClick={() => {handleChange(fieldName, option); setDropDown(-1)}}
+                onClick={() => {handleChange(fieldName, optionValue); setDropDown(-1)}}
               >
-                <span className="truncate">{option}</span>
-                {formValues[fieldName] === option && (
+                <span className="truncate">{optionLabel}</span>
+                {formValues[fieldName] === optionValue && (
                   <span className="ml-auto text-blue-400 font-bold">✓</span>
                 )}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
     );
   };
 
-  if (['image', 'video', 'audio'].includes(meta.field)) {
+  if (['image', 'video', 'audio'].includes(meta.field || "")) {
     return (
       <div key={fieldName} className="flex flex-col gap-2">
         {label}
         <div className="flex items-center gap-1">
           <input 
             type="text" 
-            value={formValues[fieldName] || ''} 
+            value={stringValue}
             readOnly
             // onChange={(e) => handleChange(fieldName, e.target.value)} 
             className="bg-zinc-900/50 text-white text-xs py-2 px-3 rounded-lg border border-white/10 transition-all hover:border-white/20 w-full outline-none focus:border-blue-500/50" 
@@ -220,15 +239,15 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
             <div className="bg-blue-500 h-full" style={{ width: `${uploadProgress}%` }}></div>
           </div>
         )}
-        {formValues[fieldName] && (
+        {stringValue && (
           <div className="flex items-center gap-2 relative group overflow-hidden self-start w-full">
             {meta.field === 'image' ? (
-              <img src={formValues[fieldName]} alt="Preview" className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" width={0} height={0} />
+              <img src={stringValue} alt="Preview" className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" width={0} height={0} />
             ) : meta.field === 'video' ? (
-              <video src={formValues[fieldName]} className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" />
+              <video src={stringValue} className="w-24 h-24 object-cover border border-white/10 rounded-xl shadow-lg" />
             ) : meta.field === 'audio' && (
               <div className="flex flex-col w-full h-20 border border-white/10 rounded-xl overflow-hidden shadow-lg">
-                <AudioPlayer src={formValues[fieldName]} />
+                <AudioPlayer src={stringValue} />
               </div>
             )}
             <button 
@@ -246,28 +265,30 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
   };
 
   if (meta.type === "array" || fieldName === "images_list") {
-    const imageList = formValues[fieldName] || [];
+    const imageList = Array.isArray(formValues[fieldName])
+      ? formValues[fieldName].filter((item): item is string => typeof item === "string")
+      : [];
     return (
       <div key={fieldName} className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           {label}
-          <span className="text-[10px] text-gray-500">{imageList.length}/{meta.maxItems}</span>
+              <span className="text-[10px] text-gray-500">{imageList.length}/{meta.maxItems || 0}</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {imageList.map((url, idx) => (
-            <div key={idx} className={`flex items-center gap-2 relative group overflow-hidden ${['audios_list', 'audio_files'].includes(meta.field) ? 'col-span-full' : ''}`}>
+            <div key={idx} className={`flex items-center gap-2 relative group overflow-hidden ${['audios_list', 'audio_files'].includes(meta.field || "") ? 'col-span-full' : ''}`}>
               {meta.field === 'images_list' ? (
                 <img 
                   src={url} 
                   alt="Preview" 
                   className="w-full h-full aspect-[1/1] object-cover border border-gray-500 rounded" 
                 />
-              ) : ['videos_list', 'video_files'].includes(meta.field) ? (
+              ) : ['videos_list', 'video_files'].includes(meta.field || "") ? (
                 <video 
                   src={url} 
                   className="w-full h-full aspect-[1/1] object-cover border border-gray-500 rounded" 
                 />
-              ) : ['audios_list', 'audio_files'].includes(meta.field) && (
+              ) : ['audios_list', 'audio_files'].includes(meta.field || "") && (
                 <div className="flex flex-col w-full h-20 border border-white/10 rounded-xl overflow-hidden shadow-lg">
                   <AudioPlayer src={url} />
                 </div>
@@ -326,7 +347,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
             min={meta.minValue}
             max={meta.maxValue}
             step={meta.step}
-            value={formValues[fieldName] ?? meta.default ?? 0}
+            value={typeof value === "number" ? value : 0}
             onChange={(e) => handleChange(fieldName, parseFloat(e.target.value))}
             className="h-1.5 rounded-full cursor-pointer accent-blue-600 outline-none w-full bg-zinc-800"
           />
@@ -336,7 +357,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
             min={meta.minValue} 
             max={meta.maxValue} 
             step={meta.step}
-            value={formValues[fieldName] ?? meta.default ?? 0} 
+            value={typeof value === "number" ? value : 0}
             readOnly
             // onChange={(e) => {
             //   const val = parseFloat(e.target.value) || meta.minValue;
@@ -367,7 +388,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
             min={min}
             max={max}
             step={meta.step ?? 1}
-            value={formValues[fieldName] ?? ""} 
+            value={scalarValue}
             onChange={(e) => {
               const value = e.target.value;
               if (value === "") {
@@ -410,7 +431,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
         <input
           type="text"
           id={fieldName}
-          value={value}
+          value={scalarValue}
           placeholder={meta.placeholder || ""}
           onChange={(e) => handleChange(fieldName, e.target.value)}
           className="bg-zinc-900/50 text-white text-xs py-2 px-3 rounded-lg border border-white/10 hover:border-white/20 transition-all w-full outline-none focus:border-blue-500/50"
@@ -447,7 +468,7 @@ const RenderField = ({ fieldName, meta, idx, formValues, setFormValues, handleCh
       <div key={fieldName} className="flex flex-col items-start gap-1">
         {label}
         <textarea
-          value={value}
+          value={stringValue}
           readOnly
           // onChange={(e) => handleChange(fieldName, e.target.value)}
           placeholder={meta.description || ""}

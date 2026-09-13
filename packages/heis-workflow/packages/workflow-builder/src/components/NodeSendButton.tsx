@@ -1,17 +1,26 @@
 import React, { useState } from "react";
 import { useReactFlow } from "reactflow";
+import type { OutputHistoryEntry, WorkflowNodeData } from "../types";
 
-const NodeSendButton = ({ id, data, outputHistory, currentHistoryIndex, currentOutputIndex = 0 }) => {
+interface NodeSendButtonProps {
+  id: string;
+  data: WorkflowNodeData;
+  outputHistory: OutputHistoryEntry[];
+  currentHistoryIndex: number;
+  currentOutputIndex?: number;
+}
+
+const NodeSendButton = ({ id, data, outputHistory, currentHistoryIndex, currentOutputIndex = 0 }: NodeSendButtonProps) => {
   const [showMenu, setShowMenu] = useState(false);
   const connectedEdges = data.connectedEdges || [];
   if (connectedEdges.length === 0) return null;
 
-  const handleSend = (targetId) => {
+  const handleSend = (targetId: string) => {
     const latest = outputHistory[currentHistoryIndex];
     const outputs = latest?.result?.outputs;
     if (outputs) {
       const specificOutput = outputs[currentOutputIndex]?.value || outputs[0]?.value;
-      data.onDataChange(id, { outputs, resultUrl: specificOutput }, targetId);
+      data.onDataChange?.(id, { outputs, resultUrl: specificOutput }, targetId);
     }
   };
 
@@ -37,7 +46,7 @@ const NodeSendButton = ({ id, data, outputHistory, currentHistoryIndex, currentO
       {showMenu && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#1a1b1e] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 min-w-max">
           {(() => {
-            const targetCounts = connectedEdges.reduce((acc, edge) => {
+            const targetCounts = connectedEdges.reduce<Record<string, number>>((acc, edge) => {
               acc[edge.target] = (acc[edge.target] || 0) + 1;
               return acc;
             }, {});

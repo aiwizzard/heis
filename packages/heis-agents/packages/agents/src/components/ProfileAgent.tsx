@@ -16,16 +16,17 @@ import { FiClock, FiZap } from "react-icons/fi";
 import { MdOutlineVerified } from "react-icons/md";
 import { HiPlus } from "react-icons/hi2";
 import { useParams } from "next/navigation";
+import type { AgentProfileData, HostProps } from "../types";
 
 const BASE_URL = "/api/agents";
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr?: string) {
   if (!dateStr) return "";
   const utcStr =
     dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
   const now = new Date();
   const d = new Date(utcStr);
-  const diff = Math.floor((now - d) / 1000);
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -35,7 +36,7 @@ function timeAgo(dateStr) {
   return `${Math.floor(months / 12)} yr. ago`;
 }
 
-function formatCount(n) {
+function formatCount(n?: number) {
   if (!n && n !== 0) return "–";
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (n >= 1000) return (n / 1000).toFixed(1) + "K";
@@ -51,12 +52,12 @@ function formatCount(n) {
  *   useUser  {function} — hook to get the current logged-in user
  *   usedIn   {string}   — "muapiapp" | "vadoo"
  */
-export default function ProfileAgent({ useUser, usedIn = "muapiapp" }) {
+export default function ProfileAgent({ useUser, usedIn = "muapiapp" }: HostProps) {
   const { agent_id } = useParams();
 
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState<AgentProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -69,10 +70,12 @@ export default function ProfileAgent({ useUser, usedIn = "muapiapp" }) {
         setLiked(res.data.agent.has_liked || false);
       }
       setError(null);
-    } catch (err) {
-      setError(
-        err.response?.data?.detail || err.message || "Failed to load agent profile"
-      );
+    } catch (err: unknown) {
+      if (axios.isAxiosError<{ detail?: string }>(err)) {
+        setError(err.response?.data?.detail || err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load agent profile");
+      }
     } finally {
       setLoading(false);
     }
@@ -175,7 +178,7 @@ export default function ProfileAgent({ useUser, usedIn = "muapiapp" }) {
                 <p className="text-xs text-gray-400 dark:text-secondary-text mt-1.5">
                   by{" "}
                   <span className="text-gray-600 dark:text-gray-300 font-medium">
-                    {agent.owner_username || agent.owner_email.split("@")[0]}
+                    {agent.owner_username || agent.owner_email?.split("@")[0]}
                   </span>
                 </p>
               )}
@@ -335,7 +338,7 @@ export default function ProfileAgent({ useUser, usedIn = "muapiapp" }) {
   );
 }
 
-function DetailRow({ label, value }) {
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center gap-4">
       <span className="text-sm text-gray-400 dark:text-secondary-text w-24 shrink-0">{label}</span>

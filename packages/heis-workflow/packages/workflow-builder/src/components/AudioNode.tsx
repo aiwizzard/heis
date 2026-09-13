@@ -16,6 +16,8 @@ import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 import NodeSendButton from "./NodeSendButton";
 import NodeOptionsMenu from "./NodeOptionsMenu";
 import { useGenerationCost } from "./useGenerationCost";
+import type { FormValues, ModelDefinition, SchemaProperties, WorkflowNodeProps } from "../types";
+import type { CSSProperties, MouseEvent } from "react";
 
 const inputHandles = [
   "audioInput",
@@ -28,17 +30,17 @@ const outputHandles = [
   "audioOutput",
 ];
 
-const AudioGeneration = ({ id, data, selected }) => {
+const AudioGeneration = ({ id, data, selected }: WorkflowNodeProps) => {
   const models = useMemo(() => {
     return data.nodeSchemas?.categories?.audio?.models 
       ? Object.values(data.nodeSchemas.categories.audio.models) 
       : [];
   }, [data.nodeSchemas]);
   
-  const [selectedModel, setSelectedModel] = useState(data.selectedModel || models[1] || models[0] || {});
-  const [connectedInputs, setConnectedInputs] = useState({});
-  const [connectedOutputs, setConnectedOutputs] = useState({});
-  const [formValues, setFormValues] = useState(data.formValues || {});
+  const [selectedModel, setSelectedModel] = useState<ModelDefinition>(data.selectedModel || models[1] || models[0] || { id: "" });
+  const [connectedInputs, setConnectedInputs] = useState<Record<string, boolean>>({});
+  const [connectedOutputs, setConnectedOutputs] = useState<Record<string, boolean>>({});
+  const [formValues, setFormValues] = useState<FormValues>(data.formValues || {});
   const [dropDown, setDropDown] = useState(0);
   const [loading, setLoading] = useState(0);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
@@ -60,8 +62,8 @@ const AudioGeneration = ({ id, data, selected }) => {
     }
   }, [id, generationCost, data.cost]);
 
-  const initializeFormData = (schemaProperties) => {
-    const initialData = {};
+  const initializeFormData = (schemaProperties: SchemaProperties): FormValues => {
+    const initialData: FormValues = {};
     const fieldEntries = Object.entries(schemaProperties || {});
 
     fieldEntries.forEach(([fieldName, fieldSchema]) => {
@@ -69,7 +71,9 @@ const AudioGeneration = ({ id, data, selected }) => {
         if (fieldSchema.items?.type === "object") {
           const examples = fieldSchema.examples;
           if (Array.isArray(examples) && examples.length > 0) {
-            initialData[fieldName] = examples.map((ex) => ({ ...ex }));
+            initialData[fieldName] = examples.map((example) =>
+              typeof example === "object" && example !== null && !Array.isArray(example) && !(example instanceof File) ? { ...example } : {},
+            );
           } else {
             initialData[fieldName] = [];
           }
@@ -105,19 +109,21 @@ const AudioGeneration = ({ id, data, selected }) => {
     return initialData;
   };
   
-  const addFormValuesInTaskData = (properties) => {
+  const addFormValuesInTaskData = (properties: SchemaProperties) => {
     const defaults = initializeFormData(properties);
     const validKeys = Object.keys(properties);
-    const filteredFormValues = Object.entries(data.formValues || {}).reduce((acc, [key, val]) => {
+    const filteredFormValues = Object.entries(data.formValues || {}).reduce<FormValues>((acc, [key, val]) => {
       if (validKeys.includes(key)) acc[key] = val;
       return acc;
     }, {});
 
-    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce(
+    const merged = Object.entries({ ...defaults, ...filteredFormValues }).reduce<FormValues>(
       (acc, [key, val]) => {
         const meta = properties[key];
-        if (meta?.enum && !meta.enum.includes(val)) {
-          acc[key] = meta.default ?? meta.enum[0] ?? "";
+        const enumContainsValue = meta?.enum?.some((option) => typeof option === "object" && option !== null ? option.value === val : option === val);
+        if (meta?.enum && !enumContainsValue) {
+          const firstOption = meta.enum[0];
+          acc[key] = meta.default ?? (typeof firstOption === "object" && firstOption !== null ? firstOption.value : firstOption) ?? "";
         } else {
           acc[key] = val;
         }
@@ -179,7 +185,7 @@ const AudioGeneration = ({ id, data, selected }) => {
 
     const timer = setTimeout(() => {
       if (Object.entries(data.formValues || {}).length > 0) {
-        setFormValues(data.formValues);
+        setFormValues(data.formValues || {});
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -191,12 +197,12 @@ const AudioGeneration = ({ id, data, selected }) => {
     }
   }, [selectedModel, formValues, loading]);
 
-  const handleChange = (key, value) => {
+  const handleChange = (key: string, value: import("../types").FormValue) => {
     setFormValues(prev => ({ ...prev, [key]: value }));
     setDropDown(-1);
   };
 
-  const pollNodeStatus = (run_id) => {
+  const pollNodeStatus = (run_id: string) => {
     const interval = setInterval(() => {
       axios.get(`/api/workflow/run/${run_id}/status`)
       .then((response) => {
@@ -262,13 +268,13 @@ const AudioGeneration = ({ id, data, selected }) => {
         return;
       }
 
-      const modelSchema = nodeSchemas?.categories?.audio?.models[selectedModel.id]?.input_schema?.schemas?.input_data;
+      const modelSchema = nodeSchemas?.categories?.audio?.models?.[selectedModel.id]?.input_schema?.schemas?.input_data;
       if (!modelSchema || !modelSchema.properties) {
         toast.error("No input schema found for this model");
         data.onDataChange(id, { isLoading: false });
         return;
       }
-      const params = {};
+      const params: FormValues = {};
       const inputSchema = modelSchema.properties;
       const localSources = formValues || {};
       for (const [key, meta] of Object.entries(inputSchema)) {
@@ -287,9 +293,9 @@ const AudioGeneration = ({ id, data, selected }) => {
         node_id: "AI Audio"
       });
       pollNodeStatus(response.data.run_id);
-    } catch(error) {
+    } catch(error: unknown) {
       data.onDataChange(id, { isLoading: false });
-      toast.error(error.response?.data?.detail || "Error running node");
+      toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Error running node");
       console.error(error);
     };
   };
@@ -314,19 +320,19 @@ const AudioGeneration = ({ id, data, selected }) => {
         hasPrompt && "audioInput2",
         hasImageUrl && "audioInput3",
         hasVideoUrl && "audioInput4",
-      ].filter(Boolean);
+      ].filter((handle): handle is string => Boolean(handle));
 
       setEdges((prevEdges) =>
         prevEdges.filter((edge) => {
           if (edge.target !== id) return true;
-          return validHandles.includes(edge.targetHandle);
+          return typeof edge.targetHandle === "string" && validHandles.includes(edge.targetHandle);
         })
       );
       }, 2000);
     return () => clearTimeout(timeout);
   }, [hasAudioUrl, hasPrompt, hasImageUrl, hasVideoUrl, id, setEdges]);
 
-  const handlePrev = (e) => {
+  const handlePrev = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex > 0) {
       const newIndex = currentHistoryIndex - 1;
@@ -342,7 +348,7 @@ const AudioGeneration = ({ id, data, selected }) => {
     }
   };
 
-  const handleNext = (e) => {
+  const handleNext = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (currentHistoryIndex < outputHistory.length - 1) {
       const newIndex = currentHistoryIndex + 1;
@@ -358,7 +364,7 @@ const AudioGeneration = ({ id, data, selected }) => {
     }
   };
 
-  const handleDeleteHistory = async (e) => {
+  const handleDeleteHistory = async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const currentHistory = outputHistory[currentHistoryIndex];
     if (!currentHistory || !currentHistory.node_run_id) return;
@@ -379,22 +385,22 @@ const AudioGeneration = ({ id, data, selected }) => {
           setCurrentHistoryIndex(Math.max(0, currentHistoryIndex - 1));
         }
         toast.success("History entry deleted");
-      } catch (error) {
-        toast.error(error.response?.data?.detail || "Failed to delete history entry");
+      } catch (error: unknown) {
+        toast.error(axios.isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail || error.message : "Failed to delete history entry");
         console.error(error);
       }
     }
   };
 
   useEffect(() => {
-    const connectedInputs = {};
+    const connectedInputs: Record<string, boolean> = {};
     inputHandles.forEach((h) => {
       connectedInputs[h] = edges.some(
         (e) => e.target === id && e.targetHandle === h
       );
     });
 
-    const connectedOutputs = {};
+    const connectedOutputs: Record<string, boolean> = {};
     outputHandles.forEach((h) => {
       connectedOutputs[h] = edges.some(
         (e) => e.source === id && e.sourceHandle === h
@@ -412,10 +418,11 @@ const AudioGeneration = ({ id, data, selected }) => {
   const currentOutput = currentOutputList.length > 0
     ? currentOutputList[currentAudioIndex]?.value || currentOutputList[0]?.value || data.resultUrl
     : data.resultUrl;
+  const currentOutputUrl = typeof currentOutput === "string" ? currentOutput : "";
 
   return (
     <div 
-      style={{ minHeight: 220, '--loader-color': '#eab308' }}
+      style={{ minHeight: 220, '--loader-color': '#eab308' } as CSSProperties & Record<`--${string}`, string | number>}
       className={`
         nowheel group flex flex-col flex-1 w-80 
         rounded-2xl border-2 relative transition-all duration-300 ease-in-out 
@@ -507,7 +514,7 @@ const AudioGeneration = ({ id, data, selected }) => {
             nodeId={id}
             onDuplicate={data.duplicateNode}
             onDelete={handleDeleteNode}
-            downloadUrl={currentOutput}
+            downloadUrl={currentOutputUrl}
           />
         </div>
       </div>
@@ -528,11 +535,10 @@ const AudioGeneration = ({ id, data, selected }) => {
             <div className="text-red-400 text-xs font-medium p-3 bg-red-500/10 rounded-xl border border-red-500/20 m-3 w-full">
               {data.errorMsg || "Generation failed"}
             </div>
-          ) : currentOutput && !data.isLoading ? (
+          ) : currentOutputUrl && !data.isLoading ? (
             <div className="w-full h-full relative group/audio flex flex-col items-center justify-center">
               <AudioPlayer 
-                src={currentOutput} 
-                nodeId={id}
+                src={currentOutputUrl}
                 className="flex flex-col items-center justify-center px-5 py-4 w-full h-full relative group transition-all duration-500 select-none bg-black/10 rounded-b-2xl"
               />
               {currentOutputList.length > 1 && (

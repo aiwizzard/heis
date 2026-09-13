@@ -14,10 +14,21 @@ import { BiLoaderAlt } from "react-icons/bi";
 import { VscDebugAlt } from "react-icons/vsc";
 import { themes } from "./components/themes";
 import { FaAngleRight } from "react-icons/fa6";
+import toast from "react-hot-toast";
+import type { CSSProperties, ChangeEvent, DragEvent, FormEvent } from "react";
+import type {
+  AgentDetails,
+  AgentTheme,
+  ChatMessage,
+  ChatPageProps,
+  DebugLog,
+  SelectedMedia,
+  UploadFields,
+} from "./types";
 
 const BASE_URL = "/api/agents"; // "https://api.muapi.ai/agents";
 
-const formatMessageTime = (date) => {
+const formatMessageTime = (date?: string | number | Date) => {
   if (!date) return "";
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
@@ -26,7 +37,7 @@ const formatMessageTime = (date) => {
   }).format(new Date(date));
 };
 
-const getDateHeader = (date) => {
+const getDateHeader = (date: string | number | Date) => {
   const d = new Date(date);
   const now = new Date();
   const yesterday = new Date(now);
@@ -42,10 +53,14 @@ const getDateHeader = (date) => {
   });
 };
 
-const parseMessageContent = (text) => {
+type MessagePart =
+  | { type: "text"; content: string }
+  | { type: "image" | "video" | "audio"; url: string };
+
+const parseMessageContent = (text: string): MessagePart[] => {
   if (!text) return [];
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = [];
+  const parts: MessagePart[] = [];
   let lastIndex = 0;
   let match;
 
@@ -83,7 +98,7 @@ const parseMessageContent = (text) => {
   return parts;
 };
 
-const CopyButton = ({ text }) => {
+const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -125,32 +140,34 @@ const ChatPage = ({
   useSidebar,
   searchQuery = "",
   setSearchQuery = () => {},
-  getSearchItems = () => {},
+  getSearchItems = () => [],
   initialHistory = null,
-}) => {
+}: ChatPageProps) => {
   const { id: routeAgentId, agent_id, agent_name, conversation_id: routeConversationId } = useParams();
-  const effectiveAgentId = agent_id || agent_name || routeAgentId;
+  const paramString = (value: string | string[] | undefined): string | undefined =>
+    Array.isArray(value) ? value[0] : value;
+  const effectiveAgentId = paramString(agent_id || agent_name || routeAgentId);
   const lowerAgentSlug = effectiveAgentId?.toLowerCase();
   
-  const effectiveConversationId = routeConversationId;
+  const effectiveConversationId = paramString(routeConversationId);
   const router = useRouter();
   
   const userContext = useUser ? useUser() : {};
   let userName = "User";
-  let userProfile = null;
+  let userProfile: string | null = null;
 
   if (usedIn === "vadoo") {
     const { serverDetails } = userContext;
     userName = serverDetails?.user_details?.name || "User";
-    userProfile = serverDetails?.user_details?.profile;
+    userProfile = serverDetails?.user_details?.profile || null;
   } else if (usedIn === "muapiapp") {
     // muapiapp
     const { user } = userContext;
     userName = user?.username || user?.name || "User";
-    userProfile = user?.profile_photo;
+    userProfile = user?.profile_photo || null;
   }
 
-  const [messages, setMessages] = useState(() => {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (initialHistory && initialHistory.history) {
       return initialHistory.history.map((msg, i) => {
         let ts = msg.timestamp || initialHistory.created_at || new Date();
@@ -173,16 +190,16 @@ const ChatPage = ({
     }
     return false;
   });
-  const [agentDetails, setAgentDetails] = useState(initialAgentDetails || null);
-  const [error, setError] = useState(null);
-  const [debugLogs, setDebugLogs] = useState([]);
+  const [agentDetails, setAgentDetails] = useState<AgentDetails | null>(initialAgentDetails || null);
+  const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [showDebug, setShowDebug] = useState(false);
-  const conversationIdRef = useRef(null);
+  const conversationIdRef = useRef<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState(null);
-  const [downloadingUrl, setDownloadingUrl] = useState(null);
-  const [currentTheme, setCurrentTheme] = useState(() => {
+  const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
+  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<AgentTheme>(() => {
     const themeData = initialAgentDetails?.theme;
     if (typeof themeData === 'string' && themes[themeData]) {
       return themes[themeData];
@@ -192,14 +209,15 @@ const ChatPage = ({
     }
     return themes.cosmic;
   });
-  const textareaRef = useRef(null);
-  const scrollRef = useRef(null);
-  const [attachments, setAttachments] = useState([]);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
-  const currentAssistantMsgRef = useRef({
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const currentAssistantMsgRef = useRef<ChatMessage>({
+    role: "assistant",
     content: "",
     thoughts: "",
     status: [],
@@ -217,7 +235,7 @@ const ChatPage = ({
   useEffect(() => {
     const fetchHistory = async () => {
       if (messages.length > 0) {
-        conversationIdRef.current = effectiveConversationId;
+        conversationIdRef.current = effectiveConversationId || null;
         return;
       }
 
@@ -234,7 +252,7 @@ const ChatPage = ({
 
         try {
           let endpoint = `${BASE_URL}/by-slug/${lowerAgentSlug}/${effectiveConversationId}`;
-          const res = await axios.get(endpoint);
+          const res = await axios.get<{ history: ChatMessage[]; created_at?: string }>(endpoint);
           if (res.data && res.data.history) {
             const hydratedMessages = res.data.history.map((msg, i) => {
               let ts = msg.timestamp || res.data.created_at || new Date();
@@ -261,7 +279,7 @@ const ChatPage = ({
     fetchHistory();
   }, [effectiveConversationId, lowerAgentSlug]);
 
-  const handleCustomColorChange = (part, color) => {
+  const handleCustomColorChange = (part: keyof AgentTheme["colors"], color: string) => {
     const updatedTheme = {
       ...currentTheme,
       id: 'custom',
@@ -274,7 +292,7 @@ const ChatPage = ({
     setCurrentTheme(updatedTheme);
   };
 
-  const handleThemeSync = async (theme) => {
+  const handleThemeSync = async (theme: AgentTheme) => {
     try {
       await axios.put(`${BASE_URL}/by-slug/${lowerAgentSlug}`, { theme: theme });
     } catch (err) {
@@ -283,7 +301,9 @@ const ChatPage = ({
     setShowCustomColorPanel(false);
   };
 
-  const generateCssVariables = (theme) => {
+  const generateCssVariables = (
+    theme: AgentTheme,
+  ): CSSProperties & Record<`--${string}`, string> => {
     const c = theme?.colors || themes.cosmic.colors;
     return {
       "--bg-primary": c.background,
@@ -304,7 +324,7 @@ const ChatPage = ({
     };
   };
 
-  const handleDownloadFile = async (file_url, filename = "download") => {
+  const handleDownloadFile = async (file_url: string, filename = "download") => {
     if (!file_url) {
       toast.error("File URL not found");
       return;
@@ -331,16 +351,16 @@ const ChatPage = ({
       document.body.removeChild(link);
 
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Download failed:", err);
-      toast.error(`Download failed: ${err.message}`);
+      toast.error(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setDownloadingUrl(null);
     }
   };
 
   useEffect(() => {
-    if (agentDetails?.theme && themes[agentDetails.theme]) {
+    if (typeof agentDetails?.theme === "string" && themes[agentDetails.theme]) {
       setCurrentTheme(themes[agentDetails.theme]);
     }
   }, [agentDetails]);
@@ -404,7 +424,7 @@ const ChatPage = ({
     }
   };
 
-  const uploadFile = async (file) => {
+  const uploadFile = async (file?: File) => {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
@@ -416,7 +436,7 @@ const ChatPage = ({
       setUploadProgress(0);
       setIsUploading(true);
 
-      const response = await axios.get("/api/app/get_file_upload_url", {
+      const response = await axios.get<{ url: string; fields: UploadFields }>("/api/app/get_file_upload_url", {
         params: { filename: file.name }
       });
       const { url, fields } = response.data;
@@ -430,7 +450,7 @@ const ChatPage = ({
       await axios.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
           setUploadProgress(percent);
         }
       });
@@ -447,22 +467,22 @@ const ChatPage = ({
     }
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     uploadFile(file);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setIsDragging(false);
     
@@ -474,11 +494,11 @@ const ChatPage = ({
     }
   };
 
-  const removeAttachment = (url) => {
+  const removeAttachment = (url: string) => {
     setAttachments(prev => prev.filter(item => item !== url));
   };
 
-  const handleThemeChange = async (theme) => {
+  const handleThemeChange = async (theme: AgentTheme) => {
     setCurrentTheme(theme);
     handleThemeSync(theme);
   };
@@ -489,7 +509,7 @@ const ChatPage = ({
     
     // Optimistic update
     setLiked(newLiked);
-    setLikeCount(prev => newLiked ? prev + 1 : prev - 1);
+    setLikeCount(prev => newLiked ? (prev || 0) + 1 : (prev || 0) - 1);
 
     try {
       const res = await axios.post(`/api/agents/by-slug/${lowerAgentSlug}/like?is_like=${newLiked}`);
@@ -509,7 +529,11 @@ const ChatPage = ({
     }
   };
 
-  const handleSendMessage = async (e, overrideText = null, overrideAttachments = null) => {
+  const handleSendMessage = async (
+    e?: FormEvent<HTMLFormElement> | null,
+    overrideText: string | null = null,
+    overrideAttachments: string[] | null = null,
+  ) => {
     if (e) e.preventDefault();
     
     const userText = overrideText || input;
@@ -520,7 +544,7 @@ const ChatPage = ({
     
     if (overrideText) setIsStreaming(false);
 
-    const userMessage = {
+    const userMessage: ChatMessage = {
       role: "user",
       content: userText,
       attachments: [...currentAttachments],
@@ -609,9 +633,9 @@ const ChatPage = ({
 
           let newContent = "";
           let newThoughts = "";
-          let newStatus = [];
+          const newStatus: string[] = [];
 
-          incomingMessages.forEach(msg => {
+          incomingMessages.forEach((msg: ChatMessage) => {
             if (msg.role === "assistant" && msg.content) {
               newContent = msg.content;
             }
@@ -660,14 +684,11 @@ const ChatPage = ({
 
       if (errors >= 5) throw new Error("Lost connection to agent process");
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.log("Agent error:", err);
-      let errorMessage = err.message || "Something went wrong. Check browser console";
-      if (err.response) {
-        const { status, data } = err.response;
-        errorMessage = data?.error || "Not enough credits";
-      } else {
-        errorMessage = err.message;
+      let errorMessage = err instanceof Error ? err.message : "Something went wrong. Check browser console";
+      if (axios.isAxiosError<{ error?: string }>(err)) {
+        errorMessage = err.response?.data?.error || err.message || "Not enough credits";
       }
       setError(errorMessage);
       if (!currentAssistantMsgRef.current.content) {
@@ -918,14 +939,14 @@ const ChatPage = ({
                           <CopyButton text={agentDetails?.welcome_message || `Hello! I am ${agentDetails.name}. ${agentDetails.description || "How can I assist you today?"}`} />
                         </div>
                       </div>
-                      {agentDetails.initial_suggestions?.length > 0 && (
+                      {(agentDetails.initial_suggestions?.length || 0) > 0 && (
                         <div className="flex flex-wrap gap-2 pt-2">
-                          {agentDetails.initial_suggestions.map((sug, i) => (
+                          {agentDetails.initial_suggestions?.map((sug, i) => (
                             <button
                               key={i}
                               type="button"
                               onClick={() => {
-                                setInput(sug.prompt);
+                                setInput(sug.prompt || "");
                                 if (textareaRef.current) {
                                   textareaRef.current.focus();
                                 }
@@ -952,8 +973,8 @@ const ChatPage = ({
               const prevMsg = messages[idx - 1];
               const showDateHeader =
                 !prevMsg ||
-                new Date(msg.timestamp).toDateString() !==
-                new Date(prevMsg.timestamp).toDateString();
+                new Date(msg.timestamp || 0).toDateString() !==
+                new Date(prevMsg.timestamp || 0).toDateString();
 
               return (
                 <div key={idx} className="space-y-6">
@@ -994,9 +1015,9 @@ const ChatPage = ({
                                   color: 'var(--user-text)',
                                 }}
                               >
-                                {msg.attachments?.length > 0 && (
+                                {(msg.attachments?.length || 0) > 0 && (
                                   <div className="mb-3 flex flex-wrap justify-end gap-2">
-                                    {msg.attachments.map((url, i) => (
+                                    {msg.attachments?.map((url, i) => (
                                       <div key={i} className="relative group/user-att">
                                         <img
                                           src={url}
@@ -1054,9 +1075,9 @@ const ChatPage = ({
                           )}
 
                           <div className="flex-1 space-y-3">
-                            {msg.status?.length > 0 && (
+                            {(msg.status?.length || 0) > 0 && (
                               <div className="flex flex-wrap gap-2">
-                                {msg.status.map((st, i) => (
+                                {msg.status?.map((st, i) => (
                                   <div
                                     key={i}
                                     className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border"
@@ -1215,12 +1236,12 @@ const ChatPage = ({
                               </div>
                             )}
 
-                            {msg.suggestions?.length > 0 && (
+                            {(msg.suggestions?.length || 0) > 0 && (
                               <div className="flex flex-wrap gap-2">
-                                {msg.suggestions.map((sug, i) => (
+                                {msg.suggestions?.map((sug, i) => (
                                   <button
                                     key={i}
-                                    onClick={() => setInput(sug.prompt)}
+                                    onClick={() => setInput(sug.prompt || "")}
                                     className="flex items-center gap-2 text-xs font-medium border px-3 py-2 rounded-lg transition-all hover:opacity-80"
                                     style={{
                                       background: 'var(--component-bg)',
@@ -1478,7 +1499,7 @@ const ChatPage = ({
             </div>
             
             <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar space-y-4">
-              {[
+              {([
                 { label: 'Background', key: 'background' },
                 { label: 'Text Primary', key: 'foreground' },
                 { label: 'Text Secondary', key: 'muted' },
@@ -1492,7 +1513,7 @@ const ChatPage = ({
                 { label: 'Input Background', key: 'inputBg' },
                 { label: 'Accent Color', key: 'accent' },
                 { label: 'Accent Text', key: 'accentText' },
-              ].map((item) => (
+              ] satisfies Array<{ label: string; key: keyof AgentTheme["colors"] }>).map((item) => (
                 <div key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--component-bg)]/50">
                   <span className="text-sm font-medium text-[var(--text-primary)]">{item.label}</span>
                   <div className="flex items-center gap-3">

@@ -3,6 +3,7 @@
 import React from "react";
 import { ReactFlowProvider } from "reactflow";
 import NodeFlow from "./components/NodeFlow";
+import type { WorkflowBuilderProps } from "./types";
 
 export default function Home({
   apiKey,
@@ -12,7 +13,7 @@ export default function Home({
   onGenerationEnd,
   onGenerationComplete,
   onGenerationError,
-}) {
+}: WorkflowBuilderProps) {
   return (
     <div className="flex flex-col items-center justify-center h-screen w-full">
       <ReactFlowProvider>

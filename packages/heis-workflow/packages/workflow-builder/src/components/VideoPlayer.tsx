@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IoPlay, IoPause, IoVolumeHigh, IoVolumeMute, IoExpand, IoContract } from "react-icons/io5";
 import { toast } from "react-hot-toast";
+import type { MouseEvent } from "react";
+
+interface VideoPlayerProps {
+  src: string;
+  poster?: string;
+  autoPlay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
+  className?: string;
+  accentColor?: string;
+}
 
 const VideoPlayer = ({ 
   src, 
@@ -10,7 +21,7 @@ const VideoPlayer = ({
   loop = true, 
   className = "w-full h-full object-contain",
   accentColor = "#f97316"
-}) => {
+}: VideoPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -18,10 +29,10 @@ const VideoPlayer = ({
   const [isMuted, setIsMuted] = useState(muted);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  const videoRef = useRef(null);
-  const containerRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const togglePlay = (e) => {
+  const togglePlay = (e?: MouseEvent<HTMLElement>) => {
     e?.stopPropagation();
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
@@ -31,12 +42,12 @@ const VideoPlayer = ({
     }
   };
 
-  const toggleMute = (e) => {
+  const toggleMute = (e?: MouseEvent<HTMLElement>) => {
     e?.stopPropagation();
     setIsMuted(!isMuted);
   };
 
-  const handleToggleFullscreen = (e) => {
+  const handleToggleFullscreen = (e?: MouseEvent<HTMLElement>) => {
     e?.stopPropagation();
     if (!containerRef.current) return;
     
@@ -58,7 +69,7 @@ const VideoPlayer = ({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
     return `${min}:${sec.toString().padStart(2, '0')}`;
@@ -107,7 +118,7 @@ const VideoPlayer = ({
           step="0.01"
           onChange={(e) => {
             const time = parseFloat(e.target.value);
-            videoRef.current.currentTime = time;
+            if (videoRef.current) videoRef.current.currentTime = time;
             setCurrentTime(time);
           }}
           className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer hover:h-1.5 transition-all seek-bar"
@@ -145,7 +156,7 @@ const VideoPlayer = ({
                 onChange={(e) => {
                   const val = parseFloat(e.target.value);
                   setVolume(val);
-                  videoRef.current.volume = val;
+                  if (videoRef.current) videoRef.current.volume = val;
                   if (val > 0) setIsMuted(false);
                 }}
                 className="w-0 group-hover/volume:w-16 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-white transition-all overflow-hidden"

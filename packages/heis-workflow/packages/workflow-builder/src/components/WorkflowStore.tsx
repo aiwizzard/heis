@@ -1,7 +1,7 @@
-let workflowId = null;
-let runId = null;
+let workflowId: string | null = null;
+let runId: string | null = null;
 
-export const setWorkflowIds = (wfId, rId) => {
+export const setWorkflowIds = (wfId: string | null, rId: string | null) => {
   workflowId = wfId;
   runId = rId;
 };
