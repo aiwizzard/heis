@@ -63,6 +63,8 @@ Heis starts app-server with temporary configuration overrides that register a lo
 
 The agent implementation sits behind `AgentProvider`, allowing a future Heis-managed OpenAI provider or Claude provider without studio changes.
 
+Legacy MuAPI agent pages and renderer proxy routes are retired. Historical `/agents/*` links redirect to the Codex-backed studio, and the old Agent Studio is no longer exported from the studio package.
+
 ## Shared interfaces
 
 New application code uses strict TypeScript. Existing JavaScript is converted only when touched by the migration.

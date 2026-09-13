@@ -24,6 +24,13 @@ function addSecurityHeaders(response) {
 export function proxy(request) {
     const url = request.nextUrl;
 
+    if (url.pathname.startsWith('/api/v1/creative-agent')) {
+        return addSecurityHeaders(NextResponse.json(
+            { error: { code: 'LEGACY_AGENT_API_RETIRED', message: 'Use the Codex-backed Heis agent interface.' } },
+            { status: 410 },
+        ));
+    }
+
     // Catch requests to /api/workflow, /api/app, and /api/v1
     const isMuApi = url.pathname.startsWith('/api/workflow') ||
                     url.pathname.startsWith('/api/app') ||
@@ -31,8 +38,7 @@ export function proxy(request) {
 
     if (isMuApi) {
         // Exclude paths that have their own dedicated route handlers with custom logic
-        const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
-                                url.pathname.startsWith('/api/v1/get_upload_url') ||
+        const isHandledByRoute = url.pathname.startsWith('/api/v1/get_upload_url') ||
                                 url.pathname.startsWith('/api/v1/upload-binary');
 
         if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
