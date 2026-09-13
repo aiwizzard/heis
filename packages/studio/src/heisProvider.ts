@@ -237,6 +237,26 @@ export async function uploadFile(_legacyApiKey: string, file: File, onProgress?:
   return result.url;
 }
 
+export async function uploadLocalMedia(_legacyApiKey: string, file: File, onProgress?: (progress: number) => void) {
+  const heis = requireDesktop();
+  if (!heis.export) throw new Error("Local media tools are unavailable in this Heis build.");
+  onProgress?.(1);
+  const result = unwrap(await heis.export.importMedia({ name: file.name, type: file.type, bytes: await file.arrayBuffer() }));
+  onProgress?.(100);
+  return result.url;
+}
+
+export async function runClipping(_legacyApiKey: string, params: any) {
+  const heis = requireDesktop();
+  if (!heis.export) throw new Error("Local media tools are unavailable in this Heis build.");
+  return unwrap(await heis.export.clipHighlights({
+    sourceUrl: params.video_url,
+    numHighlights: params.num_highlights || 3,
+    aspectRatio: params.aspect_ratio || "9:16",
+    returnCoordinatesOnly: Boolean(params.return_coordinates_only),
+  }));
+}
+
 export async function generateImage(_legacyApiKey: string, params: any) {
   return submit("text-to-image", "heis-image-standard", { positivePrompt: params.prompt, ...dimensions(params.aspect_ratio), ...(params.seed && params.seed !== -1 ? { seed: params.seed } : {}) }, params.onRequestId);
 }

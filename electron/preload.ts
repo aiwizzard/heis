@@ -54,6 +54,10 @@ contextBridge.exposeInMainWorld('heis', {
         getJob: (mode, jobId) => invoke(IPC_CHANNELS.generationGetJob, mode, jobId),
         cancel: (mode, jobId) => invoke(IPC_CHANNELS.generationCancel, mode, jobId),
     },
+    export: {
+        importMedia: (file) => invoke(IPC_CHANNELS.exportImportMedia, file),
+        clipHighlights: (request) => invoke(IPC_CHANNELS.exportClipHighlights, request),
+    },
 });
 
 contextBridge.exposeInMainWorld('localAI', {

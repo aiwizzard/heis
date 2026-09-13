@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentThread, AgentThreadInput, AgentTurnInput, EntitlementSnapshot, GenerationJob, GenerationRequest, ModelCapability, ResultEnvelope } from "@heis/core";
+import type { AgentStatus, AgentThread, AgentThreadInput, AgentTurnInput, EntitlementSnapshot, GenerationJob, GenerationRequest, LocalClippingResult, LocalMediaImport, ModelCapability, ResultEnvelope } from "@heis/core";
 
 declare global {
   interface Window {
@@ -38,6 +38,10 @@ declare global {
         submit(request: GenerationRequest): Promise<ResultEnvelope<GenerationJob>>;
         getJob(mode: "managed" | "byok", jobId: string): Promise<ResultEnvelope<GenerationJob>>;
         cancel(mode: "managed" | "byok", jobId: string): Promise<ResultEnvelope<void>>;
+      };
+      export: {
+        importMedia(file: { name: string; type: string; bytes: ArrayBuffer }): Promise<ResultEnvelope<LocalMediaImport>>;
+        clipHighlights(request: { sourceUrl: string; numHighlights: number; aspectRatio: string; returnCoordinatesOnly: boolean }): Promise<ResultEnvelope<LocalClippingResult>>;
       };
     };
   }

@@ -1,10 +1,14 @@
-const { app, BrowserWindow, shell, dialog } = require('electron');
+const { app, BrowserWindow, shell, dialog, net, protocol } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('node:url');
 const { register: registerLocalInference } = require('./lib/localInference');
 const { register: registerWan2gp } = require('./lib/wan2gpProvider');
 const { register: registerCommercialServices } = require('./lib/commercialServices');
 const { NextServer } = require('./lib/nextServer');
 const { UpdaterService } = require('./lib/updater');
+const { LocalMediaService } = require('./lib/localMediaService');
+
+protocol.registerSchemesAsPrivileged([{ scheme: 'heis-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
 process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
@@ -74,6 +78,8 @@ function createWindow(rendererUrl) {
 }
 
 app.whenReady().then(async () => {
+    const localMediaService = new LocalMediaService(app.getPath('userData'), process.resourcesPath);
+    protocol.handle('heis-media', (request) => net.fetch(pathToFileURL(localMediaService.resolveUrl(request.url)).toString()));
     app.setAsDefaultProtocolClient('heis');
     const rendererUrl = await desktopRenderer.start();
     createWindow(rendererUrl);
@@ -81,7 +87,7 @@ app.whenReady().then(async () => {
     try {
         registerLocalInference();
         registerWan2gp();
-        commercialServices = registerCommercialServices();
+        commercialServices = registerCommercialServices(localMediaService);
         updater.start();
         for (const callbackUrl of pendingAuthCallbacks.splice(0)) {
             void commercialServices.handleAuthCallback(callbackUrl).catch(reportAuthCallbackError);

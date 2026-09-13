@@ -22,7 +22,7 @@ function handle(channel: string, handler: (...args: any[]) => any): void {
   });
 }
 
-function register(): { dispose: () => void } {
+function register(localMediaService?: any): { dispose: () => void; handleAuthCallback: (url: string) => Promise<void> } {
   const secureStore = new SecureStore();
   const authSession = new AuthSession(secureStore);
   const entitlementStore = new EntitlementStore();
@@ -127,6 +127,14 @@ function register(): { dispose: () => void } {
   handle(IPC_CHANNELS.generationSubmit, (request: any) => providerFor(request?.billing?.mode).submit(request));
   handle(IPC_CHANNELS.generationGetJob, (mode: string, jobId: string) => providerFor(mode).getJob(jobId));
   handle(IPC_CHANNELS.generationCancel, (mode: string, jobId: string) => providerFor(mode).cancel(jobId));
+  handle(IPC_CHANNELS.exportImportMedia, (file: any) => {
+    if (!localMediaService) throw new Error("LOCAL_MEDIA_UNAVAILABLE");
+    return localMediaService.importMedia(file);
+  });
+  handle(IPC_CHANNELS.exportClipHighlights, (request: any) => {
+    if (!localMediaService) throw new Error("LOCAL_MEDIA_UNAVAILABLE");
+    return localMediaService.clipHighlights(request);
+  });
 
   return { handleAuthCallback: (url: string) => desktopAuth.handleCallback(url), dispose: () => { codex.stop(); bridge.stop(); } };
 }

@@ -26,6 +26,8 @@ export const IPC_CHANNELS = {
   generationGetJob: "generation:get-job",
   generationCancel: "generation:cancel",
   generationEvent: "generation:event",
+  exportImportMedia: "export:import-media",
+  exportClipHighlights: "export:clip-highlights",
   codexEvent: "codex:event",
 } as const;
 

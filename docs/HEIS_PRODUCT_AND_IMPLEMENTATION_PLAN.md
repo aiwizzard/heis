@@ -6,9 +6,9 @@ Last implementation update: 2026-09-13
 
 ### Current implementation boundary
 
-The repository now contains the commercial platform foundation: shared contracts, the packaged Next.js renderer path, secure Electron services, Supabase schema and entitlement functions, hosted authentication and billing APIs, managed and customer-key Runware adapters, Trigger.dev background jobs, Codex app-server and local MCP integration, and macOS signing and update configuration. The desktop shell now uses Heis sign-in and encrypted provider-key setup instead of a renderer-stored MuAPI key. Image Studio, Video Studio, Lip Sync Studio, Cinema Studio, Audio Studio, Marketing Studio, Motion Control Studio, Recast Studio, and AI Influencer Studio use the provider-neutral bridge. The Agents tab has a native Codex app-server conversation UI with workspace-write sandboxing and approval handling. Other legacy studios are visibly gated until their provider migration is complete.
+The repository now contains the commercial platform foundation: shared contracts, the packaged Next.js renderer path, secure Electron services, Supabase schema and entitlement functions, hosted authentication and billing APIs, managed and customer-key Runware adapters, Trigger.dev background jobs, Codex app-server and local MCP integration, and macOS signing and update configuration. The desktop shell now uses Heis sign-in and encrypted provider-key setup instead of a renderer-stored MuAPI key. Image Studio, Video Studio, Lip Sync Studio, Cinema Studio, Audio Studio, Marketing Studio, Motion Control Studio, Recast Studio, and AI Influencer Studio use the provider-neutral bridge. The Agents tab has a native Codex app-server conversation UI with workspace-write sandboxing and approval handling. A secure local-media service now imports desktop video into app-owned storage and performs deterministic clipping and aspect-ratio cropping through FFmpeg. Other legacy studios are visibly gated until their provider migration is complete.
 
-The product is not ready for paid distribution. Several gated studios and workflow nodes still contain legacy MuAPI modules, the curated Runware catalog covers only the first verified image and video capabilities, and the local project, timeline, FFmpeg export, and Codex export tools are not connected. Production services and credentials have not been provisioned. Apple signing and notarization have not been executed. The dependency audit has no high or critical production findings, but currently reports 13 moderate findings inherited through Trigger.dev 4.5.16 and its OpenTelemetry dependencies. These must be resolved or formally reviewed before release.
+The product is not ready for paid distribution. Several gated studios and workflow nodes still contain legacy MuAPI modules, the curated Runware catalog is incomplete, and the local project, timeline, general export, and Codex export tools are not connected. Local clipping still needs packaged Apple Silicon and Intel FFmpeg binaries plus a replacement for AI highlight ranking before its studio can be enabled. Production services and credentials have not been provisioned. Apple signing and notarization have not been executed. The dependency audit has no high or critical production findings, but currently reports 13 moderate findings inherited through Trigger.dev 4.5.16 and its OpenTelemetry dependencies. These must be resolved or formally reviewed before release.
 
 This document is the source of truth for the commercial Heis platform. Update the decision log and implementation checklist whenever product or architecture decisions change.
 
@@ -210,7 +210,9 @@ Deterministic editing such as trim, combine, overlays, title cards, and export u
 - [x] Codex app-server client added
 - [x] Codex desktop conversation UI and native approval responses added
 - [x] Local Heis MCP server added
-- [ ] Studio and workflow MuAPI calls migrated (nine generation studios use the Heis bridge; remaining studios are gated)
+- [ ] Studio and workflow MuAPI calls migrated (nine generation studios use the Heis bridge; Clipping uses local IPC but remains gated pending packaged FFmpeg and highlight ranking)
+- [x] Secure local-media import, opaque playback URLs, deterministic clipping, and aspect-ratio cropping added
+- [ ] License-compatible Apple Silicon and Intel FFmpeg and FFprobe binaries packaged
 - [x] Managed workflow runner added
 - [ ] Signing, notarization, updater, and release gates completed
 

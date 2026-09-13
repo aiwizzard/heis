@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { runClipping, uploadFile } from "../muapi.js";
+import { runClipping, uploadLocalMedia } from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
@@ -351,7 +351,7 @@ export default function ClippingStudio({
         }
         setVideoUploading(true);
         setVideoProgress(0);
-        uploadFile(apiKey, file, (pct) => {
+        uploadLocalMedia(apiKey, file, (pct) => {
           setVideoProgress(pct);
         })
           .then(url => {
@@ -429,7 +429,7 @@ export default function ClippingStudio({
     setVideoUploading(true);
     setVideoProgress(0);
     try {
-      const url = await uploadFile(apiKey, file, (pct) => {
+      const url = await uploadLocalMedia(apiKey, file, (pct) => {
         setVideoProgress(pct);
       });
       setVideoUrl(url);

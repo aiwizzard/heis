@@ -68,6 +68,27 @@ export interface MediaAsset {
   expiresAt?: string;
 }
 
+export interface LocalMediaImport {
+  id: string;
+  url: string;
+  mimeType: string;
+}
+
+export interface ClipHighlight {
+  label: string;
+  start_time: number;
+  end_time: number;
+  start: number;
+  end: number;
+  score: number;
+}
+
+export interface LocalClippingResult {
+  id: string;
+  outputs: readonly string[];
+  coordinates: readonly ClipHighlight[];
+}
+
 export interface GenerationError {
   code: string;
   message: string;
