@@ -3,6 +3,14 @@ const { STARTER_RUNWARE_CATALOG, getCapability } = require("@heis/core");
 
 const RUNWARE_API_URL = "https://api.runware.ai/v1";
 
+function taskTypeForCapability(capability: any): string {
+  if (capability.operation === "upscale") return "upscale";
+  if (capability.operation === "remove-background") return "removeBackground";
+  if (capability.outputKind === "image") return "imageInference";
+  if (capability.outputKind === "video") return "videoInference";
+  return "audioInference";
+}
+
 function outputKindForResult(result: any): "image" | "video" | "audio" | "other" {
   if (result.imageURL) return "image";
   if (result.videoURL) return "video";
@@ -57,7 +65,7 @@ class RunwareByokProvider {
     const createdAt = new Date().toISOString();
     const payload = {
       ...request.inputs,
-      taskType: capability.outputKind === "image" ? "imageInference" : capability.outputKind === "video" ? "videoInference" : "audioInference",
+      taskType: taskTypeForCapability(capability),
       taskUUID,
       model: capability.providerModelId,
       deliveryMethod: "sync",

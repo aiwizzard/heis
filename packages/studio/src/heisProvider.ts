@@ -266,6 +266,41 @@ export async function generateI2I(_legacyApiKey: string, params: any) {
   return submit("image-to-image", "heis-image-edit-standard", { positivePrompt: params.prompt, seedImage, strength: params.strength ?? 0.8, ...dimensions(params.aspect_ratio) }, params.onRequestId);
 }
 
+export async function decomposeLayers() {
+  throw new Error("Layer decomposition is unavailable until a verified multi-layer provider is configured.");
+}
+
+export async function upscaleImage(_legacyApiKey: string, params: any) {
+  const image = String(params.image_url ?? "").trim();
+  if (!image) throw new Error("An image is required for upscaling.");
+  const requestedFactor = Math.round(Number(params.upscale_factor) || 2);
+  return submit("upscale", "heis-image-upscale", {
+    inputs: { image },
+    upscaleFactor: Math.min(6, Math.max(2, requestedFactor)),
+    settings: { enhancementStrength: "medium" },
+  }, params.onRequestId);
+}
+
+export async function removeBackground(_legacyApiKey: string, params: any) {
+  const image = String(params.image_url ?? "").trim();
+  if (!image) throw new Error("An image is required for background removal.");
+  return submit("remove-background", "heis-remove-background", {
+    inputs: { image },
+    outputFormat: "PNG",
+    settings: { alphaMatting: true, postProcessMask: true, returnOnlyMask: false, rgba: [255, 255, 255, 0] },
+  }, params.onRequestId);
+}
+
+export async function expandImage(_legacyApiKey: string, params: any) {
+  const image = String(params.image_url ?? "").trim();
+  if (!image) throw new Error("An image is required for expansion.");
+  return submit("expand-image", "heis-expand-image", {
+    inputs: { image },
+    outpaint: { top: 256, right: 256, bottom: 256, left: 256 },
+    settings: { autoCrop: true },
+  }, params.onRequestId);
+}
+
 export async function generateVideo(_legacyApiKey: string, params: any) {
   return submit("text-to-video", "heis-video-text-standard", { positivePrompt: params.prompt, duration: Number(params.duration) || 5, aspectRatio: params.aspect_ratio ?? "16:9" }, params.onRequestId);
 }

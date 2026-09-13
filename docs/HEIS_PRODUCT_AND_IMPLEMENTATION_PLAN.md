@@ -67,6 +67,8 @@ Legacy MuAPI agent pages and renderer proxy routes are retired. Historical `/age
 
 Apps Studio interest requests are stored locally and no longer call MuAPI. The Apps gallery remains gated until its third-party template links and legacy hosted thumbnails are replaced with a Heis-owned catalog.
 
+Layers Studio upload, image editing, upscale, background removal, and outpainting actions use the Heis bridge. The studio remains gated because Runware does not currently document a compatible multi-output transparent layer-decomposition model. Heis must not substitute a single flattened image for that contract.
+
 ## Shared interfaces
 
 New application code uses strict TypeScript. Existing JavaScript is converted only when touched by the migration.

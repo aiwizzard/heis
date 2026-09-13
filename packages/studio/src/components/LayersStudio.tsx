@@ -9,7 +9,7 @@ import {
   upscaleImage,
   removeBackground,
   expandImage,
-} from "../muapi.js";
+} from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import en from "../messages/en/layersStudio.json";
 import zh from "../messages/zh/layersStudio.json";

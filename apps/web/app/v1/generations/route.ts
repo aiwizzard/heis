@@ -5,7 +5,9 @@ import { env } from "@/lib/env";
 import { apiError, requireIdempotencyKey } from "@/lib/http";
 import { createAdminClient, requireUser } from "@/lib/supabase";
 
-function taskType(outputKind: string) {
+function taskType(operation: string, outputKind: string) {
+  if (operation === "upscale") return "upscale";
+  if (operation === "remove-background") return "removeBackground";
   if (outputKind === "image") return "imageInference";
   if (outputKind === "video") return "videoInference";
   return "audioInference";
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
     const providerResponse = await fetch("https://api.runware.ai/v1", {
       method: "POST",
       headers: { Authorization: `Bearer ${env.runwareApiKey()}`, "Content-Type": "application/json" },
-      body: JSON.stringify([{ ...body.inputs, taskType: taskType(capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
+      body: JSON.stringify([{ ...body.inputs, taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
     });
     const providerBody = await providerResponse.json().catch(() => ({}));
     if (!providerResponse.ok || providerBody.errors?.length) {

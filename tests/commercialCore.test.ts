@@ -102,3 +102,15 @@ test("motion graphics generation and remix use separate Seedance capabilities", 
   assert.equal(remix?.providerModelId, "bytedance:seedance@2.5");
   assert.equal(remix?.parameters.find((parameter) => parameter.name === "duration")?.default, "auto");
 });
+
+test("image utility capabilities use verified Runware models", () => {
+  const upscale = getCapability("heis-image-upscale");
+  const removeBackground = getCapability("heis-remove-background");
+  const expand = getCapability("heis-expand-image");
+  assert.equal(upscale?.operation, "upscale");
+  assert.equal(upscale?.providerModelId, "topazlabs:wonder@3.5");
+  assert.equal(removeBackground?.operation, "remove-background");
+  assert.equal(removeBackground?.providerModelId, "runware:109@1");
+  assert.equal(expand?.operation, "expand-image");
+  assert.equal(expand?.providerModelId, "bfl:flux@outpainting");
+});
