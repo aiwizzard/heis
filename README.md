@@ -431,8 +431,9 @@ Every image you upload is saved locally (URL + thumbnail) so you never upload th
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
-- A [Muapi.ai access key](https://muapi.ai/access-keys?utm_source=github&utm_medium=readme&utm_campaign=heis). Copy the generated key value into the app; do not enter the key name or label.
+- [Node.js](https://nodejs.org/) 22.12 or newer
+- npm
+- macOS for the current desktop target
 
 ### Setup
 
@@ -440,8 +441,9 @@ Every image you upload is saved locally (URL + thumbnail) so you never upload th
 
 Pick the entry point that matches your goal:
 
-- **Desktop app (Electron)** → `npm run electron:dev`
-- **Hosted web version (Next.js)** → `npm run dev`
+- **Desktop app (Electron plus packaged Next.js renderer)**: `npm run electron:dev`
+- **Hosted account and API application**: `npm run web:dev -- --port 3001`
+- **Renderer-only browser preview**: `npm run dev`
 
 ```bash
 # Clone the repository. All packages are included.
@@ -453,20 +455,26 @@ cd heis
 # need to be built before either dev script will work.
 npm run setup
 
-# Then start ONE of:
-npm run electron:dev   # Desktop app (Electron + Vite) — recommended
-npm run dev            # Hosted web version (Next.js) → http://localhost:3000
+# Validate without service credentials.
+npm test
+npm run build:packages
+npm run build:electron
+npm run security:scan
+
+# Start the desktop application after configuring its environment.
+npm run electron:dev
 ```
 
-You'll be prompted to enter your Muapi API key on first use (skip the key if you only plan to use local models).
+The editor requires the Electron bridge. A browser-only renderer preview intentionally displays a desktop-required message. Sign-in testing requires `HEIS_SUPABASE_URL`, `HEIS_SUPABASE_ANON_KEY`, `HEIS_API_URL`, and `HEIS_ENTITLEMENT_PUBLIC_KEY` in the Electron process. The hosted application uses `apps/web/.env.local`, based on `apps/web/.env.example`. BYOK generation prompts the signed-in user for a Runware key and stores it using macOS encrypted storage.
 
 > **Troubleshooting: `Couldn't find a 'pages' directory`**: this means Next.js can't see the `app/` folder. Confirm you're running `npm run dev` from the repo root (the directory that contains `app/`, `package.json`, and `next.config.mjs`). Re-run `npm run setup` if the vendored packages are missing dependencies.
 
 ### Production Build
 
 ```bash
-npm run build
-npm run start
+npm run build:desktop-renderer
+npm run build:electron
+npm run web:build
 ```
 
 ### Desktop App Build
