@@ -11,7 +11,11 @@ export async function createUploadUrl(userId: string, fileName: string, contentT
   const extension = fileName.match(/\.[a-z0-9]{1,10}$/i)?.[0]?.toLowerCase() ?? "";
   const objectKey = `users/${userId}/uploads/${crypto.randomUUID()}${extension}`;
   const command = new PutObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey, ContentType: contentType, Metadata: { owner: userId } });
-  return { objectKey, uploadUrl: await getSignedUrl(client(), command, { expiresIn: 900 }) };
+  return {
+    objectKey,
+    uploadUrl: await getSignedUrl(client(), command, { expiresIn: 900 }),
+    assetUrl: await getSignedUrl(client(), new GetObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey }), { expiresIn: 86_400 }),
+  };
 }
 export async function copyRemoteAsset(input: { userId: string; jobId: string; sourceUrl: string; kind: string }) {
   const response = await fetch(input.sourceUrl, { signal: AbortSignal.timeout(120_000) });

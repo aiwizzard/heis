@@ -41,6 +41,11 @@ class RunwareByokProvider {
     return STARTER_RUNWARE_CATALOG;
   }
 
+  async upload(file: { type: string; bytes: ArrayBuffer | Uint8Array }): Promise<{ url: string }> {
+    const bytes = Buffer.from(file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes));
+    return { url: `data:${file.type || "application/octet-stream"};base64,${bytes.toString("base64")}` };
+  }
+
   async submit(request: any): Promise<any> {
     const capability = getCapability(request?.modelId);
     if (!capability || !capability.enabled) throw new Error("Unknown or disabled model capability.");
@@ -109,6 +114,21 @@ class ManagedMediaProvider {
   }
 
   listCapabilities(): Promise<readonly any[]> { return this.request("/v1/generations/capabilities"); }
+  async getBalance(): Promise<{ balance: number }> {
+    const account = await this.request("/v1/account");
+    return { balance: (account.creditWallets ?? []).reduce((total: number, wallet: any) => total + Number(wallet.balance ?? 0), 0) };
+  }
+  async upload(file: { name: string; type: string; bytes: ArrayBuffer | Uint8Array }): Promise<{ url: string }> {
+    const bytes = Buffer.from(file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes));
+    const signed = await this.request("/v1/uploads", {
+      method: "POST",
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type, sizeBytes: bytes.byteLength }),
+    });
+    const response = await fetch(signed.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: bytes });
+    if (!response.ok) throw new Error(`Managed upload failed with HTTP ${response.status}.`);
+    return { url: signed.assetUrl };
+  }
   submit(request: any): Promise<any> {
     return this.request("/v1/generations", { method: "POST", headers: { "Idempotency-Key": request.billing.idempotencyKey }, body: JSON.stringify(request) });
   }

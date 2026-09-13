@@ -27,7 +27,7 @@ function register(): { dispose: () => void } {
   const authSession = new AuthSession(secureStore);
   const entitlementStore = new EntitlementStore();
   const installationStore = new InstallationStore();
-  let licenseService: any;
+  const licenseService = new LicenseService(authSession, entitlementStore, installationStore);
   const desktopAuth = new DesktopAuth(authSession, secureStore, (event: any) => {
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.authEvent, event);
     if (event.type === "signed-in") {
@@ -38,8 +38,20 @@ function register(): { dispose: () => void } {
       });
     }
   });
-  licenseService = new LicenseService(authSession, entitlementStore, installationStore);
-  void desktopAuth.restore().then(() => authSession.getAccessToken() ? licenseService.refresh().catch(() => entitlementStore.get()) : null);
+  void desktopAuth.restore().then(async () => {
+    if (!authSession.getAccessToken()) return;
+    try {
+      const snapshot = await licenseService.refresh();
+      for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.authEvent, { type: "entitlement-refreshed", snapshot });
+    } catch (error: any) {
+      const snapshot = entitlementStore.get();
+      if (snapshot) {
+        for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.authEvent, { type: "entitlement-refreshed", snapshot, cached: true });
+      } else {
+        for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.authEvent, { type: "entitlement-error", message: error?.message ?? String(error) });
+      }
+    }
+  });
   const byokProvider = new RunwareByokProvider(secureStore);
   const managedProvider = new ManagedMediaProvider(authSession);
   const providerFor = (mode: string) => {
@@ -94,6 +106,7 @@ function register(): { dispose: () => void } {
   handle(IPC_CHANNELS.codexStartThread, (input: any) => codex.startThread(input));
   handle(IPC_CHANNELS.codexStartTurn, (threadId: string, input: any) => codex.startTurn(threadId, input));
   handle(IPC_CHANNELS.codexInterrupt, (threadId: string, turnId: string) => codex.interrupt(threadId, turnId));
+  handle(IPC_CHANNELS.codexRespondToServerRequest, (id: number | string, result: any) => codex.respondToServerRequest(id, result));
   handle(IPC_CHANNELS.codexResolveApproval, (id: string, decision: any) => {
     const pending = pendingApprovals.get(id);
     if (!pending) throw new Error("APPROVAL_NOT_FOUND");
@@ -101,6 +114,16 @@ function register(): { dispose: () => void } {
   });
   handle(IPC_CHANNELS.codexStop, () => codex.stop());
   handle(IPC_CHANNELS.generationListCapabilities, (mode: string) => providerFor(mode).listCapabilities());
+  handle(IPC_CHANNELS.generationUpload, (mode: string, file: any) => {
+    if (!file || typeof file.name !== "string" || typeof file.type !== "string" || !(file.bytes instanceof ArrayBuffer || ArrayBuffer.isView(file.bytes))) throw new Error("INVALID_UPLOAD");
+    if (file.bytes.byteLength > 500 * 1024 * 1024) throw new Error("UPLOAD_TOO_LARGE");
+    return providerFor(mode).upload(file);
+  });
+  handle(IPC_CHANNELS.generationGetBalance, async () => {
+    const entitlement = entitlementStore.get();
+    if (!entitlement?.canUseManagedGeneration) return { balance: null };
+    return managedProvider.getBalance();
+  });
   handle(IPC_CHANNELS.generationSubmit, (request: any) => providerFor(request?.billing?.mode).submit(request));
   handle(IPC_CHANNELS.generationGetJob, (mode: string, jobId: string) => providerFor(mode).getJob(jobId));
   handle(IPC_CHANNELS.generationCancel, (mode: string, jobId: string) => providerFor(mode).cancel(jobId));

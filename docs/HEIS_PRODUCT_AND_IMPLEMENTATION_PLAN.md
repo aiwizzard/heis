@@ -6,9 +6,9 @@ Last implementation update: 2026-09-13
 
 ### Current implementation boundary
 
-The repository now contains the commercial platform foundation: shared contracts, the packaged Next.js renderer path, secure Electron services, Supabase schema and entitlement functions, hosted authentication and billing APIs, managed and customer-key Runware adapters, Trigger.dev background jobs, Codex app-server and local MCP integration, and macOS signing and update configuration.
+The repository now contains the commercial platform foundation: shared contracts, the packaged Next.js renderer path, secure Electron services, Supabase schema and entitlement functions, hosted authentication and billing APIs, managed and customer-key Runware adapters, Trigger.dev background jobs, Codex app-server and local MCP integration, and macOS signing and update configuration. The desktop shell now uses Heis sign-in and encrypted provider-key setup instead of a renderer-stored MuAPI key. Image Studio, Video Studio, Cinema Studio, and AI Influencer Studio use the provider-neutral bridge. The Agents tab has a native Codex app-server conversation UI with workspace-write sandboxing and approval handling. Other legacy studios are visibly gated until their provider migration is complete.
 
-The product is not ready for paid distribution. The existing studios and workflow nodes still call legacy MuAPI modules, the curated Runware catalog covers only the first verified image and video capabilities, and the local project, timeline, FFmpeg export, and Codex export tools are not connected. Production services and credentials have not been provisioned. Apple signing and notarization have not been executed. The dependency audit has no high or critical production findings, but currently reports 13 moderate findings inherited through Trigger.dev 4.5.16 and its OpenTelemetry dependencies. These must be resolved or formally reviewed before release.
+The product is not ready for paid distribution. Several gated studios and workflow nodes still contain legacy MuAPI modules, the curated Runware catalog covers only the first verified image and video capabilities, and the local project, timeline, FFmpeg export, and Codex export tools are not connected. Production services and credentials have not been provisioned. Apple signing and notarization have not been executed. The dependency audit has no high or critical production findings, but currently reports 13 moderate findings inherited through Trigger.dev 4.5.16 and its OpenTelemetry dependencies. These must be resolved or formally reviewed before release.
 
 This document is the source of truth for the commercial Heis platform. Update the decision log and implementation checklist whenever product or architecture decisions change.
 
@@ -205,10 +205,12 @@ Deterministic editing such as trim, combine, overlays, title cards, and export u
 - [x] Credit reservation and settlement added
 - [x] Managed Runware adapter added
 - [x] Customer-key Runware adapter added
+- [x] Secure managed upload URLs and temporary upload cleanup added
 - [ ] Curated capability catalog completed (starter image and video catalog exists)
 - [x] Codex app-server client added
+- [x] Codex desktop conversation UI and native approval responses added
 - [x] Local Heis MCP server added
-- [ ] Studio and workflow MuAPI calls migrated
+- [ ] Studio and workflow MuAPI calls migrated (four generation studios use the Heis bridge; remaining studios are gated)
 - [x] Managed workflow runner added
 - [ ] Signing, notarization, updater, and release gates completed
 

@@ -32,6 +32,21 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
     ],
   },
   {
+    id: "heis-video-text-standard",
+    provider: "runware",
+    providerModelId: "google:3@3",
+    displayName: "Heis Text to Video Standard",
+    operation: "text-to-video",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 5,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "duration", type: "number", default: 5, minimum: 4, maximum: 10 },
+      { name: "aspectRatio", type: "enum", default: "16:9", options: ["16:9", "9:16", "1:1"] },
+    ],
+  },
+  {
     id: "heis-video-standard",
     provider: "runware",
     providerModelId: "runway:1@1",

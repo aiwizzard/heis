@@ -49,6 +49,7 @@ class CodexAppServer {
   private process: any = null;
   private nextId = 1;
   private readonly pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+  private readonly serverRequests = new Set<number | string>();
   private readonly onEvent: (event: any) => void;
   private readonly bridge: any;
   private readonly secureStore: any;
@@ -63,6 +64,7 @@ class CodexAppServer {
     const found = await findCodex();
     if (!found) return { available: false, authenticated: false, reason: "Codex CLI is not installed." };
     if (compareVersions(found.version, MIN_CODEX_VERSION) < 0) return { available: true, authenticated: false, outdated: true, minimumVersion: MIN_CODEX_VERSION, ...found, reason: `Codex CLI ${MIN_CODEX_VERSION} or later is required.` };
+    if (this.secureStore.has("openaiApiKey")) return { available: true, authenticated: true, authenticationMode: "api-key", ...found };
     try {
       const login = await execFileResult(found.executablePath, ["login", "status"]);
       return { available: true, authenticated: /logged in|authenticated/i.test(`${login.stdout}\n${login.stderr}`), ...found };
@@ -78,7 +80,7 @@ class CodexAppServer {
     if (compareVersions(found.version, MIN_CODEX_VERSION) < 0) throw new Error(`CODEX_CLI_UPDATE_REQUIRED_${MIN_CODEX_VERSION}`);
     const mcpServerPath = path.join(__dirname, "../mcp/heisMcpServer.js");
     if (app.isPackaged && !fs.existsSync(mcpServerPath)) throw new Error("HEIS_MCP_SERVER_NOT_FOUND");
-    const args = ["app-server", "--stdio"];
+    const args = ["app-server"];
     if (fs.existsSync(mcpServerPath)) {
       args.push(
         "-c", `mcp_servers.heis.command=${JSON.stringify(process.execPath)}`,
@@ -107,6 +109,9 @@ class CodexAppServer {
         this.pending.delete(message.id);
         if (message.error) pending.reject(new Error(message.error.message ?? "Codex request failed."));
         else pending.resolve(message.result);
+      } else if ((typeof message.id === "number" || typeof message.id === "string") && message.method) {
+        this.serverRequests.add(message.id);
+        this.onEvent({ type: "server-request", requestId: message.id, method: message.method, params: message.params });
       } else if (message.method) this.onEvent(message);
     } catch {
       this.onEvent({ type: "diagnostic", message: "Codex returned malformed JSON." });
@@ -115,6 +120,7 @@ class CodexAppServer {
 
   private failAll(error: Error): void {
     this.process = null;
+    this.serverRequests.clear();
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
   }
@@ -131,8 +137,17 @@ class CodexAppServer {
   }
 
   async startThread(input: any): Promise<any> {
+    if (!input || typeof input.cwd !== "string" || !path.isAbsolute(input.cwd)) throw new Error("CODEX_PROJECT_DIRECTORY_MUST_BE_ABSOLUTE");
+    const projectDirectory = path.resolve(input.cwd);
+    if (!fs.existsSync(projectDirectory) || !fs.statSync(projectDirectory).isDirectory()) throw new Error("CODEX_PROJECT_DIRECTORY_NOT_FOUND");
     await this.start();
-    const result = await this.request("thread/start", { cwd: input.cwd, model: input.model, serviceName: "heis" });
+    const result = await this.request("thread/start", {
+      cwd: projectDirectory,
+      model: input.model,
+      serviceName: "heis",
+      approvalPolicy: "unlessTrusted",
+      sandbox: "workspaceWrite",
+    });
     return { id: result.thread.id, title: input.title };
   }
 
@@ -142,6 +157,12 @@ class CodexAppServer {
 
   async interrupt(threadId: string, turnId: string): Promise<void> {
     await this.request("turn/interrupt", { threadId, turnId });
+  }
+
+  respondToServerRequest(id: number | string, result: any): void {
+    if (!this.serverRequests.delete(id)) throw new Error("CODEX_SERVER_REQUEST_NOT_FOUND");
+    if (!this.process?.stdin?.writable) throw new Error("CODEX_APP_SERVER_NOT_RUNNING");
+    this.process.stdin.write(`${JSON.stringify({ id, result })}\n`);
   }
 
   stop(): void {

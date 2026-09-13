@@ -1,16 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, MotionControlStudio, VibeMotionStudio, LipSyncStudio, RecastStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, LayersStudio, getUserBalance } from 'studio';
-
-const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignAgentStudio), {
-  ssr: false,
-  loading: () => <div className="h-full w-full bg-black flex items-center justify-center text-white/20">Loading Design Studio...</div>
-});
-import axios from 'axios';
-import ApiKeyModal from './ApiKeyModal';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams } from 'next/navigation';
+import { ImageStudio, VideoStudio, CinemaStudio, AiInfluencerStudio, getUserBalance } from 'studio';
+import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
+import CodexStudio from './CodexStudio';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
 
 // Tab/category ids, icons, and English `label` fallbacks are stable
@@ -261,12 +255,27 @@ const NAVIGATION_CATEGORIES = [
 ];
 
 const EXPLORE_APPS_TAB = TABS.find((tab) => tab.id === 'apps');
+const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'cinema', 'agents', 'ai-influencer']);
+
+function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[#030303] px-6">
+      <div className="max-w-lg rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">Provider migration</p>
+        <h2 className="text-xl font-semibold text-white">{label} is being connected to Heis providers</h2>
+        <p className="mt-3 text-sm leading-6 text-white/45">
+          This studio is temporarily unavailable while its legacy MuAPI calls are replaced with secure managed and BYOK generation. Your existing local projects are not affected.
+        </p>
+        <p className="mt-4 text-xs text-white/30">Studio ID: {tabId}</p>
+      </div>
+    </div>
+  );
+}
 
 const getNavigationCategory = (tabId) => (
   NAVIGATION_CATEGORIES.find((category) => category.tabIds.includes(tabId))
 );
 
-const STORAGE_KEY = 'muapi_key';
 const NOTIFICATIONS_STORAGE_KEY = 'open_gen_notifications_v1';
 const MAX_VISIBLE_NOTIFICATIONS = 3;
 
@@ -299,8 +308,7 @@ const persistNotifications = (notifications) => {
 
 export default function StandaloneShell({ locale = 'en' }) {
   const params = useParams();
-  const router = useRouter();
-  const slug = params?.slug || [];
+  const slug = useMemo(() => params?.slug || [], [params?.slug]);
   const idFromParams = params?.id;
   const tabFromParams = params?.tab;
 
@@ -342,6 +350,7 @@ export default function StandaloneShell({ locale = 'en' }) {
   };
   
   const [apiKey, setApiKey] = useState(null);
+  const [accessStage, setAccessStage] = useState<AccessStage>('loading');
   const [activeTab, setActiveTab] = useState(getInitialTab());
 
   const [balance, setBalance] = useState(null);
@@ -411,6 +420,30 @@ export default function StandaloneShell({ locale = 'en' }) {
       const session = await window.heis.auth.getSession();
       const mode = session.ok && session.value ? 'managed' : 'byok';
       await window.heis.codex.resolveApproval(id, { approved, mode });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!window.heis?.codex?.onEvent) return undefined;
+    return window.heis.codex.onEvent(async (rawEvent) => {
+      const event = rawEvent as { type?: string; requestId?: number | string; method?: string; params?: Record<string, any> };
+      if (event.type !== 'server-request' || event.requestId === undefined || !event.method) return;
+
+      let result: unknown;
+      if (event.method === 'item/commandExecution/requestApproval' || event.method === 'item/fileChange/requestApproval') {
+        const detail = event.params?.reason ?? event.params?.command ?? event.params?.cwd ?? 'Codex requested permission to change the selected project.';
+        const accepted = window.confirm(`Codex permission request\n\n${String(detail).slice(0, 2000)}`);
+        result = { decision: accepted ? 'accept' : 'decline' };
+      } else if (event.method === 'item/permissions/requestApproval') {
+        result = { permissions: {}, scope: 'turn' };
+      } else if (event.method === 'mcpServer/elicitation/request') {
+        result = { action: 'decline', content: null };
+      } else if (event.method === 'tool/requestUserInput') {
+        result = { answers: {} };
+      } else {
+        result = { decision: 'decline' };
+      }
+      await window.heis.codex.respondToServerRequest(event.requestId, result);
     });
   }, []);
 
@@ -587,55 +620,61 @@ export default function StandaloneShell({ locale = 'en' }) {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    setHasMounted(true);
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setApiKey(stored);
-      fetchBalance(stored);
-      // Sync cookie immediately on mount to establish identity for background requests
-      document.cookie = `muapi_key=${stored}; path=/; max-age=31536000; SameSite=Lax`;
+  const refreshAccess = useCallback(async () => {
+    if (!window.heis) {
+      setApiKey(null);
+      setAccessStage('desktop-required');
+      setHasMounted(true);
+      return;
     }
+    const result = await window.heis.entitlements.get();
+    const entitlement = result.ok ? result.value : null;
+    if (!entitlement) {
+      setApiKey(null);
+      setAccessStage('sign-in');
+    } else if (entitlement.canUseManagedGeneration && localStorage.getItem('heis_generation_mode') !== 'byok') {
+      setApiKey('heis-managed');
+      setAccessStage('ready');
+      void fetchBalance('heis-managed');
+    } else if (entitlement.canUseByokGeneration) {
+      const secret = await window.heis.secrets.has('runwareApiKey');
+      if (secret.ok && secret.value) {
+        setApiKey('heis-byok');
+        setAccessStage('ready');
+      } else {
+        setApiKey(null);
+        setAccessStage('byok');
+      }
+    } else {
+      setApiKey(null);
+      setAccessStage('upgrade');
+    }
+    setHasMounted(true);
   }, [fetchBalance]);
 
-  const handleKeySave = useCallback((key) => {
-    localStorage.setItem(STORAGE_KEY, key);
-    setApiKey(key);
-    fetchBalance(key);
-    document.cookie = `muapi_key=${key}; path=/; max-age=31536000; SameSite=Lax`;
-  }, [fetchBalance]);
+  useEffect(() => {
+    void refreshAccess();
+    if (!window.heis?.auth?.onEvent) return undefined;
+    return window.heis.auth.onEvent((event) => {
+      if (event?.type === 'entitlement-refreshed' || event?.type === 'signed-out') void refreshAccess();
+    });
+  }, [refreshAccess]);
 
-  const handleKeyChange = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+  const handleKeySave = useCallback(async (key) => {
+    if (!window.heis) throw new Error('Open the Heis desktop app to store a provider key.');
+    const result = await window.heis.secrets.set('runwareApiKey', key);
+    if (!result.ok) throw new Error(result.error.message);
+    localStorage.setItem('heis_generation_mode', 'byok');
+    await refreshAccess();
+  }, [refreshAccess]);
+
+  const handleKeyChange = useCallback(async () => {
+    if (window.heis) await window.heis.secrets.delete('runwareApiKey');
+    localStorage.setItem('heis_generation_mode', 'byok');
     setApiKey(null);
     setBalance(null);
-    document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    setAccessStage('byok');
   }, []);
-
-  // Inject API key into all outgoing Axios requests (prop-based approach)
-  // We use an interceptor to be selective and NOT send the key to external domains like S3
-  useEffect(() => {
-    // Safety: Clear any global defaults that might have been set previously
-    delete axios.defaults.headers.common['x-api-key'];
-
-    if (!apiKey) return;
-
-    const interceptorId = axios.interceptors.request.use((config) => {
-      // Check if URL is local/proxied
-      const isRelative = config.url.startsWith('/') || !config.url.startsWith('http');
-      const isInternalProxy = config.url.includes('/api/app') || config.url.includes('/api/workflow') || config.url.includes('/api/agents') || config.url.includes('/api/api') || config.url.includes('/api/v1');
-
-      if (isRelative || isInternalProxy) {
-        config.headers['x-api-key'] = apiKey;
-      }
-      
-      return config;
-    });
-
-    return () => {
-      axios.interceptors.request.eject(interceptorId);
-    };
-  }, [apiKey]);
 
   // Poll for balance every 30 seconds if key is present
   useEffect(() => {
@@ -689,7 +728,18 @@ export default function StandaloneShell({ locale = 'en' }) {
   );
 
   if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} locale={locale} />;
+    return <HeisAccessModal
+      stage={accessStage}
+      onGoogle={async () => {
+        const result = await window.heis?.auth.startGoogle();
+        if (result && !result.ok) throw new Error(result.error.message);
+      }}
+      onMagicLink={async (email) => {
+        const result = await window.heis?.auth.sendMagicLink(email);
+        if (result && !result.ok) throw new Error(result.error.message);
+      }}
+      onSaveRunwareKey={handleKeySave}
+    />;
   }
 
   return (
@@ -988,79 +1038,34 @@ export default function StandaloneShell({ locale = 'en' }) {
 
         {/* Studio Content */}
         <div className="flex-1 min-h-0 h-full relative overflow-hidden bg-[#030303]">
+        {!COMMERCIAL_READY_TABS.has(activeTab) ? (
+          <ProviderMigrationNotice tabId={activeTab} label={tabLabel(activeTab)} />
+        ) : (
+          <>
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
-          <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
-        </div>
-        <div className={activeTab === 'layers' ? "h-full w-full" : "hidden"}>
-          <LayersStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('layers')} onGenerationEnd={makeGenerationEndCallback('layers')} onGenerationComplete={makeSuccessCallback('layers')} onGenerationError={makeErrorCallback('layers')} />
+          {activeTab === 'image' && <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />}
         </div>
         <div className={activeTab === 'video' ? "h-full w-full" : "hidden"}>
-          <VideoStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('video')} onGenerationEnd={makeGenerationEndCallback('video')} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />
-        </div>
-        <div className={activeTab === 'clipping' ? "h-full w-full" : "hidden"}>
-          <ClippingStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('clipping')} onGenerationEnd={makeGenerationEndCallback('clipping')} onGenerationComplete={makeSuccessCallback('clipping')} onGenerationError={makeErrorCallback('clipping')} />
-        </div>
-        <div className={activeTab === 'motion-control' ? "h-full w-full" : "hidden"}>
-          <MotionControlStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('motion-control')} onGenerationEnd={makeGenerationEndCallback('motion-control')} onGenerationComplete={makeSuccessCallback('motion-control')} onGenerationError={makeErrorCallback('motion-control')} />
-        </div>
-        <div className={activeTab === 'vibe-motion' ? "h-full w-full" : "hidden"}>
-          <VibeMotionStudio apiKey={apiKey} locale={locale} onGenerationStart={makeGenerationStartCallback('vibe-motion')} onGenerationEnd={makeGenerationEndCallback('vibe-motion')} onGenerationComplete={makeSuccessCallback('vibe-motion')} onGenerationError={makeErrorCallback('vibe-motion')} />
-        </div>
-        <div className={activeTab === 'lipsync' ? "h-full w-full" : "hidden"}>
-          <LipSyncStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('lipsync')} onGenerationEnd={makeGenerationEndCallback('lipsync')} onGenerationComplete={makeSuccessCallback('lipsync')} onGenerationError={makeErrorCallback('lipsync')} />
-        </div>
-        <div className={activeTab === 'body-swap' ? "h-full w-full" : "hidden"}>
-          <RecastStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('body-swap')} onGenerationEnd={makeGenerationEndCallback('body-swap')} onGenerationComplete={makeSuccessCallback('body-swap')} onGenerationError={makeErrorCallback('body-swap')} />
+          {activeTab === 'video' && <VideoStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('video')} onGenerationEnd={makeGenerationEndCallback('video')} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />}
         </div>
         <div className={activeTab === 'cinema' ? "h-full w-full" : "hidden"}>
-          <CinemaStudio apiKey={apiKey} locale={locale} onGenerationStart={makeGenerationStartCallback('cinema')} onGenerationEnd={makeGenerationEndCallback('cinema')} onGenerationComplete={makeSuccessCallback('cinema')} onGenerationError={makeErrorCallback('cinema')} />
-        </div>
-        <div className={activeTab === 'audio' ? "h-full w-full" : "hidden"}>
-          <AudioStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('audio')} onGenerationEnd={makeGenerationEndCallback('audio')} onGenerationComplete={makeSuccessCallback('audio')} onGenerationError={makeErrorCallback('audio')} />
-        </div>
-        <div className={activeTab === 'marketing' ? "h-full w-full" : "hidden"}>
-          <MarketingStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('marketing')} onGenerationEnd={makeGenerationEndCallback('marketing')} onGenerationComplete={makeSuccessCallback('marketing')} onGenerationError={makeErrorCallback('marketing')} />
-        </div>
-        <div className={activeTab === 'workflows' ? "h-full w-full" : "hidden"}>
-          <WorkflowStudio
-            apiKey={apiKey}
-            isHeaderVisible={isHeaderVisible}
-            onToggleHeader={setIsHeaderVisible}
-            onGenerationStart={makeGenerationStartCallback('workflows')}
-            onGenerationEnd={makeGenerationEndCallback('workflows')}
-            onGenerationComplete={makeSuccessCallback('workflows')}
-            onGenerationError={makeErrorCallback('workflows')}
-          />
+          {activeTab === 'cinema' && <CinemaStudio apiKey={apiKey} locale={locale} onGenerationStart={makeGenerationStartCallback('cinema')} onGenerationEnd={makeGenerationEndCallback('cinema')} onGenerationComplete={makeSuccessCallback('cinema')} onGenerationError={makeErrorCallback('cinema')} />}
         </div>
         <div className={activeTab === 'agents' ? "h-full w-full" : "hidden"}>
-          <AgentStudio apiKey={apiKey} locale={locale} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />
-        </div>
-        <div className={activeTab === 'design-agent' ? "h-full w-full" : "hidden"}>
-          {activeTab === 'design-agent' && (
-            <DesignAgentStudio
-              apiKey={apiKey}
-              isHeaderVisible={isHeaderVisible}
-              onToggleHeader={setIsHeaderVisible}
-              onGenerationStart={makeGenerationStartCallback('design-agent')}
-              onGenerationEnd={makeGenerationEndCallback('design-agent')}
-              onGenerationComplete={makeSuccessCallback('design-agent')}
-              onGenerationError={makeErrorCallback('design-agent')}
-            />
-          )}
-        </div>
-        <div className={activeTab === 'apps' ? "h-full w-full" : "hidden"}>
-          <AppsStudio apiKey={apiKey} locale={locale} />
+          {activeTab === 'agents' && <CodexStudio />}
         </div>
         <div className={activeTab === 'ai-influencer' ? "h-full w-full" : "hidden"}>
-          <AiInfluencerStudio
+          {activeTab === 'ai-influencer' && <AiInfluencerStudio
             apiKey={apiKey}
             locale={locale}
             onGenerationStart={makeGenerationStartCallback('ai-influencer')}
             onGenerationEnd={makeGenerationEndCallback('ai-influencer')}
             onGenerationComplete={makeSuccessCallback('ai-influencer')}
             onGenerationError={makeErrorCallback('ai-influencer')}
-          />
+          />}
         </div>
+          </>
+        )}
       </div>
     </div>
 

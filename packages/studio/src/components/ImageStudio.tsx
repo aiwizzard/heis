@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { generateImage, generateI2I, uploadFile } from "../muapi.js";
+import { generateImage, generateI2I, uploadFile } from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import DrawModal from "./DrawModal.js";

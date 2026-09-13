@@ -64,6 +64,11 @@ create table public.media_assets (
   source_url text, mime_type text, size_bytes bigint, width integer, height integer, duration_seconds numeric,
   delete_after timestamptz not null default (now() + interval '30 days'), created_at timestamptz not null default now()
 );
+create table public.upload_assets (
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id) on delete cascade,
+  object_key text not null unique, mime_type text not null, size_bytes bigint not null check (size_bytes > 0),
+  delete_after timestamptz not null default (now() + interval '30 days'), created_at timestamptz not null default now()
+);
 create table public.processed_webhooks (
   provider text not null, event_id text not null, status text not null default 'processing' check (status in ('processing', 'processed', 'failed')),
   attempts integer not null default 1, last_error text, received_at timestamptz not null default now(), processed_at timestamptz,
@@ -94,6 +99,7 @@ $$;
 
 create index generation_jobs_user_created_idx on public.generation_jobs(user_id, created_at desc);
 create index media_assets_delete_after_idx on public.media_assets(delete_after);
+create index upload_assets_delete_after_idx on public.upload_assets(delete_after);
 create unique index media_assets_job_source_idx on public.media_assets(job_id, source_url) where source_url is not null;
 create index active_devices_idx on public.device_activations(user_id) where deactivated_at is null;
 
@@ -240,6 +246,7 @@ alter table public.credit_ledger enable row level security;
 alter table public.generation_jobs enable row level security;
 alter table public.generation_credit_allocations enable row level security;
 alter table public.media_assets enable row level security;
+alter table public.upload_assets enable row level security;
 
 create policy profiles_read_own on public.profiles for select using (id = auth.uid());
 create policy subscriptions_read_own on public.subscriptions for select using (user_id = auth.uid());
@@ -253,6 +260,7 @@ create policy jobs_insert_own on public.generation_jobs for insert with check (u
 create policy allocations_read_own on public.generation_credit_allocations for select using
   (exists(select 1 from public.generation_jobs j where j.id = job_id and j.user_id = auth.uid()));
 create policy assets_read_own on public.media_assets for select using (user_id = auth.uid());
+create policy uploads_read_own on public.upload_assets for select using (user_id = auth.uid());
 
 revoke update, delete on public.credit_ledger from authenticated, anon;
 revoke insert, update, delete on public.credit_wallets from authenticated, anon;

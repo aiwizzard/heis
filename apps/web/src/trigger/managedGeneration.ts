@@ -25,6 +25,14 @@ export const purgeExpiredManagedMedia = schedules.task({
       if (removed.error) throw removed.error;
       deleted += 1;
     }
+    const uploads = await admin.from("upload_assets").select("id, object_key").lte("delete_after", new Date().toISOString()).limit(500);
+    if (uploads.error) throw uploads.error;
+    for (const asset of uploads.data ?? []) {
+      await deleteManagedAsset(asset.object_key);
+      const removed = await admin.from("upload_assets").delete().eq("id", asset.id);
+      if (removed.error) throw removed.error;
+      deleted += 1;
+    }
     return { deleted };
   },
 });

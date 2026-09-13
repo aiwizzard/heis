@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('heis', {
         startThread: (input) => invoke(IPC_CHANNELS.codexStartThread, input),
         startTurn: (threadId, input) => invoke(IPC_CHANNELS.codexStartTurn, threadId, input),
         interrupt: (threadId, turnId) => invoke(IPC_CHANNELS.codexInterrupt, threadId, turnId),
+        respondToServerRequest: (id, result) => invoke(IPC_CHANNELS.codexRespondToServerRequest, id, result),
         resolveApproval: (id, decision) => invoke(IPC_CHANNELS.codexResolveApproval, id, decision),
         stop: () => invoke(IPC_CHANNELS.codexStop),
         onEvent: (callback) => {
@@ -47,6 +48,8 @@ contextBridge.exposeInMainWorld('heis', {
     },
     generation: {
         listCapabilities: (mode) => invoke(IPC_CHANNELS.generationListCapabilities, mode),
+        upload: (mode, file) => invoke(IPC_CHANNELS.generationUpload, mode, file),
+        getBalance: () => invoke(IPC_CHANNELS.generationGetBalance),
         submit: (request) => invoke(IPC_CHANNELS.generationSubmit, request),
         getJob: (mode, jobId) => invoke(IPC_CHANNELS.generationGetJob, mode, jobId),
         cancel: (mode, jobId) => invoke(IPC_CHANNELS.generationCancel, mode, jobId),
