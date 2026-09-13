@@ -16,5 +16,4 @@ export { default as McpCliStudio } from './components/McpCliStudio';
 export { default as AiInfluencerStudio } from './components/AiInfluencerStudio';
 export { default as LayersStudio } from './components/LayersStudio';
 export { default as MotionControlStudio } from './components/MotionControlStudio';
-export * from './muapi';
 export { getUserBalance } from './heisProvider';
