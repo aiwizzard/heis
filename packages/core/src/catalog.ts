@@ -1,0 +1,68 @@
+import type { ModelCapability } from "./types";
+
+export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
+  {
+    id: "heis-image-standard",
+    provider: "runware",
+    providerModelId: "runware:101@1",
+    displayName: "Heis Image Standard",
+    operation: "text-to-image",
+    outputKind: "image",
+    maximumEstimatedCostUsd: 0.15,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "width", type: "number", default: 1024, minimum: 256, maximum: 2048 },
+      { name: "height", type: "number", default: 1024, minimum: 256, maximum: 2048 },
+    ],
+  },
+  {
+    id: "heis-image-edit-standard",
+    provider: "runware",
+    providerModelId: "runware:101@1",
+    displayName: "Heis Image Edit Standard",
+    operation: "image-to-image",
+    outputKind: "image",
+    maximumEstimatedCostUsd: 0.18,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "seedImage", type: "media", required: true },
+      { name: "strength", type: "number", default: 0.8, minimum: 0, maximum: 1 },
+    ],
+  },
+  {
+    id: "heis-video-standard",
+    provider: "runware",
+    providerModelId: "runway:1@1",
+    displayName: "Heis Video Standard",
+    operation: "image-to-video",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 1.5,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "media", required: true },
+      { name: "duration", type: "number", default: 5, minimum: 5, maximum: 10 },
+    ],
+  },
+  {
+    id: "heis-video-transform",
+    provider: "runware",
+    providerModelId: "luma:ray@3.2",
+    displayName: "Heis Video Transform",
+    operation: "video-to-video",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 2,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "media", required: true },
+      { name: "resolution", type: "enum", default: "720p", options: ["720p"] },
+    ],
+  },
+];
+
+export function getCapability(id: string): ModelCapability | undefined {
+  return STARTER_RUNWARE_CATALOG.find((capability) => capability.id === id);
+}

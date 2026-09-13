@@ -28,6 +28,9 @@
       "@/*": [
         "./*"
       ],
+      "@heis/core": [
+        "./packages/core/src/index.ts"
+      ],
       "ai-agent": [
         "./packages/heis-agents/packages/agents/src/index.ts"
       ],
@@ -46,6 +49,7 @@
     "app/**/*.tsx",
     "components/**/*.tsx",
     "lib/**/*.ts",
+    "types/**/*.d.ts",
     "src/**/*.ts",
     "proxy.ts",
     "packages/studio/src/**/*.ts",

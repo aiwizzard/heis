@@ -1,9 +1,13 @@
-# heis — Unrestricted Open-Source Alternative to AI Video Platforms
+# Heis legacy development README
+
+> This README describes the earlier MIT-licensed MuAPI implementation and is retained for historical setup context. It does not describe the commercial Heis release now under development. Use [`docs/HEIS_PRODUCT_AND_IMPLEMENTATION_PLAN.md`](docs/HEIS_PRODUCT_AND_IMPLEMENTATION_PLAN.md) as the current product and architecture reference. Provider content policies apply to all cloud generation.
+
+# Legacy Heis AI creative studio
 
 [![Powered by MuAPI](https://img.shields.io/badge/Powered%20by-MuAPI-6366f1?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNHYtNGgtMnYtMmg0djZoLTJ6bTAtOFY2aDJ2MmgtMnoiLz48L3N2Zz4=)](https://muapi.ai?utm_source=github&utm_medium=badge&utm_campaign=heis)
 
 
-> **The free, open-source alternative to AI Video Platforms.** Generate AI images and videos using 400+ state-of-the-art models across 14 studios — no content filters, no closed ecosystem, no subscription fees.
+> **Archived release description.** Model availability and provider policies vary. This section applies only to the earlier MIT release and is not a promise made by the commercial Heis product.
 
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
@@ -82,24 +86,7 @@ All releases: [github.com/aiwizzard/heis/releases](https://github.com/aiwizzard/
 
 ### macOS Installation Guide
 
-Because the app is not notarized by Apple, macOS Gatekeeper will block it on first launch. Follow these steps:
-
-**Step 1** — Mount the DMG and drag the app to `/Applications`
-
-**Step 2** — Open Terminal and run:
-```bash
-xattr -cr "/Applications/heis.app"
-```
-
-**Step 3** — Right-click the app in `/Applications` → click **Open** → click **Open** again on the dialog
-
-> You only need to do this once. After that, the app opens normally.
-
-**Alternative (no Terminal):**
-1. Try to open the app — macOS will block it
-2. Go to **System Settings → Privacy & Security**
-3. Scroll down to find _"heis was blocked"_
-4. Click **Open Anyway** → **Open**
+Commercial releases must be Developer ID signed and notarized. Mount the DMG, drag Heis into `/Applications`, and open it normally. Do not distribute builds that require Gatekeeper bypass commands.
 
 ### Windows Installation — SmartScreen warning fix
 
@@ -154,10 +141,10 @@ echo 'kernel.apparmor_restrict_unprivileged_userns=0' | sudo tee /etc/sysctl.d/9
 
 ---
 
-heis is a free, open-source AI image, video, cinema, and lip sync studio that brings creative workflows to everyone. No content filters, no prompt rejections, no guardrails — just full creative freedom. Powered by [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=heis), it supports text-to-image, image-to-image, text-to-video, image-to-video, and audio-driven lip sync generation across models like Flux, Nano Banana, Midjourney, Kling, Sora, Veo, Seedream, Infinite Talk, LTX Lipsync, Wan 2.2, and more — all from a sleek, modern interface you can self-host and customize.
+The earlier MIT release supplied a broad image, video, cinema, and lip sync studio through MuAPI. The commercial Heis release is local-first and uses a curated provider catalog. Available models and outputs remain subject to provider policies.
 
 **Why heis instead of other AI Video Platforms?**
-- **No filters** — no content filters, no nanny guardrails, no prompt rejections
+- **Provider-compatible generation**: available operations follow each provider's model capabilities and policies
 - **Free & open-source** — no subscription, no vendor lock-in
 - **Self-hosted** — your data stays on your machine, full creative control
 - **200+ models** — text-to-image, image-to-image, text-to-video, image-to-video, lip sync
@@ -297,7 +284,7 @@ A healthy run on Apple Silicon prints `total params memory size = 1969.78MB (VRA
 - **Smart Controls** — Dynamic aspect ratio, resolution/quality, and duration pickers that adapt to each model's capabilities (including t2i models with resolution or quality options)
 - **Generation History** — Browse, revisit, and download all past generations (persisted in browser storage)
 - **Image & Video Download** — One-click download of generated outputs in full resolution
-- **API Key Management** — Secure API key storage in browser localStorage (never sent to any server except Muapi)
+- **Legacy API Key Management**: the earlier release stored a MuAPI key in browser storage. Commercial Heis moves customer keys into Electron encrypted storage.
 - **Responsive Design** — Works seamlessly on desktop and mobile with dark glassmorphism UI
 
 ### 🖼️ Image Studio — Dual Mode

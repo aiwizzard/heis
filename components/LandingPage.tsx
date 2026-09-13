@@ -62,7 +62,7 @@ export default function LandingPage() {
           <div className="landing-nav-links">
             <a href="#expertise">Why heis</a>
             <a href="#works">Studios</a>
-            <a href="#perspectives">Open source</a>
+            <a href="#perspectives">Local-first</a>
           </div>
           <Link href="/studio" className="landing-pill landing-pill-light">
             Launch studio <ArrowIcon />
@@ -81,10 +81,10 @@ export default function LandingPage() {
 
           <h1 id="landing-title" className="landing-reveal is-visible">
             heis.<br />
-            <em>Create without limits.</em>
+            <em>Create on your terms.</em>
           </h1>
           <p className="landing-hero-copy landing-reveal is-visible">
-            Generate images, videos, audio, cinematic sequences, and more with 400+ state-of-the-art AI models in one open creative workspace.
+            Generate images, videos, audio, cinematic sequences, and more with selected cloud and local AI models in one creative workspace.
           </p>
           <div className="landing-hero-actions landing-reveal is-visible">
             <Link href="/studio" className="landing-pill landing-pill-orange">
@@ -101,7 +101,7 @@ export default function LandingPage() {
         <div className="landing-container">
           <p className="landing-section-label landing-reveal"><span>01</span> Why heis</p>
           <div className="landing-mission-grid">
-            <h2 className="landing-reveal">One open studio. Every way to bring an idea to life.</h2>
+            <h2 className="landing-reveal">One focused studio. Every way to bring an idea to life.</h2>
             <div className="landing-mission-copy landing-reveal">
               <p>Move from a prompt to a finished image, video, soundtrack, or lip-synced performance without jumping between disconnected tools.</p>
               <p>Run locally, connect cloud models, build reusable workflows, and keep control of the creative stack.</p>
@@ -150,8 +150,8 @@ export default function LandingPage() {
 
       <section id="perspectives" className="landing-perspective">
         <div className="landing-container landing-perspective-inner">
-          <p className="landing-section-label landing-reveal"><span>03</span> Open by design</p>
-          <blockquote className="landing-reveal">“Your ideas, your models, your machine. A creative platform should expand what you can make—not decide what you are allowed to imagine.”</blockquote>
+          <p className="landing-section-label landing-reveal"><span>03</span> Local-first by design</p>
+          <blockquote className="landing-reveal">“Your ideas, your models, your machine. A creative platform should help you make more while keeping your projects close.”</blockquote>
           <Link href="/studio" className="landing-circle-cta landing-reveal" aria-label="Launch heis studio">
             <span>Launch<br />heis</span><ArrowIcon />
           </Link>
@@ -169,7 +169,7 @@ export default function LandingPage() {
           </div>
           <div className="landing-wordmark">HEIS.</div>
           <div className="landing-footer-bottom">
-            <span>© {new Date().getFullYear()} heis · MIT licensed</span>
+            <span>© {new Date().getFullYear()} Heis. All rights reserved.</span>
             <div><a href="https://github.com/Anil-matcha/heis" target="_blank" rel="noreferrer">GitHub</a><a href="https://discord.gg/tANKJkHck" target="_blank" rel="noreferrer">Discord</a><a href="https://x.com/matchaman11" target="_blank" rel="noreferrer">X / Twitter</a></div>
             <a href="#landing-title">Back to top ↑</a>
           </div>

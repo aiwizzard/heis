@@ -1,0 +1,33 @@
+{
+  "name": "@heis/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "typecheck": "tsc --noEmit",
+    "trigger:dev": "trigger dev",
+    "trigger:deploy": "trigger deploy"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.883.0",
+    "@aws-sdk/s3-request-presigner": "^3.883.0",
+    "@heis/core": "*",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@trigger.dev/sdk": "^4.5.16",
+    "next": "^16.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^18.5.0"
+  },
+  "devDependencies": {
+    "@trigger.dev/build": "^4.5.16",
+    "@types/node": "^22.20.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "trigger.dev": "^4.5.16",
+    "typescript": "^5.9.3"
+  }
+}

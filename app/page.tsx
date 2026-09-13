@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import LandingPage from '@/components/LandingPage';
 
 export const metadata: Metadata = {
-  title: 'heis — Open-Source AI Creative Studio',
-  description: 'Create AI images, videos, audio, cinema, lip sync, workflows, and agents with 400+ models across 14 studios.',
+  title: 'Heis | AI Creative Studio for macOS',
+  description: 'Create AI images, videos, audio, cinema, lip sync, workflows, and agent-assisted projects from your Mac.',
 };
 
 export default function Home() {

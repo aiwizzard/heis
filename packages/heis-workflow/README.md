@@ -13,7 +13,7 @@
 
 ## Related Projects
 
-- [Open-Generative-AI](https://github.com/Anil-matcha/Open-Generative-AI) — Free self-hosted AI media studio — model backend for your pipelines
+- [Heis](https://github.com/aiwizzard/heis): AI media studio and model backend for your pipelines
 - [Heis Agent](https://github.com/Anil-matcha/Heis Agent) — Autonomous AI design agent to embed in your workflows
 
 ## Sample Workflow UI

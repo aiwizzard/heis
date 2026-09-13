@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { canUseCachedEntitlement, creditsForProviderCost, planCreditDebits, resolveAccess } from "../packages/core/src/index";
+
+test("provider costs are converted to credits with a 2x markup", () => {
+  assert.equal(creditsForProviderCost(0), 0);
+  assert.equal(creditsForProviderCost(0.004), 1);
+  assert.equal(creditsForProviderCost(0.0251), 6);
+  assert.equal(creditsForProviderCost(1), 200);
+});
+
+test("credit debits consume trial, monthly, then purchased balances", () => {
+  assert.deepEqual(planCreditDebits([
+    { kind: "purchased", available: 100 },
+    { kind: "monthly", available: 20 },
+    { kind: "trial", available: 5 },
+  ], 30), [
+    { kind: "trial", amount: 5 },
+    { kind: "monthly", amount: 20 },
+    { kind: "purchased", amount: 5 },
+  ]);
+});
+
+test("expired credit wallets are not consumed", () => {
+  assert.throws(() => planCreditDebits([
+    { kind: "trial", available: 100, expiresAt: "2025-01-01T00:00:00.000Z" },
+  ], 1, new Date("2026-01-01T00:00:00.000Z")), /INSUFFICIENT_CREDITS/);
+});
+
+test("cancelled creators retain read and export access", () => {
+  assert.deepEqual(resolveAccess({ hasLifetime: false, creatorActive: false, trialActive: false }), {
+    mode: "read-only", deviceLimit: 3, canEdit: false, canExport: true,
+    canUseManagedGeneration: false, canUseByokGeneration: false,
+  });
+});
+
+test("lifetime owners retain BYOK access", () => {
+  const access = resolveAccess({ hasLifetime: true, creatorActive: false, trialActive: false });
+  assert.equal(access.canEdit, true);
+  assert.equal(access.canUseByokGeneration, true);
+  assert.equal(access.canUseManagedGeneration, false);
+});
+
+test("cached entitlement requires a signature and unexpired validity", () => {
+  const base = {
+    accountId: "user-1", installationId: "install-1", mode: "lifetime" as const,
+    checkedAt: "2026-01-01T00:00:00.000Z", validUntil: "2026-02-01T00:00:00.000Z",
+    deviceLimit: 3, canEdit: true, canExport: true, canUseManagedGeneration: false,
+    canUseByokGeneration: true, signature: "signature",
+  };
+  assert.equal(canUseCachedEntitlement(base, new Date("2026-01-15T00:00:00.000Z")), true);
+  assert.equal(canUseCachedEntitlement(base, new Date("2026-02-02T00:00:00.000Z")), false);
+  assert.equal(canUseCachedEntitlement({ ...base, signature: "" }, new Date("2026-01-15T00:00:00.000Z")), false);
+});

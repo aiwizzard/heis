@@ -1,4 +1,57 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { IPC_CHANNELS } = require('@heis/core');
+
+function invoke(channel, ...args) {
+    return ipcRenderer.invoke(channel, ...args);
+}
+
+contextBridge.exposeInMainWorld('heis', {
+    auth: {
+        getSession: () => invoke(IPC_CHANNELS.authGetSession),
+        clearSession: () => invoke(IPC_CHANNELS.authClearSession),
+        startGoogle: () => invoke(IPC_CHANNELS.authStartOAuth, 'google'),
+        sendMagicLink: (email) => invoke(IPC_CHANNELS.authSendMagicLink, email),
+        onEvent: (callback) => {
+            const listener = (_, event) => callback(event);
+            ipcRenderer.on(IPC_CHANNELS.authEvent, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.authEvent, listener);
+        },
+    },
+    entitlements: {
+        get: () => invoke(IPC_CHANNELS.entitlementGet),
+        set: (snapshot) => invoke(IPC_CHANNELS.entitlementSet, snapshot),
+        refresh: () => invoke(IPC_CHANNELS.entitlementRefresh),
+    },
+    secrets: {
+        has: (name) => invoke(IPC_CHANNELS.secretHas, name),
+        set: (name, value) => invoke(IPC_CHANNELS.secretSet, name, value),
+        delete: (name) => invoke(IPC_CHANNELS.secretDelete, name),
+    },
+    codex: {
+        status: () => invoke(IPC_CHANNELS.codexStatus),
+        startThread: (input) => invoke(IPC_CHANNELS.codexStartThread, input),
+        startTurn: (threadId, input) => invoke(IPC_CHANNELS.codexStartTurn, threadId, input),
+        interrupt: (threadId, turnId) => invoke(IPC_CHANNELS.codexInterrupt, threadId, turnId),
+        resolveApproval: (id, decision) => invoke(IPC_CHANNELS.codexResolveApproval, id, decision),
+        stop: () => invoke(IPC_CHANNELS.codexStop),
+        onEvent: (callback) => {
+            const listener = (_, event) => callback(event);
+            ipcRenderer.on(IPC_CHANNELS.codexEvent, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.codexEvent, listener);
+        },
+        onApprovalRequired: (callback) => {
+            const listener = (_, request) => callback(request);
+            ipcRenderer.on(IPC_CHANNELS.codexApprovalRequired, listener);
+            return () => ipcRenderer.removeListener(IPC_CHANNELS.codexApprovalRequired, listener);
+        },
+    },
+    generation: {
+        listCapabilities: (mode) => invoke(IPC_CHANNELS.generationListCapabilities, mode),
+        submit: (request) => invoke(IPC_CHANNELS.generationSubmit, request),
+        getJob: (mode, jobId) => invoke(IPC_CHANNELS.generationGetJob, mode, jobId),
+        cancel: (mode, jobId) => invoke(IPC_CHANNELS.generationCancel, mode, jobId),
+    },
+});
 
 contextBridge.exposeInMainWorld('localAI', {
     isElectron: true,

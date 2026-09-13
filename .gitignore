@@ -29,6 +29,7 @@ release/
 dist-electron/
 dist-tests/
 *.tsbuildinfo
+.trigger/
 
 # Next.js
 .next/

@@ -2,6 +2,9 @@ const { app, BrowserWindow, shell, dialog } = require('electron');
 const path = require('path');
 const { register: registerLocalInference } = require('./lib/localInference');
 const { register: registerWan2gp } = require('./lib/wan2gpProvider');
+const { register: registerCommercialServices } = require('./lib/commercialServices');
+const { NextServer } = require('./lib/nextServer');
+const { UpdaterService } = require('./lib/updater');
 
 process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
@@ -22,8 +25,12 @@ if (process.platform === 'linux') {
 }
 
 let mainWindow;
+let commercialServices;
+const pendingAuthCallbacks = [];
+const desktopRenderer = new NextServer();
+const updater = new UpdaterService();
 
-function createWindow() {
+function createWindow(rendererUrl) {
     const isMac = process.platform === 'darwin';
 
     mainWindow = new BrowserWindow({
@@ -43,9 +50,8 @@ function createWindow() {
         title: 'heis',
     });
 
-    const indexPath = path.join(__dirname, '../dist/index.html');
-    mainWindow.loadFile(indexPath).catch((err) => {
-        console.error('Failed to load index.html:', err);
+    mainWindow.loadURL(`${rendererUrl}/studio`).catch((err) => {
+        console.error('Failed to load the Next.js studio:', err);
         mainWindow.show();
     });
 
@@ -67,12 +73,19 @@ function createWindow() {
     });
 }
 
-app.whenReady().then(() => {
-    createWindow();
+app.whenReady().then(async () => {
+    app.setAsDefaultProtocolClient('heis');
+    const rendererUrl = await desktopRenderer.start();
+    createWindow(rendererUrl);
 
     try {
         registerLocalInference();
         registerWan2gp();
+        commercialServices = registerCommercialServices();
+        updater.start();
+        for (const callbackUrl of pendingAuthCallbacks.splice(0)) {
+            void commercialServices.handleAuthCallback(callbackUrl).catch(reportAuthCallbackError);
+        }
     } catch (err) {
         console.error('Failed to register local-ai/wan2gp handlers:', err);
         dialog.showErrorBox(
@@ -83,13 +96,32 @@ app.whenReady().then(() => {
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+            createWindow(rendererUrl);
         }
     });
 });
+
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (!commercialServices) {
+        pendingAuthCallbacks.push(url);
+        return;
+    }
+    void commercialServices.handleAuthCallback(url).catch(reportAuthCallbackError);
+});
+
+function reportAuthCallbackError(error) {
+    console.error('Failed to complete Heis sign-in:', error);
+    dialog.showErrorBox('Heis sign-in failed', error?.message || String(error));
+}
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
+});
+
+app.on('before-quit', () => {
+    commercialServices?.dispose();
+    desktopRenderer.stop();
 });

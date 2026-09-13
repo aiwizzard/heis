@@ -402,6 +402,19 @@ export default function StandaloneShell({ locale = 'en' }) {
   const [generationCounts, setGenerationCounts] = useState({});
 
   useEffect(() => {
+    if (!window.heis?.codex?.onApprovalRequired) return undefined;
+    return window.heis.codex.onApprovalRequired(async ({ id, tool, args }) => {
+      const summary = tool === 'heis_generate'
+        ? `Codex wants to generate ${args?.operation || 'media'} with ${args?.modelId || 'the selected model'}. This may consume credits or provider balance.`
+        : `Codex wants to run ${tool}. This may change or export project data.`;
+      const approved = window.confirm(summary);
+      const session = await window.heis.auth.getSession();
+      const mode = session.ok && session.value ? 'managed' : 'byok';
+      await window.heis.codex.resolveApproval(id, { approved, mode });
+    });
+  }, []);
+
+  useEffect(() => {
     setNotifications(loadStoredNotifications());
     setNotificationsHydrated(true);
   }, []);

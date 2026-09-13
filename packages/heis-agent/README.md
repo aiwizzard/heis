@@ -13,7 +13,7 @@ https://github.com/user-attachments/assets/fee3857c-887d-4c27-b3dc-a1fe9ad8f438
 
 ### Related projects
 
-> **Open-source Freepik, Krea, Openart alternative — uncensored image & video studio with 200+ models** -> https://github.com/Anil-matcha/Open-Generative-AI
+> **Heis creative studio**: https://github.com/aiwizzard/heis
 
 > **Open-source Weavy, Flora Fauna, Freepik Spaces, Krea Nodes alternative — visual workflow editor** -> https://github.com/aiwizzard/heis
 
@@ -279,7 +279,7 @@ Visit `http://localhost:3000` and enter your Muapi API key.
 | **Hosted Studio** | https://muapi.ai/assistant?utm_source=github&utm_medium=readme&utm_campaign=heis |
 | **Reddit Community** | https://reddit.com/r/muapi |
 | **Discord** | https://discord.gg/s7KW4fsqXK |
-| **Related Projects** | [Open-Generative-AI](https://github.com/Anil-matcha/Open-Generative-AI), [Heis Workflow](https://github.com/aiwizzard/heis) |
+| **Related Projects** | [Heis](https://github.com/aiwizzard/heis), [Heis Workflow](https://github.com/aiwizzard/heis) |
 
 ### License
 
