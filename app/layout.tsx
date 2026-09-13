@@ -1,11 +1,17 @@
 import './globals.css';
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const playfair = Playfair_Display({
+  variable: '--font-playfair',
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
 });
 
 export const metadata = {
@@ -22,7 +28,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang={htmlLang}>
-      <body className={inter.variable}>{children}</body>
+      <body className={`${inter.variable} ${playfair.variable}`}>{children}</body>
     </html>
   );
 }
