@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canUseCachedEntitlement, creditsForProviderCost, getCapability, planCreditDebits, resolveAccess } from "../packages/core/src/index";
+import { canUseCachedEntitlement, creditsForProviderCost, getCapability, planCreditDebits, resolveAccess, validateGenerationRequest } from "../packages/core/src/index";
 
 test("provider costs are converted to credits with a 2x markup", () => {
   assert.equal(creditsForProviderCost(0), 0);
@@ -113,4 +113,25 @@ test("image utility capabilities use verified Runware models", () => {
   assert.equal(removeBackground?.providerModelId, "runware:109@1");
   assert.equal(expand?.operation, "expand-image");
   assert.equal(expand?.providerModelId, "bfl:flux@outpainting");
+});
+
+test("generation validation enforces catalog requirements and bounds", () => {
+  const base = {
+    operation: "text-to-image" as const,
+    modelId: "heis-image-standard",
+    billing: { mode: "byok" as const, accountId: "local", idempotencyKey: "request-1" },
+  };
+  assert.equal(validateGenerationRequest({ ...base, inputs: { positivePrompt: "A lake", width: 1024, height: 1024 } }).id, "heis-image-standard");
+  assert.throws(() => validateGenerationRequest({ ...base, inputs: { width: 1024, height: 1024 } }), /MISSING_REQUIRED_PARAMETER_POSITIVEPROMPT/);
+  assert.throws(() => validateGenerationRequest({ ...base, inputs: { positivePrompt: "A lake", width: 128, height: 1024 } }), /PARAMETER_BELOW_MINIMUM_WIDTH/);
+  assert.throws(() => validateGenerationRequest({ ...base, operation: "text-to-video", inputs: { positivePrompt: "A lake", width: 1024, height: 1024 } }), /MODEL_OPERATION_MISMATCH/);
+});
+
+test("generation validation rejects invalid enum values", () => {
+  assert.throws(() => validateGenerationRequest({
+    operation: "video-to-video",
+    modelId: "heis-motion-graphics-edit",
+    inputs: { positivePrompt: "Change blue to red", inputs: { video: "https://example.com/video.mp4" }, duration: "ten", resolution: "720p", settings: { operation: "edit" } },
+    billing: { mode: "managed", accountId: "user-1", idempotencyKey: "request-2" },
+  }), /INVALID_PARAMETER_OPTION_DURATION/);
 });

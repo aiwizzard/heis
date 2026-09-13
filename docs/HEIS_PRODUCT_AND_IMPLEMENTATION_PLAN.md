@@ -215,6 +215,7 @@ Deterministic editing such as trim, combine, overlays, title cards, and export u
 - [x] Credit reservation and settlement added
 - [x] Managed Runware adapter added
 - [x] Customer-key Runware adapter added
+- [x] Shared catalog request validation enforced for managed and BYOK generation
 - [x] Secure managed upload URLs and temporary upload cleanup added
 - [ ] Curated capability catalog completed (starter image and video catalog exists)
 - [x] Codex app-server client added

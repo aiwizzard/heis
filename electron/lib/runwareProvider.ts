@@ -1,5 +1,5 @@
 const crypto = require("node:crypto");
-const { STARTER_RUNWARE_CATALOG, getCapability } = require("@heis/core");
+const { STARTER_RUNWARE_CATALOG, validateGenerationRequest } = require("@heis/core");
 
 const RUNWARE_API_URL = "https://api.runware.ai/v1";
 
@@ -55,9 +55,7 @@ class RunwareByokProvider {
   }
 
   async submit(request: any): Promise<any> {
-    const capability = getCapability(request?.modelId);
-    if (!capability || !capability.enabled) throw new Error("Unknown or disabled model capability.");
-    if (request.operation !== capability.operation) throw new Error("Model capability does not support this operation.");
+    const capability = validateGenerationRequest(request);
     const apiKey = this.secureStore.get("runwareApiKey");
     if (!apiKey) throw new Error("RUNWARE_API_KEY_REQUIRED");
 

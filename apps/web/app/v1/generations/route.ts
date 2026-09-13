@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getCapability, reserveCredits } from "@heis/core";
+import { reserveCredits, validateGenerationRequest } from "@heis/core";
 import { env } from "@/lib/env";
 import { apiError, requireIdempotencyKey } from "@/lib/http";
 import { createAdminClient, requireUser } from "@/lib/supabase";
@@ -28,10 +28,10 @@ export async function POST(request: Request) {
     if (!creatorActive && !trialActive) {
       return NextResponse.json({ error: { code: "MANAGED_ACCESS_REQUIRED", message: "Managed generation requires an active trial or Creator subscription." } }, { status: 403 });
     }
-    const capability = getCapability(body.modelId);
-    if (!capability?.enabled || capability.operation !== body.operation) {
-      return NextResponse.json({ error: { code: "INVALID_MODEL", message: "The selected capability is unavailable." } }, { status: 400 });
-    }
+    const capability = validateGenerationRequest({
+      ...body,
+      billing: { ...body.billing, accountId: user.id, idempotencyKey },
+    });
 
     const existing = await client.from("generation_jobs").select("*").eq("user_id", user.id).eq("idempotency_key", idempotencyKey).maybeSingle();
     if (existing.data) return NextResponse.json(existing.data);
