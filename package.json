@@ -16,6 +16,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:tests": "tsc -p tests/tsconfig.json",
+    "test": "npm run build:tests && node --test dist-tests/tests/*.test.js",
     "build:studio": "npm run build -w studio",
     "build:workflow": "npm run build -w workflow-builder",
     "build:agent": "npm run build -w ai-agent",
@@ -24,17 +28,17 @@
     "setup": "git submodule update --init --recursive && npm install && npm run build:packages",
     "vite:dev": "vite",
     "vite:build": "vite build",
-    "electron:dev": "npm run vite:build && electron .",
-    "electron:build": "vite build && electron-builder --mac",
-    "electron:build:win": "vite build && electron-builder --win",
-    "electron:build:linux": "vite build && electron-builder --linux",
-    "electron:build:linux:dir": "vite build && electron-builder --linux dir",
-    "electron:build:linux:arm64:dir": "vite build && electron-builder --linux dir --arm64",
+    "electron:dev": "npm run vite:build && npm run build:electron && electron .",
+    "electron:build": "vite build && npm run build:electron && electron-builder --mac",
+    "electron:build:win": "vite build && npm run build:electron && electron-builder --win",
+    "electron:build:linux": "vite build && npm run build:electron && electron-builder --linux",
+    "electron:build:linux:dir": "vite build && npm run build:electron && electron-builder --linux dir",
+    "electron:build:linux:arm64:dir": "vite build && npm run build:electron && electron-builder --linux dir --arm64",
     "stage:local-ai": "node scripts/stage-local-ai-binary.js",
     "package:linux:deb": "node scripts/package-linux-deb.js",
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
-    "electron:build:all": "vite build && electron-builder --mac --win --linux"
+    "electron:build:all": "vite build && npm run build:electron && electron-builder --mac --win --linux"
   },
   "build": {
     "appId": "ai.generative.open",
@@ -46,7 +50,7 @@
     "afterPack": "./afterPack.js",
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "dist-electron/**/*"
     ],
     "extraResources": [
       {
@@ -128,6 +132,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^20.19.39",
+    "@types/react": "^19.2.14",
     "autoprefixer": "^10.4.24",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
@@ -135,7 +141,8 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0",
+    "typescript": "^5.9.3",
     "vite": "^5.4.0"
   },
-  "main": "electron/main.js"
+  "main": "dist-electron/main.js"
 }

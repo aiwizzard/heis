@@ -6,7 +6,7 @@ import { generateImage } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.jsx";
+} from "./MobileGenerationActions.js";
 import en from "../messages/en/aiInfluencerStudio.json";
 import zh from "../messages/zh/aiInfluencerStudio.json";
 import { resolveCopy } from "../i18nUtils";

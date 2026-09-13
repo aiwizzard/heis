@@ -7,7 +7,7 @@ import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.jsx";
+} from "./MobileGenerationActions.js";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAspectRatioIcon,
@@ -25,7 +25,7 @@ import {
   PromptSegmentOption,
   PromptTextarea,
   promptControlClassName,
-} from "./prompt/PromptComposer.jsx";
+} from "./prompt/PromptComposer.js";
 import en from "../messages/en/vibeMotionStudio.json";
 import zh from "../messages/zh/vibeMotionStudio.json";
 import { resolveCopy } from "../i18nUtils";

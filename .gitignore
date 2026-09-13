@@ -26,6 +26,9 @@ dist-ssr
 # Electron build output
 release/
 .webpack/
+dist-electron/
+dist-tests/
+*.tsbuildinfo
 
 # Next.js
 .next/

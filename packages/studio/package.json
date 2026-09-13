@@ -2,15 +2,16 @@
   "name": "studio",
   "version": "1.0.0",
   "description": "heis studio components for Muapi",
-  "main": "src/index.js",
-  "module": "src/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "src",
     "dist"
   ],
   "scripts": {
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
-    "build": "npm run build:css && babel src --out-dir dist --extensions .js,.jsx"
+    "build": "npm run build:css && tsc -p tsconfig.json"
   },
   "license": "MIT",
   "dependencies": {

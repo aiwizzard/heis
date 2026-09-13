@@ -7,7 +7,7 @@ import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.jsx";
+} from "./MobileGenerationActions.js";
 import {
   lipsyncModels,
   imageLipSyncModels,
@@ -32,7 +32,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.jsx";
+} from "./prompt/PromptComposer.js";
 import en from "../messages/en/lipSyncStudio.json";
 import zh from "../messages/zh/lipSyncStudio.json";
 import { resolveCopy } from "../i18nUtils";

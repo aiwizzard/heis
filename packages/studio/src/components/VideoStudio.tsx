@@ -5,12 +5,12 @@ import toast, { Toaster } from "react-hot-toast";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
-import DrawModal from "./DrawModal.jsx";
-import ModelParameterControls from "./ModelParameterControls.jsx";
-import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.jsx";
+import DrawModal from "./DrawModal.js";
+import ModelParameterControls from "./ModelParameterControls.js";
+import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.jsx";
+} from "./MobileGenerationActions.js";
 import {
   t2vModels,
   getAspectRatiosForVideoModel,
@@ -94,7 +94,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.jsx";
+} from "./prompt/PromptComposer.js";
 import usePromptMenu from "./prompt/usePromptMenu.js";
 import en from "../messages/en/videoStudio.json";
 import zh from "../messages/zh/videoStudio.json";
