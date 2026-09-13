@@ -80,7 +80,8 @@ class RunwareByokProvider {
       const message = body.errors?.[0]?.message ?? `Runware request failed with HTTP ${response.status}.`;
       throw new Error(message);
     }
-    const result = body.data?.find((item: any) => item.taskUUID === taskUUID) ?? body.data?.[0];
+    const results = Array.isArray(body) ? body : body.data;
+    const result = results?.find((item: any) => item.taskUUID === taskUUID) ?? results?.[0];
     if (!result) throw new Error("Runware returned no generation result.");
     const job = normalizeRunwareJob(taskUUID, result, createdAt);
     this.jobs.set(job.id, job);

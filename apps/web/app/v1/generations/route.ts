@@ -28,10 +28,15 @@ export async function POST(request: Request) {
     if (!creatorActive && !trialActive) {
       return NextResponse.json({ error: { code: "MANAGED_ACCESS_REQUIRED", message: "Managed generation requires an active trial or Creator subscription." } }, { status: 403 });
     }
-    const capability = validateGenerationRequest({
-      ...body,
-      billing: { ...body.billing, accountId: user.id, idempotencyKey },
-    });
+    let capability;
+    try {
+      capability = validateGenerationRequest({
+        ...body,
+        billing: { ...body.billing, accountId: user.id, idempotencyKey },
+      });
+    } catch {
+      return NextResponse.json({ error: { code: "INVALID_GENERATION_REQUEST", message: "The generation request does not match the selected capability." } }, { status: 400 });
+    }
 
     const existing = await client.from("generation_jobs").select("*").eq("user_id", user.id).eq("idempotency_key", idempotencyKey).maybeSingle();
     if (existing.data) return NextResponse.json(existing.data);
