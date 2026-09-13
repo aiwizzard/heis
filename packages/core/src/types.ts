@@ -28,7 +28,7 @@ export interface BillingContext {
 
 export interface ModelParameter {
   name: string;
-  type: "string" | "number" | "boolean" | "enum" | "media" | "media-list";
+  type: "string" | "number" | "boolean" | "enum" | "media" | "media-list" | "object";
   required?: boolean;
   default?: unknown;
   minimum?: number;

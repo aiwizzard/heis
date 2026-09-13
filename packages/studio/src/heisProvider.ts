@@ -1,5 +1,43 @@
 type BillingMode = "managed" | "byok";
 
+interface LipSyncStudioModel {
+  id: string;
+  name: string;
+  category: "image" | "video";
+  hasPrompt: boolean;
+  hasSeed: boolean;
+  description: string;
+  inputs?: { resolution?: { default?: string; enum?: readonly string[] } };
+}
+
+export const lipsyncModels: readonly LipSyncStudioModel[] = [
+  {
+    id: "heis-lipsync-image",
+    name: "Heis Portrait Lip Sync",
+    category: "image",
+    hasPrompt: true,
+    hasSeed: false,
+    inputs: {},
+    description: "Animate a portrait from supplied speech using Runware Aurora Fast.",
+  },
+  {
+    id: "heis-lipsync-video",
+    name: "Heis Video Lip Sync",
+    category: "video",
+    hasPrompt: false,
+    hasSeed: false,
+    inputs: {},
+    description: "Synchronize an existing speaker video to supplied speech using Sync Lipsync 2.",
+  },
+] as const;
+
+export const imageLipSyncModels = lipsyncModels.filter((model) => model.category === "image");
+export const videoLipSyncModels = lipsyncModels.filter((model) => model.category === "video");
+export const getResolutionsForLipSyncModel = (id: string): readonly string[] => {
+  void id;
+  return [];
+};
+
 function requireDesktop() {
   if (!window.heis?.generation) throw new Error("Heis generation is available in the desktop application.");
   return window.heis;
@@ -77,6 +115,25 @@ export async function generateI2V(_legacyApiKey: string, params: any) {
 export async function processV2V(_legacyApiKey: string, params: any) {
   const input = params.video_url ?? params.videos_list?.[0] ?? params.video_files?.[0] ?? params.inputs;
   return submit("video-to-video", "heis-video-transform", { positivePrompt: params.prompt, inputs: input, resolution: params.resolution ?? "720p" }, params.onRequestId);
+}
+
+export async function processLipSync(_legacyApiKey: string, params: any) {
+  const audio = params.audio_url;
+  if (!audio) throw new Error("An audio file is required for lip sync.");
+  if (params.video_url) {
+    return submit("lip-sync", "heis-lipsync-video", {
+      inputs: { video: params.video_url, audio },
+      providerSettings: { sync: { syncMode: "remap", temperature: 0.55 } },
+    }, params.onRequestId);
+  }
+  if (params.image_url) {
+    return submit("lip-sync", "heis-lipsync-image", {
+      positivePrompt: params.prompt || "Natural speaking motion, accurate lip sync, subtle head movement, natural blinking, preserve the subject and background.",
+      CFGScale: 1,
+      inputs: { image: params.image_url, audio },
+    }, params.onRequestId);
+  }
+  throw new Error("A source image or video is required for lip sync.");
 }
 
 export async function getUserBalance() {

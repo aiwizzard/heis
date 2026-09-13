@@ -76,6 +76,34 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
       { name: "resolution", type: "enum", default: "720p", options: ["720p"] },
     ],
   },
+  {
+    id: "heis-lipsync-video",
+    provider: "runware",
+    providerModelId: "sync:lipsync-2@1",
+    displayName: "Heis Video Lip Sync",
+    operation: "lip-sync",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 5,
+    enabled: true,
+    parameters: [
+      { name: "inputs", type: "object", required: true },
+      { name: "providerSettings", type: "object", required: true },
+    ],
+  },
+  {
+    id: "heis-lipsync-image",
+    provider: "runware",
+    providerModelId: "creatify:aurora@fast",
+    displayName: "Heis Portrait Lip Sync",
+    operation: "lip-sync",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 2,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string" },
+      { name: "inputs", type: "object", required: true },
+    ],
+  },
 ];
 
 export function getCapability(id: string): ModelCapability | undefined {

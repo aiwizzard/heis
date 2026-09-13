@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canUseCachedEntitlement, creditsForProviderCost, planCreditDebits, resolveAccess } from "../packages/core/src/index";
+import { canUseCachedEntitlement, creditsForProviderCost, getCapability, planCreditDebits, resolveAccess } from "../packages/core/src/index";
 
 test("provider costs are converted to credits with a 2x markup", () => {
   assert.equal(creditsForProviderCost(0), 0);
@@ -51,4 +51,13 @@ test("cached entitlement requires a signature and unexpired validity", () => {
   assert.equal(canUseCachedEntitlement(base, new Date("2026-01-15T00:00:00.000Z")), true);
   assert.equal(canUseCachedEntitlement(base, new Date("2026-02-02T00:00:00.000Z")), false);
   assert.equal(canUseCachedEntitlement({ ...base, signature: "" }, new Date("2026-01-15T00:00:00.000Z")), false);
+});
+
+test("lip sync catalog separates image and video input models", () => {
+  const video = getCapability("heis-lipsync-video");
+  const image = getCapability("heis-lipsync-image");
+  assert.equal(video?.operation, "lip-sync");
+  assert.equal(video?.providerModelId, "sync:lipsync-2@1");
+  assert.equal(image?.operation, "lip-sync");
+  assert.equal(image?.providerModelId, "creatify:aurora@fast");
 });

@@ -2,19 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { processLipSync, uploadFile } from "../muapi.js";
+import {
+  processLipSync,
+  uploadFile,
+  lipsyncModels,
+  imageLipSyncModels,
+  videoLipSyncModels,
+  getResolutionsForLipSyncModel,
+} from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
 } from "./MobileGenerationActions.js";
-import {
-  lipsyncModels,
-  imageLipSyncModels,
-  videoLipSyncModels,
-  getLipSyncModelById,
-  getResolutionsForLipSyncModel,
-} from "../models.js";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAction,

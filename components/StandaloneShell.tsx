@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ImageStudio, VideoStudio, CinemaStudio, AiInfluencerStudio, getUserBalance } from 'studio';
+import { ImageStudio, VideoStudio, LipSyncStudio, CinemaStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
 import CodexStudio from './CodexStudio';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
@@ -255,7 +255,7 @@ const NAVIGATION_CATEGORIES = [
 ];
 
 const EXPLORE_APPS_TAB = TABS.find((tab) => tab.id === 'apps');
-const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'cinema', 'agents', 'ai-influencer']);
+const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'lipsync', 'cinema', 'agents', 'ai-influencer']);
 
 function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
   return (
@@ -1047,6 +1047,9 @@ export default function StandaloneShell({ locale = 'en' }) {
         </div>
         <div className={activeTab === 'video' ? "h-full w-full" : "hidden"}>
           {activeTab === 'video' && <VideoStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('video')} onGenerationEnd={makeGenerationEndCallback('video')} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />}
+        </div>
+        <div className={activeTab === 'lipsync' ? "h-full w-full" : "hidden"}>
+          {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('lipsync')} onGenerationEnd={makeGenerationEndCallback('lipsync')} onGenerationComplete={makeSuccessCallback('lipsync')} onGenerationError={makeErrorCallback('lipsync')} />}
         </div>
         <div className={activeTab === 'cinema' ? "h-full w-full" : "hidden"}>
           {activeTab === 'cinema' && <CinemaStudio apiKey={apiKey} locale={locale} onGenerationStart={makeGenerationStartCallback('cinema')} onGenerationEnd={makeGenerationEndCallback('cinema')} onGenerationComplete={makeSuccessCallback('cinema')} onGenerationError={makeErrorCallback('cinema')} />}
