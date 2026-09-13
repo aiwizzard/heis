@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { processRecast, uploadFile } from "../muapi.js";
+import {
+  getAspectRatiosForRecastModel,
+  getRecastModelById,
+  processRecast,
+  recastModels,
+  uploadFile,
+} from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
 } from "./MobileGenerationActions.js";
-import {
-  recastModels,
-  getRecastModelById,
-  getAspectRatiosForRecastModel,
-} from "../models.js";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAspectRatioIcon,
@@ -584,7 +585,7 @@ export default function RecastStudio({
       const stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
         const data = JSON.parse(stored);
-        if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
+        if (data.selectedModelId && getRecastModelById(data.selectedModelId)) setSelectedModelId(data.selectedModelId);
         if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
         if (data.characterOrientation) setCharacterOrientation(data.characterOrientation);
         if (data.videoUrl) {

@@ -84,3 +84,10 @@ test("motion control catalog uses Seedance reference video generation", () => {
   assert.equal(motion?.providerModelId, "bytedance:seedance@2.5");
   assert.equal(motion?.maximumEstimatedCostUsd, 9);
 });
+
+test("recast has an independently configurable Seedance capability", () => {
+  const recast = getCapability("heis-recast");
+  assert.equal(recast?.operation, "motion-control");
+  assert.equal(recast?.providerModelId, "bytedance:seedance@2.5");
+  assert.equal(recast?.parameters.find((parameter) => parameter.name === "duration")?.default, "auto");
+});

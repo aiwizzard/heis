@@ -43,6 +43,19 @@ interface MotionControlStudioModel {
   defaultAspectRatio: string;
 }
 
+interface RecastStudioModel {
+  id: string;
+  name: string;
+  description: string;
+  hasPrompt: boolean;
+  inputs: {
+    aspect_ratio: {
+      default: string;
+      enum: readonly string[];
+    };
+  };
+}
+
 export const lipsyncModels: readonly LipSyncStudioModel[] = [
   {
     id: "heis-lipsync-image",
@@ -116,6 +129,24 @@ export const motionControlModels: readonly MotionControlStudioModel[] = [
 ];
 
 export const getMotionControlModelById = (id: string) => motionControlModels.find((model) => model.id === id) ?? motionControlModels[0];
+
+export const recastModels: readonly RecastStudioModel[] = [
+  {
+    id: "heis-recast",
+    name: "Heis Recast",
+    description: "Recast a performance using a character image while preserving motion, timing, and camera movement with Seedance 2.5.",
+    hasPrompt: true,
+    inputs: {
+      aspect_ratio: {
+        default: "adaptive",
+        enum: ["adaptive", "16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21"],
+      },
+    },
+  },
+];
+
+export const getRecastModelById = (id: string) => recastModels.find((model) => model.id === id);
+export const getAspectRatiosForRecastModel = (id: string) => getRecastModelById(id)?.inputs.aspect_ratio.enum ?? [];
 
 function requireDesktop() {
   if (!window.heis?.generation) throw new Error("Heis generation is available in the desktop application.");
@@ -272,6 +303,23 @@ export async function processMotionControl(_legacyApiKey: string, params: any) {
     duration: Math.min(30, Math.max(4, Math.round(Number(params.duration) || 5))),
     settings: { audio: Boolean(params.generate_audio) },
     ...(Number.isInteger(seed) && seed >= 0 ? { seed } : {}),
+  }, params.onRequestId);
+}
+
+export async function processRecast(_legacyApiKey: string, params: any) {
+  const video = String(params.video_url ?? "").trim();
+  const image = String(params.image_url ?? "").trim();
+  if (!video) throw new Error("A source performance video is required.");
+  if (!image) throw new Error("A character image is required.");
+  const userPrompt = String(params.prompt ?? "").trim();
+  const recastPrompt = "Use @Video1 as the exact motion, performance timing, choreography, and camera reference. Recast the performer as @Image1, preserving the referenced character's identity, clothing, proportions, and appearance consistently through the shot.";
+  const size = MOTION_VIDEO_DIMENSIONS[String(params.aspect_ratio ?? "adaptive")];
+  return submit("motion-control", "heis-recast", {
+    positivePrompt: userPrompt ? `${recastPrompt} ${userPrompt}` : recastPrompt,
+    inputs: { referenceVideos: [video], referenceImages: [image] },
+    ...(size ? { width: size[0], height: size[1] } : { resolution: "720p" }),
+    duration: "auto",
+    settings: { audio: true },
   }, params.onRequestId);
 }
 

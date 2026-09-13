@@ -111,6 +111,22 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
     ],
   },
   {
+    id: "heis-recast",
+    provider: "runware",
+    providerModelId: "bytedance:seedance@2.5",
+    displayName: "Heis Recast",
+    operation: "motion-control",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 9,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "object", required: true },
+      { name: "duration", type: "enum", default: "auto", options: ["auto"] },
+      { name: "settings", type: "object" },
+    ],
+  },
+  {
     id: "heis-lipsync-video",
     provider: "runware",
     providerModelId: "sync:lipsync-2@1",
