@@ -7,7 +7,7 @@ import {
   FaUserInjured, FaStethoscope, FaCar, FaPaw, FaBalanceScale, FaTruck, FaMapMarkerAlt,
   FaGithub, FaExternalLinkAlt, FaDollarSign, FaRocket, FaCreditCard 
 } from "react-icons/fa";
-import { registerAppInterest, getAppInterests } from '../muapi.js';
+import { registerAppInterest, getAppInterests } from '../appInterestStore.js';
 import toast, { Toaster } from 'react-hot-toast';
 import en from '../messages/en/appsStudio.json';
 import zh from '../messages/zh/appsStudio.json';
@@ -139,20 +139,18 @@ export default function AppsStudio({ apiKey, locale = 'en' }) {
   const [requestedApps, setRequestedApps] = useState([]);
 
   useEffect(() => {
-    if (apiKey) {
-      getAppInterests(apiKey)
-        .then(setRequestedApps)
-        .catch(err => console.error("Error fetching interests:", err));
-    }
-  }, [apiKey]);
+    getAppInterests()
+      .then(setRequestedApps)
+      .catch(err => console.error("Error fetching interests:", err));
+  }, []);
 
   const handleRequestAccess = async () => {
-    if (!selectedApp || !apiKey) return;
+    if (!selectedApp) return;
     
     setIsRequesting(true);
     try {
-      await registerAppInterest(apiKey, selectedApp.name);
-      setRequestedApps(prev => [...prev, selectedApp.name]);
+      const next = await registerAppInterest(selectedApp.name);
+      setRequestedApps(next);
       toast.success(copy.toast.requestSuccess);
       setTimeout(() => setSelectedApp(null), 1500);
     } catch (error) {

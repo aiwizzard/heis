@@ -65,6 +65,8 @@ The agent implementation sits behind `AgentProvider`, allowing a future Heis-man
 
 Legacy MuAPI agent pages and renderer proxy routes are retired. Historical `/agents/*` links redirect to the Codex-backed studio, the old Agent Studio is no longer exported from the studio package, and MuAPI helpers are no longer part of the package's public export surface.
 
+Apps Studio interest requests are stored locally and no longer call MuAPI. The Apps gallery remains gated until its third-party template links and legacy hosted thumbnails are replaced with a Heis-owned catalog.
+
 ## Shared interfaces
 
 New application code uses strict TypeScript. Existing JavaScript is converted only when touched by the migration.

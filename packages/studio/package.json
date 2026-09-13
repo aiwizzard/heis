@@ -1,7 +1,7 @@
 {
   "name": "studio",
   "version": "1.0.0",
-  "description": "heis studio components for Muapi",
+  "description": "Heis creative studio components",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
