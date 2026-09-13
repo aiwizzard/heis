@@ -799,7 +799,7 @@ export default function LayersStudio({
 
     if (markedRegions.length > 0) {
       const numLayers = Math.max(markedRegions.length, layerCount);
-      let promptLines = [
+      const promptLines = [
         `Split the content in the image into ${numLayers} layers:`,
       ];
       markedRegions.forEach((item, idx) => {

@@ -3,7 +3,7 @@ import { Header } from './components/Header.js';
 import { ImageStudio } from './components/ImageStudio.js';
 
 const app = document.querySelector('#app');
-let contentArea;
+const contentArea = document.createElement('main');
 
 // Keep all mounted page nodes so async generation survives tab switches
 const mountedPages = {};
@@ -59,7 +59,6 @@ app.innerHTML = '';
 // Pass navigate to Header so links work
 app.appendChild(Header(navigate));
 
-contentArea = document.createElement('main');
 contentArea.id = 'content-area';
 contentArea.className = 'flex-1 relative w-full overflow-hidden flex flex-col bg-app-bg';
 app.appendChild(contentArea);

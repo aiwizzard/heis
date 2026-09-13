@@ -996,9 +996,9 @@ export default function DrawModal({
           const lineHeight = textObj.fontSize * 1.25;
 
           for (let n = 0; n < words.length; n++) {
-            let testLine = line + words[n] + " ";
-            let metrics = mCtx.measureText(testLine);
-            let testWidth = metrics.width;
+            const testLine = line + words[n] + " ";
+            const metrics = mCtx.measureText(testLine);
+            const testWidth = metrics.width;
             if (testWidth > textObj.width && n > 0) {
               mCtx.fillText(line, textObj.x, testY);
               line = words[n] + " ";
@@ -1718,7 +1718,7 @@ export default function DrawModal({
                         )}
                       </div>
                       <div className="text-[9px] text-white/30 leading-snug mt-0.5">
-                        Google's Advanced Image Editing Model
+                        Google&apos;s Advanced Image Editing Model
                       </div>
                     </button>
 

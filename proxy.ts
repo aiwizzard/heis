@@ -21,7 +21,7 @@ function addSecurityHeaders(response) {
     return response;
 }
 
-export function middleware(request) {
+export function proxy(request) {
     const url = request.nextUrl;
 
     // Catch requests to /api/workflow, /api/app, and /api/v1
@@ -43,7 +43,7 @@ export function middleware(request) {
     }
 
     // Plain response header carrying the locale derived from the URL path
-    // (same "set in middleware, read via headers() in the root layout"
+    // (same "set in proxy, read via headers() in the root layout"
     // trick the main muapi client uses — see docs/localization.md).
     const response = NextResponse.next();
     response.headers.set('x-locale', getLocaleFromPathname(url.pathname));

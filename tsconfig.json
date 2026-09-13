@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": false,
@@ -12,15 +16,27 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "ai-agent": ["./packages/Open-Poe-AI/packages/agents/src/index.js"],
-      "workflow-builder": ["./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"],
-      "design-agent": ["./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"]
+      "@/*": [
+        "./*"
+      ],
+      "ai-agent": [
+        "./packages/Open-Poe-AI/packages/agents/src/index.js"
+      ],
+      "workflow-builder": [
+        "./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"
+      ],
+      "design-agent": [
+        "./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"
+      ]
     }
   },
   "include": [
@@ -31,9 +47,16 @@
     "components/**/*.tsx",
     "lib/**/*.ts",
     "src/**/*.ts",
-    "middleware.ts",
+    "proxy.ts",
     "packages/studio/src/**/*.ts",
-    "packages/studio/src/**/*.tsx"
+    "packages/studio/src/**/*.tsx",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", "release", "dist-electron", "dist-tests"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release",
+    "dist-electron",
+    "dist-tests"
+  ]
 }

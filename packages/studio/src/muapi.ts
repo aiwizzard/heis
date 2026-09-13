@@ -311,7 +311,7 @@ export async function processMotionControl(apiKey, params) {
         imagesList = [params.image_url];
     }
 
-    let duration = Number(params.duration) || 5;
+    const duration = Number(params.duration) || 5;
 
     const payload = {
         video_url: params.video_url,
@@ -1021,7 +1021,7 @@ export async function runMotionGraphicsEdit(apiKey, params) {
 
 export async function upscaleImage(apiKey, { model, image_url, resolution, upscale_factor, onRequestId }) {
     let endpoint = model;
-    let payload = { image_url };
+    const payload = { image_url };
     if (model === "seedvr2-image-upscale") {
         payload.resolution = resolution || "4k";
     } else if (model === "topaz-image-upscale") {

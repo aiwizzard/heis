@@ -986,7 +986,7 @@ export default function AudioStudio({
                             onClick={() => setParams(prev => ({ ...prev, [key]: ex }))}
                             className="text-[11px] px-3 py-1 bg-zinc-800/80 border border-zinc-700 hover:bg-primary/20 hover:border-primary/45 hover:text-white rounded-full transition-all font-semibold text-zinc-100"
                           >
-                            "{ex.slice(0, 35)}..."
+                            &quot;{ex.slice(0, 35)}...&quot;
                           </button>
                         ))}
                       </div>
