@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentThread, AgentThreadInput, AgentTurnInput, EntitlementSnapshot, GenerationJob, GenerationRequest, LocalClippingResult, LocalMediaImport, ModelCapability, ResultEnvelope } from "@heis/core";
+import type { AgentStatus, AgentThread, AgentThreadInput, AgentTurnInput, EntitlementSnapshot, GenerationJob, GenerationRequest, LocalClippingResult, LocalMediaImport, LocalWorkflowRecord, ModelCapability, ResultEnvelope } from "@heis/core";
 
 declare global {
   interface Window {
@@ -42,6 +42,13 @@ declare global {
       export: {
         importMedia(file: { name: string; type: string; bytes: ArrayBuffer }): Promise<ResultEnvelope<LocalMediaImport>>;
         clipHighlights(request: { sourceUrl: string; numHighlights: number; aspectRatio: string; returnCoordinatesOnly: boolean }): Promise<ResultEnvelope<LocalClippingResult>>;
+      };
+      projects: {
+        listWorkflows(): Promise<ResultEnvelope<LocalWorkflowRecord[]>>;
+        getWorkflow(workflowId: string): Promise<ResultEnvelope<LocalWorkflowRecord>>;
+        saveWorkflow(payload: unknown): Promise<ResultEnvelope<{ workflow_id: string }>>;
+        renameWorkflow(workflowId: string, name: string): Promise<ResultEnvelope<{ workflow_id: string; name: string }>>;
+        deleteWorkflow(workflowId: string): Promise<ResultEnvelope<{ workflow_id: string; deleted: true }>>;
       };
     };
   }

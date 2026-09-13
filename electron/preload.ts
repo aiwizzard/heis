@@ -58,6 +58,13 @@ contextBridge.exposeInMainWorld('heis', {
         importMedia: (file) => invoke(IPC_CHANNELS.exportImportMedia, file),
         clipHighlights: (request) => invoke(IPC_CHANNELS.exportClipHighlights, request),
     },
+    projects: {
+        listWorkflows: () => invoke(IPC_CHANNELS.projectsListWorkflows),
+        getWorkflow: (workflowId) => invoke(IPC_CHANNELS.projectsGetWorkflow, workflowId),
+        saveWorkflow: (payload) => invoke(IPC_CHANNELS.projectsSaveWorkflow, payload),
+        renameWorkflow: (workflowId, name) => invoke(IPC_CHANNELS.projectsRenameWorkflow, workflowId, name),
+        deleteWorkflow: (workflowId) => invoke(IPC_CHANNELS.projectsDeleteWorkflow, workflowId),
+    },
 });
 
 contextBridge.exposeInMainWorld('localAI', {

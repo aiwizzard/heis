@@ -7,6 +7,7 @@ const { register: registerCommercialServices } = require('./lib/commercialServic
 const { NextServer } = require('./lib/nextServer');
 const { UpdaterService } = require('./lib/updater');
 const { LocalMediaService } = require('./lib/localMediaService');
+const { ProjectService } = require('./lib/projectService');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'heis-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
@@ -79,6 +80,7 @@ function createWindow(rendererUrl) {
 
 app.whenReady().then(async () => {
     const localMediaService = new LocalMediaService(app.getPath('userData'), process.resourcesPath);
+    const projectService = new ProjectService(app.getPath('userData'));
     protocol.handle('heis-media', (request) => net.fetch(pathToFileURL(localMediaService.resolveUrl(request.url)).toString()));
     app.setAsDefaultProtocolClient('heis');
     const rendererUrl = await desktopRenderer.start();
@@ -87,7 +89,7 @@ app.whenReady().then(async () => {
     try {
         registerLocalInference();
         registerWan2gp();
-        commercialServices = registerCommercialServices(localMediaService);
+        commercialServices = registerCommercialServices(localMediaService, projectService);
         updater.start();
         for (const callbackUrl of pendingAuthCallbacks.splice(0)) {
             void commercialServices.handleAuthCallback(callbackUrl).catch(reportAuthCallbackError);

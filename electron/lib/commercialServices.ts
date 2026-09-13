@@ -22,7 +22,7 @@ function handle(channel: string, handler: (...args: any[]) => any): void {
   });
 }
 
-function register(localMediaService?: any): { dispose: () => void; handleAuthCallback: (url: string) => Promise<void> } {
+function register(localMediaService?: any, projectService?: any): { dispose: () => void; handleAuthCallback: (url: string) => Promise<void> } {
   const secureStore = new SecureStore();
   const authSession = new AuthSession(secureStore);
   const entitlementStore = new EntitlementStore();
@@ -73,7 +73,7 @@ function register(localMediaService?: any): { dispose: () => void; handleAuthCal
   });
   const bridge = new McpBridge({
     heis_list_capabilities: async () => ({ byok: await byokProvider.listCapabilities(), managed: await managedProvider.listCapabilities().catch(() => []) }),
-    heis_project_info: async () => ({ available: false, message: "Open-project context is not connected yet." }),
+    heis_project_info: async () => ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
     heis_generate: async (args: any) => {
       const approval = await requestApproval("heis_generate", args);
       if (!approval?.approved) throw new Error("Generation was declined by the user.");
@@ -134,6 +134,26 @@ function register(localMediaService?: any): { dispose: () => void; handleAuthCal
   handle(IPC_CHANNELS.exportClipHighlights, (request: any) => {
     if (!localMediaService) throw new Error("LOCAL_MEDIA_UNAVAILABLE");
     return localMediaService.clipHighlights(request);
+  });
+  handle(IPC_CHANNELS.projectsListWorkflows, () => {
+    if (!projectService) throw new Error("PROJECTS_UNAVAILABLE");
+    return projectService.listWorkflows();
+  });
+  handle(IPC_CHANNELS.projectsGetWorkflow, (workflowId: string) => {
+    if (!projectService) throw new Error("PROJECTS_UNAVAILABLE");
+    return projectService.getWorkflow(workflowId);
+  });
+  handle(IPC_CHANNELS.projectsSaveWorkflow, (payload: any) => {
+    if (!projectService) throw new Error("PROJECTS_UNAVAILABLE");
+    return projectService.saveWorkflow(payload);
+  });
+  handle(IPC_CHANNELS.projectsRenameWorkflow, (workflowId: string, name: string) => {
+    if (!projectService) throw new Error("PROJECTS_UNAVAILABLE");
+    return projectService.renameWorkflow(workflowId, name);
+  });
+  handle(IPC_CHANNELS.projectsDeleteWorkflow, (workflowId: string) => {
+    if (!projectService) throw new Error("PROJECTS_UNAVAILABLE");
+    return projectService.deleteWorkflow(workflowId);
   });
 
   return { handleAuthCallback: (url: string) => desktopAuth.handleCallback(url), dispose: () => { codex.stop(); bridge.stop(); } };

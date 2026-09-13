@@ -28,6 +28,11 @@ export const IPC_CHANNELS = {
   generationEvent: "generation:event",
   exportImportMedia: "export:import-media",
   exportClipHighlights: "export:clip-highlights",
+  projectsListWorkflows: "projects:list-workflows",
+  projectsGetWorkflow: "projects:get-workflow",
+  projectsSaveWorkflow: "projects:save-workflow",
+  projectsRenameWorkflow: "projects:rename-workflow",
+  projectsDeleteWorkflow: "projects:delete-workflow",
   codexEvent: "codex:event",
 } as const;
 

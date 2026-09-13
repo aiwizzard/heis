@@ -159,6 +159,21 @@ export interface WorkflowDefinition {
   edges: readonly Readonly<Record<string, unknown>>[];
 }
 
+export interface LocalWorkflowRecord {
+  id: string;
+  workflow_id: string;
+  name: string;
+  category: string;
+  thumbnail?: string;
+  data: { nodes: unknown[] };
+  edges: unknown[];
+  created_at: string;
+  updated_at: string;
+  is_owner: true;
+  is_published: false;
+  is_template: false;
+}
+
 export interface WorkflowValidation {
   valid: boolean;
   errors: readonly { path: string; message: string }[];
