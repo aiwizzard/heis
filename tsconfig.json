@@ -29,13 +29,13 @@
         "./*"
       ],
       "ai-agent": [
-        "./packages/heis-agents/packages/agents/src/index.js"
+        "./packages/heis-agents/packages/agents/src/index.ts"
       ],
       "workflow-builder": [
-        "./packages/heis-workflow/packages/workflow-builder/src/index.js"
+        "./packages/heis-workflow/packages/workflow-builder/src/index.ts"
       ],
       "design-agent": [
-        "./packages/heis-agent/packages/design-agent/src/index.js"
+        "./packages/heis-agent/packages/design-agent/src/index.ts"
       ]
     }
   },

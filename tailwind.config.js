@@ -6,9 +6,9 @@ module.exports = {
         "./app/**/*.{js,ts,jsx,tsx}",
         "./components/**/*.{js,ts,jsx,tsx}",
         "./packages/studio/src/**/*.{ts,tsx}",
-        "./packages/heis-agent/packages/design-agent/src/**/*.{js,jsx}",
-        "./packages/heis-agents/packages/agents/src/**/*.{js,jsx,ts,tsx}",
-        "./packages/heis-workflow/packages/workflow-builder/src/**/*.{js,jsx,ts,tsx}",
+        "./packages/heis-agent/packages/design-agent/src/**/*.{ts,tsx}",
+        "./packages/heis-agents/packages/agents/src/**/*.{ts,tsx}",
+        "./packages/heis-workflow/packages/workflow-builder/src/**/*.{ts,tsx}",
     ],
     theme: {
         extend: {

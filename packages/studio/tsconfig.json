@@ -11,7 +11,13 @@
     "declarationMap": true,
     "sourceMap": true,
     "jsx": "react-jsx",
-    "isolatedModules": false
+    "isolatedModules": false,
+    "paths": {
+      "@/*": ["./*"],
+      "ai-agent": ["./packages/heis-agents/packages/agents/dist/index.d.ts"],
+      "workflow-builder": ["./packages/heis-workflow/packages/workflow-builder/dist/index.d.ts"],
+      "design-agent": ["./packages/heis-agent/packages/design-agent/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["dist", "node_modules"]

@@ -4,12 +4,13 @@
   "description": "AI Canvas React Components",
   "main": "dist/index.js",
   "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
-    "build": "npm run build:css && babel src --out-dir dist --extensions .js,.jsx"
+    "build": "npm run build:css && tsc -p tsconfig.json"
   },
   "license": "MIT",
   "dependencies": {
