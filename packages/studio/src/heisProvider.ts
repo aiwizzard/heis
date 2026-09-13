@@ -27,6 +27,22 @@ interface AudioStudioModel {
   inputs: Readonly<Record<string, AudioStudioInput>>;
 }
 
+interface MotionControlStudioModel {
+  id: string;
+  name: string;
+  description: string;
+  maxDuration: number;
+  minDuration: number;
+  defaultDuration: number;
+  maxImages: number;
+  supportsAudio: boolean;
+  supportsBitrate: boolean;
+  supportsQuality: boolean;
+  supportsSeed: boolean;
+  aspectRatios: readonly string[];
+  defaultAspectRatio: string;
+}
+
 export const lipsyncModels: readonly LipSyncStudioModel[] = [
   {
     id: "heis-lipsync-image",
@@ -81,6 +97,26 @@ export const audioModels: readonly AudioStudioModel[] = [
 
 export const getAudioModelById = (id: string) => audioModels.find((model) => model.id === id);
 
+export const motionControlModels: readonly MotionControlStudioModel[] = [
+  {
+    id: "heis-motion-control",
+    name: "Heis Motion Control",
+    description: "Transfer motion, camera movement, and performance from a video to referenced characters or products using Seedance 2.5.",
+    maxDuration: 30,
+    minDuration: 4,
+    defaultDuration: 5,
+    maxImages: 30,
+    supportsAudio: true,
+    supportsBitrate: false,
+    supportsQuality: false,
+    supportsSeed: true,
+    aspectRatios: ["adaptive", "16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21"],
+    defaultAspectRatio: "16:9",
+  },
+];
+
+export const getMotionControlModelById = (id: string) => motionControlModels.find((model) => model.id === id) ?? motionControlModels[0];
+
 function requireDesktop() {
   if (!window.heis?.generation) throw new Error("Heis generation is available in the desktop application.");
   return window.heis;
@@ -123,6 +159,16 @@ const MARKETING_VIDEO_DIMENSIONS: Readonly<Record<string, Readonly<Record<string
     "4:3": [1648, 1248],
     "3:4": [1248, 1648],
   },
+};
+
+const MOTION_VIDEO_DIMENSIONS: Readonly<Record<string, readonly [number, number]>> = {
+  "16:9": [1280, 720],
+  "9:16": [720, 1280],
+  "1:1": [960, 960],
+  "4:3": [1112, 834],
+  "3:4": [834, 1112],
+  "21:9": [1470, 630],
+  "9:21": [630, 1470],
 };
 
 function marketingVideoDimensions(resolution: string, aspectRatio: string) {
@@ -203,6 +249,29 @@ export async function generateMarketingStudioAd(_legacyApiKey: string, params: a
     ...marketingVideoDimensions(params.resolution ?? "720p", params.aspect_ratio ?? "16:9"),
     duration: Math.min(15, Math.max(4, Math.round(Number(params.duration) || 5))),
     settings: { audio: true },
+  }, params.onRequestId);
+}
+
+export async function processMotionControl(_legacyApiKey: string, params: any) {
+  const video = String(params.video_url ?? "").trim();
+  const referenceImages = Array.isArray(params.images_list) ? params.images_list.filter(Boolean).slice(0, 30) : [];
+  if (!video) throw new Error("A reference motion video is required.");
+  if (!referenceImages.length) throw new Error("At least one character or product image is required.");
+  const imageTags = referenceImages.map((_: unknown, index: number) => `@Image${index + 1}`).join(", ");
+  const modePrompt = params.mode === "objects_swap"
+    ? `Use @Video1 as the source scene and motion. Replace its characters, products, or clothing with the matching references ${imageTags} while preserving the rest of the scene.`
+    : `Transfer the motion, choreography, performance timing, and camera movement from @Video1 to the subjects defined by ${imageTags}.`;
+  const userPrompt = String(params.prompt ?? "").trim();
+  const aspectRatio = String(params.aspect_ratio ?? "16:9");
+  const size = MOTION_VIDEO_DIMENSIONS[aspectRatio];
+  const seed = Number(params.seed);
+  return submit("motion-control", "heis-motion-control", {
+    positivePrompt: userPrompt ? `${modePrompt} ${userPrompt}` : modePrompt,
+    inputs: { referenceVideos: [video], referenceImages },
+    ...(size ? { width: size[0], height: size[1] } : { resolution: "720p" }),
+    duration: Math.min(30, Math.max(4, Math.round(Number(params.duration) || 5))),
+    settings: { audio: Boolean(params.generate_audio) },
+    ...(Number.isInteger(seed) && seed >= 0 ? { seed } : {}),
   }, params.onRequestId);
 }
 

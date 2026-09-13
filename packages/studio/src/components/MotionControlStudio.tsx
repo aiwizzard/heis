@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { processMotionControl, uploadFile } from "../muapi.js";
+import {
+  getMotionControlModelById,
+  motionControlModels,
+  processMotionControl,
+  uploadFile,
+} from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
   GenerationCopyButtons,
 } from "./MobileGenerationActions.js";
-import {
-  motionControlModels,
-  getMotionControlModelById,
-} from "../models.js";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAspectRatioIcon,
@@ -567,7 +568,7 @@ export default function MotionControlStudio({
   const [mode, setMode] = useState("motion_transfer");
 
   // ── Model Selection ─────────────────────────────────────────────────────────
-  const [selectedModelId, setSelectedModelId] = useState("seedance-2.5-motion-control");
+  const [selectedModelId, setSelectedModelId] = useState("heis-motion-control");
   const selectedModel = getMotionControlModelById(selectedModelId) || motionControlModels[0];
 
   const maxImagesAllowed = selectedModel.maxImages || 30;
@@ -869,7 +870,7 @@ export default function MotionControlStudio({
   };
 
   // Model compact display label for button
-  const modelShortName = selectedModelId === "seedance-2.5-motion-control" ? "Seedance 2.5" : "Seedance 2.0";
+  const modelShortName = selectedModel.name;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -1252,7 +1253,7 @@ export default function MotionControlStudio({
                   setOpenDropdown(openDropdown === "options" ? null : "options");
                 }}
                 className={promptControlClassName({
-                  active: openDropdown === "options" || highBitrate || (selectedModelId === "seedance-2-motion-control" && quality === "basic"),
+                  active: openDropdown === "options",
                 })}
               >
                 <SlidersIcon />
@@ -1269,7 +1270,7 @@ export default function MotionControlStudio({
                   </PromptPopoverHeader>
 
                   {/* Seedance 2.5: High Bitrate Toggle */}
-                  {selectedModelId === "seedance-2.5-motion-control" && (
+                  {selectedModel.supportsBitrate && (
                     <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                       <div className="flex flex-col">
                         <span className="text-xs font-semibold text-white">{copy.labels.highBitrate}</span>
@@ -1292,7 +1293,7 @@ export default function MotionControlStudio({
                   )}
 
                   {/* Seedance 2.0: Quality Mode */}
-                  {selectedModelId === "seedance-2-motion-control" && (
+                  {selectedModel.supportsQuality && (
                     <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                       <span className="text-xs font-semibold text-white">{copy.labels.quality}</span>
                       <div className="flex gap-1">
@@ -1315,19 +1316,21 @@ export default function MotionControlStudio({
                   )}
 
                   {/* Seed Control */}
-                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-white">{copy.labels.seed}</span>
-                      <span className="text-[10px] text-white/40">{copy.labels.randomSeed}</span>
+                  {selectedModel.supportsSeed && (
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-white">{copy.labels.seed}</span>
+                        <span className="text-[10px] text-white/40">{copy.labels.randomSeed}</span>
+                      </div>
+                      <input
+                        type="number"
+                        value={seed}
+                        onChange={(e) => setSeed(Number(e.target.value))}
+                        placeholder="-1"
+                        className="w-20 px-2 py-1 text-xs bg-black/60 border border-white/10 rounded-lg text-white text-right focus:outline-none focus:border-[#22d3ee]/50"
+                      />
                     </div>
-                    <input
-                      type="number"
-                      value={seed}
-                      onChange={(e) => setSeed(Number(e.target.value))}
-                      placeholder="-1"
-                      className="w-20 px-2 py-1 text-xs bg-black/60 border border-white/10 rounded-lg text-white text-right focus:outline-none focus:border-[#22d3ee]/50"
-                    />
-                  </div>
+                  )}
                 </PromptPopover>
               )}
             </div>

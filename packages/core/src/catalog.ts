@@ -94,6 +94,23 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
     ],
   },
   {
+    id: "heis-motion-control",
+    provider: "runware",
+    providerModelId: "bytedance:seedance@2.5",
+    displayName: "Heis Motion Control",
+    operation: "motion-control",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 9,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "object", required: true },
+      { name: "duration", type: "number", default: 5, minimum: 4, maximum: 30 },
+      { name: "settings", type: "object" },
+      { name: "seed", type: "number" },
+    ],
+  },
+  {
     id: "heis-lipsync-video",
     provider: "runware",
     providerModelId: "sync:lipsync-2@1",

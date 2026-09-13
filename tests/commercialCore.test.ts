@@ -77,3 +77,10 @@ test("marketing video catalog supports multimodal references", () => {
   assert.equal(marketing?.providerModelId, "alibaba:wan@3.0");
   assert.equal(marketing?.maximumEstimatedCostUsd, 3);
 });
+
+test("motion control catalog uses Seedance reference video generation", () => {
+  const motion = getCapability("heis-motion-control");
+  assert.equal(motion?.operation, "motion-control");
+  assert.equal(motion?.providerModelId, "bytedance:seedance@2.5");
+  assert.equal(motion?.maximumEstimatedCostUsd, 9);
+});
