@@ -21,7 +21,7 @@
     "web:build": "npm run build -w @heis/web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:electron": "tsc -p electron/tsconfig.json && node scripts/finalize-electron-preload.js",
     "build:tests": "tsc -p tests/tsconfig.json",
     "test": "npm run build:tests && node --test dist-tests/tests/*.test.js",
     "security:scan": "node scripts/scan-secrets.js",
