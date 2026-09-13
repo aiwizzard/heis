@@ -31,9 +31,9 @@ export function proxy(request) {
         ));
     }
 
-    // Catch requests to /api/workflow, /api/app, and /api/v1
-    const isMuApi = url.pathname.startsWith('/api/workflow') ||
-                    url.pathname.startsWith('/api/app') ||
+    // Catch remaining compatibility requests to /api/app and /api/v1.
+    // /api/workflow has a dedicated fail-closed retirement route.
+    const isMuApi = url.pathname.startsWith('/api/app') ||
                     url.pathname.startsWith('/api/v1');
 
     if (isMuApi) {

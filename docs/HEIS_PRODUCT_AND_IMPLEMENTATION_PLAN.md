@@ -69,6 +69,8 @@ Apps Studio interest requests are stored locally and no longer call MuAPI. The A
 
 Layers Studio upload, image editing, upscale, background removal, and outpainting actions use the Heis bridge. The studio remains gated because Runware does not currently document a compatible multi-output transparent layer-decomposition model. Heis must not substitute a single flattened image for that contract.
 
+Workflow definitions now have a local browser-backed repository for create, list, rename, delete, and reload operations. The MuAPI workflow proxy is retired and fails closed with HTTP 410. Workflow Studio remains gated while the builder's node-run endpoints are replaced by the local BYOK engine and durable Trigger.dev managed engine. The local repository is an interim compatibility layer and must move behind the `projects` IPC namespace before release.
+
 ## Shared interfaces
 
 New application code uses strict TypeScript. Existing JavaScript is converted only when touched by the migration.
