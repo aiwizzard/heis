@@ -29,7 +29,30 @@ test('inlineIpcChannels removes workspace imports from the sandboxed preload', (
     assert.match(output, /contextBridge\.exposeInMainWorld\('heis'/);
 });
 
-test('inlineIpcChannels fails when the expected preload import changes', (t) => {
+test('inlineIpcChannels can refresh an already finalized preload', (t) => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heis-preload-'));
+    t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+    const preloadPath = path.join(tempDir, 'preload.js');
+    fs.writeFileSync(
+        preloadPath,
+        `${IPC_IMPORT}\ncontextBridge.exposeInMainWorld('heis', IPC_CHANNELS);\n`
+    );
+
+    inlineIpcChannels({
+        preloadPath,
+        ipcChannels: { authGetSession: 'auth:get-session' },
+    });
+    inlineIpcChannels({
+        preloadPath,
+        ipcChannels: { authGetSession: 'auth:get-current-session' },
+    });
+
+    const output = fs.readFileSync(preloadPath, 'utf8');
+    assert.doesNotMatch(output, /"authGetSession":"auth:get-session"/);
+    assert.match(output, /"authGetSession":"auth:get-current-session"/);
+});
+
+test('inlineIpcChannels fails when the expected preload declaration is missing', (t) => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heis-preload-'));
     t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
     const preloadPath = path.join(tempDir, 'preload.js');
@@ -37,6 +60,6 @@ test('inlineIpcChannels fails when the expected preload import changes', (t) => 
 
     assert.throws(
         () => inlineIpcChannels({ preloadPath, ipcChannels: {} }),
-        /Expected exactly one @heis\/core IPC import/
+        /Expected exactly one IPC channel declaration/
     );
 });
