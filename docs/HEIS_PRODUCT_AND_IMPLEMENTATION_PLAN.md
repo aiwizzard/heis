@@ -71,6 +71,8 @@ Layers Studio upload, image editing, upscale, background removal, and outpaintin
 
 Workflow definitions now have a local browser-backed repository for create, list, rename, delete, and reload operations. The MuAPI workflow proxy is retired and fails closed with HTTP 410. Workflow Studio remains gated while the builder's node-run endpoints are replaced by the local BYOK engine and durable Trigger.dev managed engine. The local repository is an interim compatibility layer and must move behind the `projects` IPC namespace before release.
 
+The separate legacy Vite renderer and its browser-stored provider key client have been removed from the commercial branch. Unused generic MuAPI API rewrites and upload proxies are retired with explicit HTTP 410 responses, and the active studio package no longer contains a MuAPI client module. Historical licensing remains available through Git history and the retained MIT license.
+
 ## Shared interfaces
 
 New application code uses strict TypeScript. Existing JavaScript is converted only when touched by the migration.
