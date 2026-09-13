@@ -24,6 +24,7 @@
     "build:electron": "tsc -p electron/tsconfig.json",
     "build:tests": "tsc -p tests/tsconfig.json",
     "test": "npm run build:tests && node --test dist-tests/tests/*.test.js",
+    "security:scan": "node scripts/scan-secrets.js",
     "build:studio": "npm run build -w studio",
     "build:workflow": "npm run build -w workflow-builder",
     "build:agent": "npm run build -w ai-agent",
