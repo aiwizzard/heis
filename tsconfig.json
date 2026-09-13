@@ -29,13 +29,13 @@
         "./*"
       ],
       "ai-agent": [
-        "./packages/Open-Poe-AI/packages/agents/src/index.js"
+        "./packages/heis-agents/packages/agents/src/index.js"
       ],
       "workflow-builder": [
-        "./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"
+        "./packages/heis-workflow/packages/workflow-builder/src/index.js"
       ],
       "design-agent": [
-        "./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"
+        "./packages/heis-agent/packages/design-agent/src/index.js"
       ]
     }
   },

@@ -227,7 +227,7 @@ async function getBinaryStatus() {
 // Metal-enabled binaries hosted on our own release (macOS arm64 only).
 // Other platforms fall back to the stock leejet release.
 const CUSTOM_BINARIES = {
-    'darwin-arm64': 'https://github.com/Anil-matcha/heis/releases/download/v1.0.3-binaries/sd-cli-metal-macos-arm64.zip',
+    'darwin-arm64': 'https://github.com/aiwizzard/heis/releases/download/v1.0.3-binaries/sd-cli-metal-macos-arm64.zip',
 };
 
 async function downloadBinary(mainWindow) {

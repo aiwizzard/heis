@@ -6,9 +6,9 @@ module.exports = {
         "./app/**/*.{js,ts,jsx,tsx}",
         "./components/**/*.{js,ts,jsx,tsx}",
         "./packages/studio/src/**/*.{ts,tsx}",
-        "./packages/Open-AI-Design-Agent/packages/design-agent/src/**/*.{js,jsx}",
-        "./packages/Open-Poe-AI/packages/agents/src/**/*.{js,jsx,ts,tsx}",
-        "./packages/Vibe-Workflow/packages/workflow-builder/src/**/*.{js,jsx,ts,tsx}",
+        "./packages/heis-agent/packages/design-agent/src/**/*.{js,jsx}",
+        "./packages/heis-agents/packages/agents/src/**/*.{js,jsx,ts,tsx}",
+        "./packages/heis-workflow/packages/workflow-builder/src/**/*.{js,jsx,ts,tsx}",
     ],
     theme: {
         extend: {

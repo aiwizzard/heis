@@ -53,7 +53,7 @@ This is a curated set of high-value hubs, popular distribution tools, and model-
 - [awesome-ai-video-models](https://github.com/Anil-matcha/awesome-ai-video-models) — compare video models by API, price, and capability.
 - [awesome-ai-image-models](https://github.com/Anil-matcha/awesome-ai-image-models) — compare image models by API, price, and quality.
 - [AI-Youtube-Shorts-Generator](https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator) — Open-source Opus Clip alternative application.
-- [Open-AI-Design-Agent](https://github.com/Anil-matcha/Open-AI-Design-Agent) — Ppen-source autonomous AI design agent.
+- [heis](https://github.com/aiwizzard/heis) — Ppen-source autonomous AI design agent.
 - [Generative-Media-Skills](https://github.com/SamurAIGPT/Generative-Media-Skills) — Agent-ready skills for driving generative-media workflows.
 - [Seedance-2.5-API](https://github.com/SamurAIGPT/Seedance-2.5-API) — Python SDK for Seedance 2.5 video generation.
 
@@ -73,12 +73,12 @@ One-click installers — no Node.js or terminal required.
 
 | Platform | Download |
 |---|---|
-| macOS Apple Silicon (M1/M2/M3/M4) | [heis-1.0.9-arm64.dmg](https://github.com/Anil-matcha/heis/releases/download/v1.0.9/heis-1.0.9-arm64.dmg) |
-| macOS Intel (x64) | [heis-1.0.9.dmg](https://github.com/Anil-matcha/heis/releases/download/v1.0.9/heis-1.0.9.dmg) |
-| Windows (x64) | [heis Setup 1.0.9.exe](https://github.com/Anil-matcha/heis/releases/download/v1.0.9/heis.Setup.1.0.9.exe) |
-| Linux (Ubuntu x64) | [v1.0.9 release](https://github.com/Anil-matcha/heis/releases/tag/v1.0.9) (`.AppImage` / `.deb`), or build locally with `npm run electron:build:linux`. |
+| macOS Apple Silicon (M1/M2/M3/M4) | [heis-1.0.9-arm64.dmg](https://github.com/aiwizzard/heis/releases/download/v1.0.9/heis-1.0.9-arm64.dmg) |
+| macOS Intel (x64) | [heis-1.0.9.dmg](https://github.com/aiwizzard/heis/releases/download/v1.0.9/heis-1.0.9.dmg) |
+| Windows (x64) | [heis Setup 1.0.9.exe](https://github.com/aiwizzard/heis/releases/download/v1.0.9/heis.Setup.1.0.9.exe) |
+| Linux (Ubuntu x64) | [v1.0.9 release](https://github.com/aiwizzard/heis/releases/tag/v1.0.9) (`.AppImage` / `.deb`), or build locally with `npm run electron:build:linux`. |
 
-All releases: [github.com/Anil-matcha/heis/releases](https://github.com/Anil-matcha/heis/releases)
+All releases: [github.com/aiwizzard/heis/releases](https://github.com/aiwizzard/heis/releases)
 
 ### macOS Installation Guide
 
@@ -415,7 +415,7 @@ The **Workflow Studio** lets you build and run multi-step AI pipelines without w
 - **Playground** — Run any workflow interactively with a form UI; results render inline
 - **API execution** — Every workflow is also callable via the Muapi API
 
-> 💡 **Want to add workflows to your own app?** Check out **[Vibe Workflow](https://github.com/SamurAIGPT/Vibe-Workflow)** — the open-source workflow engine powering this feature. Drop it into any project.
+> 💡 **Want to add workflows to your own app?** Check out **[Heis Workflow](https://github.com/aiwizzard/heis)** — the open-source workflow engine powering this feature. Drop it into any project.
 
 ### 🎥 Cinema Studio Controls
 
@@ -457,12 +457,9 @@ Pick the entry point that matches your goal:
 - **Hosted web version (Next.js)** → `npm run dev`
 
 ```bash
-# Clone the repository (with submodules — required for the workflow + agent packages)
-git clone --recurse-submodules https://github.com/Anil-matcha/heis.git
+# Clone the repository. All packages are included.
+git clone https://github.com/aiwizzard/heis.git
 cd heis
-
-# If you already cloned without --recurse-submodules, run this once:
-# git submodule update --init --recursive
 
 # Install dependencies + build workspace packages (studio, workflow, agents).
 # This step is REQUIRED — `npm install` alone is not enough; the workspaces
@@ -476,7 +473,7 @@ npm run dev            # Hosted web version (Next.js) → http://localhost:3000
 
 You'll be prompted to enter your Muapi API key on first use (skip the key if you only plan to use local models).
 
-> **Troubleshooting — `Couldn't find a 'pages' directory`**: this means Next.js can't see the `app/` folder. Confirm you're running `npm run dev` from the repo root (the directory that contains `app/`, `package.json`, and `next.config.mjs`), and that you cloned with submodules. Re-run `npm run setup` if `packages/Vibe-Workflow` or `packages/agents` are empty.
+> **Troubleshooting: `Couldn't find a 'pages' directory`**: this means Next.js can't see the `app/` folder. Confirm you're running `npm run dev` from the repo root (the directory that contains `app/`, `package.json`, and `next.config.mjs`). Re-run `npm run setup` if the vendored packages are missing dependencies.
 
 ### Production Build
 
@@ -503,7 +500,7 @@ npm run electron:build:linux
 npm run electron:build:all
 ```
 
-Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/Anil-matcha/heis/releases).
+Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/aiwizzard/heis/releases).
 
 ## 🏗️ Architecture
 

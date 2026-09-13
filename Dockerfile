@@ -4,9 +4,9 @@ WORKDIR /app
 # Install dependencies
 FROM base AS deps
 COPY package*.json ./
-COPY packages/Vibe-Workflow/packages/workflow-builder/package*.json ./packages/Vibe-Workflow/packages/workflow-builder/
-COPY packages/Open-Poe-AI/packages/agents/package*.json ./packages/Open-Poe-AI/packages/agents/
-COPY packages/Open-AI-Design-Agent/packages/design-agent/package*.json ./packages/Open-AI-Design-Agent/packages/design-agent/
+COPY packages/heis-workflow/packages/workflow-builder/package*.json ./packages/heis-workflow/packages/workflow-builder/
+COPY packages/heis-agents/packages/agents/package*.json ./packages/heis-agents/packages/agents/
+COPY packages/heis-agent/packages/design-agent/package*.json ./packages/heis-agent/packages/design-agent/
 COPY packages/studio/package*.json ./packages/studio/
 RUN npm install
 

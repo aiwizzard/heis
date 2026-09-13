@@ -24,8 +24,8 @@ export default defineConfig([
     "dist-electron/**",
     "dist-tests/**",
     "release/**",
-    "packages/Open-AI-Design-Agent/**",
-    "packages/Open-Poe-AI/**",
-    "packages/Vibe-Workflow/**",
+    "packages/heis-agent/**",
+    "packages/heis-agents/**",
+    "packages/heis-workflow/**",
   ]),
 ]);

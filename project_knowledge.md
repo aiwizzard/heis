@@ -11,7 +11,7 @@ This document serves as a comprehensive knowledge base for the heis project. It 
 - **Future Direction:** The architecture is designed to scale for video generation, model training interfaces, and advanced editing tools.
 
 - **Stack:** Vite, Vanilla JavaScript, Tailwind CSS v4.
-- **Repository:** `https://github.com/Anil-matcha/heis`
+- **Repository:** `https://github.com/aiwizzard/heis`
 - **Primary Branch:** `main`
 
 ## 2. Architecture & File Structure
