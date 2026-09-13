@@ -10,6 +10,23 @@ interface LipSyncStudioModel {
   inputs?: { resolution?: { default?: string; enum?: readonly string[] } };
 }
 
+interface AudioStudioInput {
+  type: "string" | "boolean";
+  title: string;
+  description?: string;
+  default?: string | boolean;
+  enum?: readonly string[];
+  examples?: readonly string[];
+}
+
+interface AudioStudioModel {
+  id: string;
+  name: string;
+  description: string;
+  required: readonly string[];
+  inputs: Readonly<Record<string, AudioStudioInput>>;
+}
+
 export const lipsyncModels: readonly LipSyncStudioModel[] = [
   {
     id: "heis-lipsync-image",
@@ -37,6 +54,32 @@ export const getResolutionsForLipSyncModel = (id: string): readonly string[] => 
   void id;
   return [];
 };
+
+export const audioModels: readonly AudioStudioModel[] = [
+  {
+    id: "heis-speech-standard",
+    name: "Heis Speech Standard",
+    description: "Natural multilingual speech using MiniMax Speech 2.8.",
+    required: ["prompt"],
+    inputs: {
+      prompt: { type: "string", title: "Text", description: "Enter up to 5,000 characters to speak.", examples: ["Welcome to Heis. Let us build something remarkable."] },
+      voice: { type: "string", title: "Voice", default: "English_CalmWoman", enum: ["English_CalmWoman", "English_ConfidentWoman", "English_CaptivatingStoryteller", "English_PlayfulGirl", "English_expressive_narrator"] },
+    },
+  },
+  {
+    id: "heis-music-standard",
+    name: "Heis Music Standard",
+    description: "Prompt-driven songs and instrumental tracks using MiniMax Music 2.6.",
+    required: ["prompt"],
+    inputs: {
+      prompt: { type: "string", title: "Music prompt", description: "Describe the genre, mood, instrumentation, tempo, and vocal style.", examples: ["Warm cinematic ambient music with soft piano, restrained strings, and no vocals."] },
+      instrumental: { type: "boolean", title: "Instrumental", description: "Generate music without vocals.", default: true },
+      lyrics: { type: "string", title: "Lyrics", description: "Optional lyrics when Instrumental is off." },
+    },
+  },
+];
+
+export const getAudioModelById = (id: string) => audioModels.find((model) => model.id === id);
 
 function requireDesktop() {
   if (!window.heis?.generation) throw new Error("Heis generation is available in the desktop application.");
@@ -134,6 +177,31 @@ export async function processLipSync(_legacyApiKey: string, params: any) {
     }, params.onRequestId);
   }
   throw new Error("A source image or video is required for lip sync.");
+}
+
+export async function generateAudio(_legacyApiKey: string, params: any) {
+  if (params._modelId === "heis-speech-standard") {
+    const text = String(params.prompt ?? "").trim();
+    if (!text) throw new Error("Text is required for speech generation.");
+    if (text.length > 5_000) throw new Error("Speech text is limited to 5,000 characters in Heis.");
+    return submit("text-to-speech", "heis-speech-standard", {
+      speech: { text, voice: params.voice || "English_CalmWoman" },
+    }, params.onRequestId);
+  }
+  if (params._modelId === "heis-music-standard") {
+    const prompt = String(params.prompt ?? "").trim();
+    if (!prompt) throw new Error("A music prompt is required.");
+    if (prompt.length > 2_000) throw new Error("Music prompts are limited to 2,000 characters.");
+    const instrumental = params.instrumental !== false;
+    return submit("text-to-music", "heis-music-standard", {
+      positivePrompt: prompt,
+      settings: {
+        instrumental,
+        ...(!instrumental && String(params.lyrics ?? "").trim() ? { lyrics: String(params.lyrics).trim(), lyricsOptimizer: true } : {}),
+      },
+    }, params.onRequestId);
+  }
+  throw new Error("Select a supported Heis audio model.");
 }
 
 export async function getUserBalance() {

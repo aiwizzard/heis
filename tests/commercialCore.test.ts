@@ -61,3 +61,12 @@ test("lip sync catalog separates image and video input models", () => {
   assert.equal(image?.operation, "lip-sync");
   assert.equal(image?.providerModelId, "creatify:aurora@fast");
 });
+
+test("audio catalog separates speech and music billing operations", () => {
+  const speech = getCapability("heis-speech-standard");
+  const music = getCapability("heis-music-standard");
+  assert.equal(speech?.operation, "text-to-speech");
+  assert.equal(speech?.providerModelId, "minimax:speech@2.8");
+  assert.equal(music?.operation, "text-to-music");
+  assert.equal(music?.providerModelId, "minimax:music@2.6");
+});

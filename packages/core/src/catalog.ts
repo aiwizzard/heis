@@ -104,6 +104,33 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
       { name: "inputs", type: "object", required: true },
     ],
   },
+  {
+    id: "heis-speech-standard",
+    provider: "runware",
+    providerModelId: "minimax:speech@2.8",
+    displayName: "Heis Speech Standard",
+    operation: "text-to-speech",
+    outputKind: "audio",
+    maximumEstimatedCostUsd: 2,
+    enabled: true,
+    parameters: [
+      { name: "speech", type: "object", required: true },
+    ],
+  },
+  {
+    id: "heis-music-standard",
+    provider: "runware",
+    providerModelId: "minimax:music@2.6",
+    displayName: "Heis Music Standard",
+    operation: "text-to-music",
+    outputKind: "audio",
+    maximumEstimatedCostUsd: 0.5,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "settings", type: "object" },
+    ],
+  },
 ];
 
 export function getCapability(id: string): ModelCapability | undefined {

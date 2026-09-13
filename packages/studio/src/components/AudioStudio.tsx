@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { generateAudio, uploadFile } from "../muapi.js";
+import { audioModels, generateAudio, getAudioModelById, uploadFile } from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
-import { audioModels, getAudioModelById } from "../models.js";
 import en from "../messages/en/audioStudio.json";
 import zh from "../messages/zh/audioStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -602,7 +601,7 @@ export default function AudioStudio({
       const stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
         const data = JSON.parse(stored);
-        if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
+        if (data.selectedModelId && getAudioModelById(data.selectedModelId)) setSelectedModelId(data.selectedModelId);
         if (data.params) setParams(data.params);
         if (data.internalHistory) setInternalHistory(data.internalHistory);
         if (data.activeResultUrl) setActiveResultUrl(data.activeResultUrl);
