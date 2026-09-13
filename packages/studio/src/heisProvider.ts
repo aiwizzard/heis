@@ -108,6 +108,29 @@ function dimensions(aspectRatio = "1:1", shortEdge = 1024) {
   return { width: shortEdge, height: Math.round(shortEdge * heightRatio / widthRatio / 64) * 64 };
 }
 
+const MARKETING_VIDEO_DIMENSIONS: Readonly<Record<string, Readonly<Record<string, readonly [number, number]>>>> = {
+  "720p": {
+    "16:9": [1280, 720],
+    "9:16": [720, 1280],
+    "1:1": [960, 960],
+    "4:3": [1104, 832],
+    "3:4": [832, 1104],
+  },
+  "1080p": {
+    "16:9": [1920, 1080],
+    "9:16": [1080, 1920],
+    "1:1": [1440, 1440],
+    "4:3": [1648, 1248],
+    "3:4": [1248, 1648],
+  },
+};
+
+function marketingVideoDimensions(resolution: string, aspectRatio: string) {
+  const tier = MARKETING_VIDEO_DIMENSIONS[resolution] ?? MARKETING_VIDEO_DIMENSIONS["720p"];
+  const [width, height] = tier[aspectRatio] ?? tier["16:9"];
+  return { width, height };
+}
+
 async function submit(operation: any, modelId: string, inputs: Record<string, unknown>, onRequestId?: (id: string) => void) {
   const heis = requireDesktop();
   const billingMode = await mode();
@@ -158,6 +181,29 @@ export async function generateI2V(_legacyApiKey: string, params: any) {
 export async function processV2V(_legacyApiKey: string, params: any) {
   const input = params.video_url ?? params.videos_list?.[0] ?? params.video_files?.[0] ?? params.inputs;
   return submit("video-to-video", "heis-video-transform", { positivePrompt: params.prompt, inputs: input, resolution: params.resolution ?? "720p" }, params.onRequestId);
+}
+
+export async function generateMarketingStudioAd(_legacyApiKey: string, params: any) {
+  const referenceImages = Array.isArray(params.images_list) ? params.images_list.filter(Boolean).slice(0, 10) : [];
+  const referenceVideos = Array.isArray(params.video_files) ? params.video_files.filter(Boolean).slice(0, 5) : [];
+  if (!referenceImages.length) throw new Error("A product image is required for marketing video generation.");
+  const userPrompt = String(params.prompt ?? "").trim();
+  if (!userPrompt) throw new Error("A marketing script or prompt is required.");
+  const referenceGuide = [
+    "Use Image 1 as the primary product reference and preserve its branding, proportions, and packaging.",
+    referenceImages.length > 1 ? "Use the remaining images as supporting subject, character, product, or style references in their supplied order." : "",
+    referenceVideos.length ? "Use Video 1 as the format, pacing, motion, and camera reference without copying any visible branding or text from it." : "",
+  ].filter(Boolean).join(" ");
+  return submit("reference-to-video", "heis-marketing-video", {
+    positivePrompt: `${referenceGuide} ${userPrompt}`,
+    inputs: {
+      referenceImages,
+      ...(referenceVideos.length ? { referenceVideos } : {}),
+    },
+    ...marketingVideoDimensions(params.resolution ?? "720p", params.aspect_ratio ?? "16:9"),
+    duration: Math.min(15, Math.max(4, Math.round(Number(params.duration) || 5))),
+    settings: { audio: true },
+  }, params.onRequestId);
 }
 
 export async function processLipSync(_legacyApiKey: string, params: any) {

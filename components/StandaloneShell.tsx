@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ImageStudio, VideoStudio, LipSyncStudio, CinemaStudio, AudioStudio, AiInfluencerStudio, getUserBalance } from 'studio';
+import { ImageStudio, VideoStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
 import CodexStudio from './CodexStudio';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
@@ -255,7 +255,7 @@ const NAVIGATION_CATEGORIES = [
 ];
 
 const EXPLORE_APPS_TAB = TABS.find((tab) => tab.id === 'apps');
-const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'lipsync', 'cinema', 'audio', 'agents', 'ai-influencer']);
+const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'agents', 'ai-influencer']);
 
 function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
   return (
@@ -1056,6 +1056,9 @@ export default function StandaloneShell({ locale = 'en' }) {
         </div>
         <div className={activeTab === 'audio' ? "h-full w-full" : "hidden"}>
           {activeTab === 'audio' && <AudioStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('audio')} onGenerationEnd={makeGenerationEndCallback('audio')} onGenerationComplete={makeSuccessCallback('audio')} onGenerationError={makeErrorCallback('audio')} />}
+        </div>
+        <div className={activeTab === 'marketing' ? "h-full w-full" : "hidden"}>
+          {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('marketing')} onGenerationEnd={makeGenerationEndCallback('marketing')} onGenerationComplete={makeSuccessCallback('marketing')} onGenerationError={makeErrorCallback('marketing')} />}
         </div>
         <div className={activeTab === 'agents' ? "h-full w-full" : "hidden"}>
           {activeTab === 'agents' && <CodexStudio />}

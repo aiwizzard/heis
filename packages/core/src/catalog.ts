@@ -77,6 +77,23 @@ export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
     ],
   },
   {
+    id: "heis-marketing-video",
+    provider: "runware",
+    providerModelId: "alibaba:wan@3.0",
+    displayName: "Heis Marketing Video",
+    operation: "reference-to-video",
+    outputKind: "video",
+    maximumEstimatedCostUsd: 3,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "object", required: true },
+      { name: "width", type: "number", required: true },
+      { name: "height", type: "number", required: true },
+      { name: "duration", type: "number", default: 5, minimum: 4, maximum: 15 },
+    ],
+  },
+  {
     id: "heis-lipsync-video",
     provider: "runware",
     providerModelId: "sync:lipsync-2@1",

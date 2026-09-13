@@ -70,3 +70,10 @@ test("audio catalog separates speech and music billing operations", () => {
   assert.equal(music?.operation, "text-to-music");
   assert.equal(music?.providerModelId, "minimax:music@2.6");
 });
+
+test("marketing video catalog supports multimodal references", () => {
+  const marketing = getCapability("heis-marketing-video");
+  assert.equal(marketing?.operation, "reference-to-video");
+  assert.equal(marketing?.providerModelId, "alibaba:wan@3.0");
+  assert.equal(marketing?.maximumEstimatedCostUsd, 3);
+});

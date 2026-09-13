@@ -3,6 +3,7 @@ export const GENERATION_OPERATIONS = [
   "image-to-image",
   "text-to-video",
   "image-to-video",
+  "reference-to-video",
   "video-to-video",
   "lip-sync",
   "motion-control",
