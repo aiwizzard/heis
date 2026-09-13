@@ -343,6 +343,35 @@ export async function processRecast(_legacyApiKey: string, params: any) {
   }, params.onRequestId);
 }
 
+export async function runMotionGraphics(_legacyApiKey: string, params: any) {
+  const prompt = String(params.prompt ?? "").trim();
+  if (!prompt) throw new Error("A motion graphics prompt is required.");
+  const aspectRatio = String(params.aspect_ratio ?? "16:9");
+  const size = MOTION_VIDEO_DIMENSIONS[aspectRatio] ?? MOTION_VIDEO_DIMENSIONS["16:9"];
+  const direction = "Create polished, production-ready motion graphics with intentional typography, clean composition, smooth transitions, and coherent visual rhythm.";
+  return submit("text-to-video", "heis-motion-graphics", {
+    positivePrompt: `${direction} ${prompt}`,
+    width: size[0],
+    height: size[1],
+    duration: Math.min(30, Math.max(4, Math.round(Number(params.duration_seconds) || 6))),
+    settings: { audio: false },
+  }, params.onRequestId);
+}
+
+export async function runMotionGraphicsEdit(_legacyApiKey: string, params: any) {
+  const video = String(params.video_url ?? "").trim();
+  const prompt = String(params.edit_prompt ?? "").trim();
+  if (!video) throw new Error("Select a generated motion graphic to remix.");
+  if (!prompt) throw new Error("A remix instruction is required.");
+  return submit("video-to-video", "heis-motion-graphics-edit", {
+    positivePrompt: `Edit the supplied motion graphic according to this instruction while preserving all unspecified timing, layout, and visual elements: ${prompt}`,
+    inputs: { video },
+    duration: "auto",
+    resolution: "720p",
+    settings: { operation: "edit", audio: false },
+  }, params.onRequestId);
+}
+
 export async function processLipSync(_legacyApiKey: string, params: any) {
   const audio = params.audio_url;
   if (!audio) throw new Error("An audio file is required for lip sync.");

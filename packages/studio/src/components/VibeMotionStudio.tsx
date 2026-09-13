@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
+import { runMotionGraphics, runMotionGraphicsEdit } from "../heisProvider.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
@@ -161,11 +161,11 @@ export default function VibeMotionStudio({
     try {
       let result;
       if (editMode) {
+        const source = history.find((entry) => entry.requestId === editSourceId);
+        if (!source?.url) throw new Error("Select a generated motion graphic to remix.");
         result = await runMotionGraphicsEdit(apiKey, {
-          request_id: editSourceId,
+          video_url: source.url,
           edit_prompt: prompt.trim(),
-          aspect_ratio: aspectRatio,
-          duration_seconds: duration,
           onRequestId: (id) => { pendingRequestId.current = id; },
         });
       } else {
@@ -198,26 +198,11 @@ export default function VibeMotionStudio({
       saveHistory(next);
       onGenerationComplete?.({ url: videoUrl, type: "video" });
     } catch (err) {
-      // Detect the backend's "animation code not saved" limitation
       const raw = err.message || "";
-      const isStaleEdit =
-        raw.includes("animation code") ||
-        raw.includes("does not have saved") ||
-        raw.includes("Original generation does not");
-
-      if (isStaleEdit) {
-        console.warn("[VibeMotionStudio] Remix unavailable:", raw.slice(0, 120));
-        const msg = copy.errors.staleEditUnavailable;
-        if (onGenerationError) onGenerationError(msg);
-        else toast.error(msg);
-        setEditMode(false);
-        setEditSourceId(null);
-      } else {
-        console.error("[VibeMotionStudio]", err);
-        const errMsg = formatErrorMessage(raw || err, copy.errors.generationFailed);
-        if (onGenerationError) onGenerationError(errMsg);
-        else toast.error(errMsg);
-      }
+      console.error("[VibeMotionStudio]", err);
+      const errMsg = formatErrorMessage(raw || err, copy.errors.generationFailed);
+      if (onGenerationError) onGenerationError(errMsg);
+      else toast.error(errMsg);
     } finally {
       setGenerating(false);
       stopTimer();

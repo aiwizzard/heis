@@ -91,3 +91,14 @@ test("recast has an independently configurable Seedance capability", () => {
   assert.equal(recast?.providerModelId, "bytedance:seedance@2.5");
   assert.equal(recast?.parameters.find((parameter) => parameter.name === "duration")?.default, "auto");
 });
+
+test("motion graphics generation and remix use separate Seedance capabilities", () => {
+  const generate = getCapability("heis-motion-graphics");
+  const remix = getCapability("heis-motion-graphics-edit");
+  assert.equal(generate?.operation, "text-to-video");
+  assert.equal(generate?.providerModelId, "bytedance:seedance@2.5");
+  assert.equal(generate?.maximumEstimatedCostUsd, 7);
+  assert.equal(remix?.operation, "video-to-video");
+  assert.equal(remix?.providerModelId, "bytedance:seedance@2.5");
+  assert.equal(remix?.parameters.find((parameter) => parameter.name === "duration")?.default, "auto");
+});
