@@ -88,7 +88,7 @@ body {
 .landing-hero::after { content: ''; position: absolute; inset: 0; z-index: -4; background: radial-gradient(circle at center, transparent 0 27%, rgba(6,6,6,.38) 63%, rgba(6,6,6,.94) 100%); }
 .landing-hand { position: absolute; z-index: -2; pointer-events: none; background: center/contain no-repeat; filter: saturate(.8) contrast(1.1); opacity: .72; mix-blend-mode: screen; }
 .landing-hand-left { left: -8vw; top: -8vw; width: min(48vw, 760px); aspect-ratio: 1.16; background-image: url("https://framerusercontent.com/images/KNhiA5A2ykNYqNkj04Hk6BVg5A.png?width=1540&height=1320"); animation: landing-float-left 12s ease-in-out infinite; }
-.landing-hand-right { right: -5vw; bottom: -4vw; width: min(44vw, 700px); aspect-ratio: 1.54; background-image: url("https://framerusercontent.com/images/X89VFCABCEjjZ4oLGa3PjbOmsA.png?width=1542&height=1002"); animation: landing-float-right 14s ease-in-out infinite; }
+.landing-hand-right { right: -5vw; bottom: -4vw; width: min(44vw, 700px); aspect-ratio: 1.54; background-image: url("/assets/hero-robot-hand.png"); animation: landing-float-right 14s ease-in-out infinite; }
 .landing-orbit { position: absolute; z-index: -3; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; pointer-events: none; }
 .landing-orbit-one { width: min(72vw, 950px); aspect-ratio: 1; }
 .landing-orbit-two { width: min(48vw, 640px); aspect-ratio: 1; }
