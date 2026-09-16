@@ -39,8 +39,8 @@ function createWindow(rendererUrl) {
     const isMac = process.platform === 'darwin';
 
     mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
+        width: 1280,
+        height: 820,
         minWidth: 1024,
         minHeight: 640,
         webPreferences: {
@@ -51,7 +51,7 @@ function createWindow(rendererUrl) {
             preload: path.join(__dirname, 'preload.js'),
         },
         ...(isMac ? { titleBarStyle: 'hiddenInset' } : {}),
-        backgroundColor: '#0d0d0d',
+        backgroundColor: '#101113',
         show: false,
         title: 'heis',
     });

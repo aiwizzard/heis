@@ -32,14 +32,36 @@ try {
   assert.equal(await page.getByText('Loading studio...', {exact:true}).count(),0,tab+' loaded');
   assert.equal(await page.locator('a[href="https://vadoo.tv"]').count(),0,'No promotional banner');
   await page.screenshot({path:'test-results/theme/'+tab+'.png'});
+  await page.getByRole('button',{name:'Use light theme',exact:true}).click();
+  await page.waitForTimeout(250);
+  await page.screenshot({path:'test-results/theme/'+tab+'-light.png'});
+  await page.getByRole('button',{name:'Use dark theme',exact:true}).click();
+  await page.waitForTimeout(250);
  }
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('dialog').waitFor();
+ await page.waitForTimeout(450);
+ await page.screenshot({path:'test-results/theme/settings.png'});
+ await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1024,640));
+ await page.goto('heis-app://app/studio/video');
+ await page.waitForTimeout(1200);
+ await page.screenshot({path:'test-results/theme/video-compact.png'});
+ await page.getByRole('button',{name:/Seedance 1.0 Lite/}).first().click();
+ await page.waitForTimeout(200);
+ await page.screenshot({path:'test-results/theme/model-menu.png'});
+ await page.keyboard.press('Escape');
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,900));
  await page.goto('heis-app://app/studio/agents');
  await page.getByText('Codex connected',{exact:true}).waitFor();
  assert.equal(await page.locator('.agent-sidebar-slot .sidebar').count(),1,'Agent controls share the main sidebar');
  assert.equal(await page.locator('.heis-agent-root:not(.agent-sidebar-slot) .sidebar').count(),0,'No nested agent sidebar');
  await page.getByRole('button',{name:'Use light theme',exact:true}).click();
+  await page.waitForTimeout(250);
  await page.screenshot({path:'test-results/theme/agents-light.png'});
  await page.getByRole('button',{name:'Use dark theme',exact:true}).click();
+  await page.waitForTimeout(250);
  await app.evaluate(({dialog},dir)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[dir]});},userData);
  await page.getByRole('button',{name:'Open a project',exact:true}).click();
  if(process.env.HEIS_TEST_REAL_CODEX === '1') {

@@ -876,7 +876,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
             className={`
               fixed top-14 bottom-0 left-0 md:static md:h-full z-30 bg-[#0a0a0b]/95 backdrop-blur-md border-r border-white/[0.06] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 select-none
               ${isMobileOpen ? 'translate-x-0 w-60 z-50' : '-translate-x-full md:translate-x-0'}
-              workspace-sidebar ${isSidebarCollapsed && activeTab !== 'agents' ? 'workspace-sidebar-collapsed' : ''}
+              workspace-sidebar ${isSidebarCollapsed ? 'workspace-sidebar-collapsed' : ''}
             `}
           >
             <nav data-agent-navigation={activeTab === "agents"} aria-label={copy.shell.studioNavigation} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none py-2 px-2">
@@ -1192,7 +1192,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
+          <div role="dialog" aria-modal="true" aria-label={copy.settingsModal.title} className="workspace-settings bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
             <h2 className="text-white font-bold text-lg mb-2">{copy.settingsModal.title}</h2>
             <p className="text-white/40 text-[13px] mb-8">
               {copy.settingsModal.subtitle}

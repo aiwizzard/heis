@@ -536,6 +536,7 @@ export default function AiInfluencerStudio({
                     <button
                       key={opt.id}
                       onClick={() => handleOptionSelect(subcat.id, opt.id)}
+                      aria-pressed={sel}
                       className={`group relative aspect-square rounded-xl overflow-hidden border transition-all ${
                         sel
                           ? "border-white/80 ring-1 ring-white/30 shadow-lg"
@@ -550,7 +551,7 @@ export default function AiInfluencerStudio({
                         onError={(e) => { e.target.onerror = null; e.target.src = `${CDN}/character_type_human.webp`; }}
                       />
                       {/* Label overlay */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-4 pb-1 px-1">
+                      <div className="heis-option-caption absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-4 pb-1 px-1">
                         <span className="text-[9px] font-semibold text-white leading-none">{opt.label}</span>
                       </div>
                       {/* Selected check badge */}

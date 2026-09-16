@@ -142,3 +142,85 @@
 .heis-workspace .heis-agent-root .composer{border-color:var(--ws-line)}
 .heis-workspace .heis-agent-root .composer:focus-within{border-color:var(--ws-accent)}
 .heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);border-color:var(--ws-line);color:var(--ws-accent);box-shadow:none}
+
+/* Legacy studio controls use the same palette as the workspace shell. */
+.heis-workspace [class~="bg-indigo-500/10"]{background-color:var(--ws-accent-soft)}
+.heis-workspace [class~="bg-purple-500/10"]{background-color:var(--ws-accent-soft)}
+.heis-workspace [class~="bg-violet-500/10"]{background-color:var(--ws-accent-soft)}
+.heis-workspace [class~="bg-violet-600"]{background-color:var(--ws-accent)}
+.heis-workspace [class~="bg-violet-600/30"]{background-color:var(--ws-accent-soft)}
+.heis-workspace [class~="bg-violet-600/40"]{background-color:var(--ws-accent-soft)}
+.heis-workspace [class~="bg-zinc-700"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-800"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-800/80"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-850"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-900"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-900/30"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-900/40"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-905"]{background-color:var(--ws-panel)}
+.heis-workspace [class~="bg-zinc-950"]{background-color:var(--ws-side)}
+.heis-workspace [class~="bg-zinc-950/20"]{background-color:var(--ws-side)}
+.heis-workspace [class~="bg-zinc-950/40"]{background-color:var(--ws-side)}
+.heis-workspace [class~="bg-zinc-950/80"]{background-color:var(--ws-side)}
+.heis-workspace [class~="border-indigo-500/25"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-purple-500/10"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-purple-500/25"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-violet-400/50"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-violet-500"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-violet-500/20"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-violet-500/25"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-violet-500/30"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-700"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-700/50"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-700/80"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-705"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-800"]{border-color:var(--ws-line)}
+.heis-workspace [class~="border-zinc-900"]{border-color:var(--ws-line)}
+.heis-workspace [class~="text-gray-200"]{color:var(--ws-text)}
+.heis-workspace [class~="text-gray-300"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-gray-400"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-gray-500"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-gray-600"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-gray-700"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-indigo-400"]{color:var(--ws-accent)}
+.heis-workspace [class~="text-purple-400"]{color:var(--ws-accent)}
+.heis-workspace [class~="text-violet-300"]{color:var(--ws-accent)}
+.heis-workspace [class~="text-violet-400"]{color:var(--ws-accent)}
+.heis-workspace [class~="text-zinc-100"]{color:var(--ws-text)}
+.heis-workspace [class~="text-zinc-200"]{color:var(--ws-text)}
+.heis-workspace [class~="text-zinc-300"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-zinc-400"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-zinc-500"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-zinc-650"]{color:var(--ws-muted)}
+.heis-workspace [class~="text-zinc-900"]{color:var(--ws-muted)}
+.heis-workspace .workspace-sidebar-collapsed .agent-sidebar-slot{display:none}
+.heis-workspace [class*='shadow-']{box-shadow:none}
+.heis-workspace [class*='drop-shadow-']{filter:none}
+.heis-workspace .blur-3xl{display:none}
+.heis-workspace [class*='bg-gradient-']{background-image:none}
+.heis-workspace .bg-black.h-full.w-full{background:var(--ws-bg)}
+.heis-workspace .workspace-chrome .rounded-full{border-radius:6px;background:transparent;border-color:transparent}
+.heis-workspace .workspace-settings{padding:24px;border-radius:10px;background:var(--ws-panel);box-shadow:0 16px 60px #0005}
+.heis-workspace .workspace-settings button{height:34px}
+.heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);color:var(--ws-accent)}
+.heis-workspace .heis-agent-root .hero-icon svg{color:var(--ws-accent)}
+.heis-workspace[data-studio='audio'] button.bg-primary{padding-block:9px;min-height:34px;font-size:13px;border-radius:6px;transform:none}
+.heis-workspace[data-studio='audio'] .w-20.h-20{width:52px;height:52px;border-radius:12px;border-color:var(--ws-line)}
+.heis-workspace[data-studio='audio'] .max-w-md.text-center{background:transparent;border:0}
+.heis-workspace [stroke='#22d3ee']{stroke:var(--ws-accent)}
+.heis-workspace [fill='#22d3ee']{fill:var(--ws-accent)}
+.heis-workspace [role='status']{font-family:inherit}
+/* Selected controls and media-card captions retain readable semantic contrast. */
+.heis-workspace button [class*='bg-gradient-']{background:var(--ws-panel);color:var(--ws-text)}
+.heis-workspace button [class*='bg-gradient-'] *{color:inherit}
+.heis-workspace .heis-agent-root .welcome-mark{width:52px;height:52px;border-radius:12px;border-color:var(--ws-line);background:var(--ws-panel);color:var(--ws-accent);box-shadow:none}
+.heis-workspace [class~='bg-violet-600']{color:var(--ws-on-accent)}
+.heis-workspace button[class*='bg-gradient-']{background:var(--ws-accent);color:var(--ws-on-accent)}
+.heis-workspace button[class*='bg-gradient-'] svg{color:inherit}
+.heis-workspace [class~='bg-white']{background-color:var(--ws-text);color:var(--ws-bg)}
+.heis-workspace [class~='text-gray-600'],.heis-workspace [class~='text-gray-700']{color:var(--ws-muted)}
+.heis-workspace :is(button,a):hover [class*='group-hover:text-']{color:inherit}
+.heis-workspace[data-studio='ai-influencer'] button .heis-option-caption{padding:6px;background:var(--ws-panel);color:var(--ws-text)}
+.heis-workspace[data-studio='ai-influencer'] button .heis-option-caption span{color:var(--ws-text);font-weight:450}
+.heis-workspace[data-studio='ai-influencer'] button[aria-pressed='true']{border-color:var(--ws-accent);box-shadow:0 0 0 1px var(--ws-accent)}
+.heis-workspace[data-studio='ai-influencer'] button[aria-pressed='true'] .heis-option-caption{background:var(--ws-accent-soft)}
