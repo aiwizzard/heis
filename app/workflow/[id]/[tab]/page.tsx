@@ -1,4 +1,4 @@
-import StandaloneShell from '@/components/StandaloneShell';
+import StandaloneShell from '@/components/WebStudioShell';
 
 export const metadata = {
   title: 'Workflow — heis',

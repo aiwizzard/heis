@@ -40,3 +40,7 @@ out/
 .env
 .env.*
 !.env.example
+
+dist-desktop/
+dist-codex/
+test-results/

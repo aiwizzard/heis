@@ -1,3 +1,4 @@
+const { handleTrusted } = require("./trustedIpc");
 const { ipcMain, app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -587,14 +588,14 @@ function getMainWindow() {
 
 function register() {
     ensureLocalAiPaths();
-    ipcMain.handle('local-ai:binary-status', () => getBinaryStatus());
-    ipcMain.handle('local-ai:download-binary', () => downloadBinary(getMainWindow()));
-    ipcMain.handle('local-ai:list-models', () => listModels());
-    ipcMain.handle('local-ai:download-model', (_, modelId) => downloadModel(modelId, getMainWindow()));
-    ipcMain.handle('local-ai:download-auxiliary', (_, auxKey) => downloadAuxiliary(auxKey, getMainWindow()));
-    ipcMain.handle('local-ai:delete-model', (_, modelId) => deleteModel(modelId));
-    ipcMain.handle('local-ai:generate', (_, params) => generate(params, getMainWindow()));
-    ipcMain.handle('local-ai:cancel-generation', () => cancelGeneration());
+    handleTrusted('local-ai:binary-status', () => getBinaryStatus());
+    handleTrusted('local-ai:download-binary', () => downloadBinary(getMainWindow()));
+    handleTrusted('local-ai:list-models', () => listModels());
+    handleTrusted('local-ai:download-model', (_, modelId) => downloadModel(modelId, getMainWindow()));
+    handleTrusted('local-ai:download-auxiliary', (_, auxKey) => downloadAuxiliary(auxKey, getMainWindow()));
+    handleTrusted('local-ai:delete-model', (_, modelId) => deleteModel(modelId));
+    handleTrusted('local-ai:generate', (_, params) => generate(params, getMainWindow()));
+    handleTrusted('local-ai:cancel-generation', () => cancelGeneration());
 }
 
 module.exports = {

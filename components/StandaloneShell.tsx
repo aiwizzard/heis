@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
 import { ImageStudio, VideoStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, MotionControlStudio, VibeMotionStudio, RecastStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
 import CodexStudio from './CodexStudio';
@@ -306,8 +305,8 @@ const persistNotifications = (notifications) => {
   }
 };
 
-export default function StandaloneShell({ locale = 'en' }) {
-  const params = useParams();
+export default function StandaloneShell({ locale = 'en', routeParams = {} as Record<string, any> }) {
+  const params = routeParams;
   const slug = useMemo(() => params?.slug || [], [params?.slug]);
   const idFromParams = params?.id;
   const tabFromParams = params?.tab;

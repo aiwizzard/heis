@@ -33,8 +33,8 @@
     "build:packages": "npm run build:core && npm run build:workflow && npm run build:agent && npm run build:design && npm run build:studio",
     "setup": "npm install && npm run build:packages",
     "stage:next-standalone": "node scripts/stage-next-standalone.js",
-    "build:desktop-renderer": "npm run build:packages && next build && npm run stage:next-standalone",
-    "electron:dev": "npm run build:desktop-renderer && npm run build:electron && electron .",
+    "build:desktop-renderer": "vite build",
+    "electron:dev": "npm run build:core && npm run build:desktop-renderer && npm run build:electron && node scripts/start-desktop.mjs",
     "electron:build": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac",
     "electron:build:arm64": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --arm64",
     "electron:build:x64": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --x64",
@@ -42,7 +42,8 @@
     "package:linux:deb": "node scripts/package-linux-deb.js",
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
-    "electron:build:all": "npm run electron:build"
+    "electron:build:all": "npm run electron:build",
+    "desktop:dev": "node scripts/desktop-dev.mjs"
   },
   "build": {
     "appId": "com.heis.desktop",
@@ -67,16 +68,8 @@
     ],
     "extraResources": [
       {
-        "from": ".next/standalone",
-        "to": "next/standalone"
-      },
-      {
-        "from": ".next/static",
-        "to": "next/standalone/.next/static"
-      },
-      {
-        "from": "public",
-        "to": "next/standalone/public"
+        "from": "dist-desktop",
+        "to": "desktop"
       },
       {
         "from": "build/local-ai",
@@ -152,27 +145,32 @@
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.29.0",
     "@electron/notarize": "^3.1.1",
     "@eslint/eslintrc": "^3",
     "@types/node": "^22.20.2",
     "@types/react": "^19.2.14",
+    "@vitejs/plugin-react": "^6.0.0",
     "ai-agent": "file:./packages/heis-agents/packages/agents",
+    "autoprefixer": "^10.4.24",
     "axios": "^1.7.0",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.27.0",
+    "eslint": "^9",
+    "eslint-config-next": "^16.3.5",
     "next": "^16.3.5",
+    "playwright-core": "^1.60.0",
+    "postcss": "^8.5.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.4.1",
     "studio": "*",
-    "workflow-builder": "file:./packages/heis-workflow/packages/workflow-builder",
-    "xtend": "^4.0.2",
-    "autoprefixer": "^10.4.24",
-    "electron": "^44.3.0",
-    "electron-builder": "^26.15.3",
-    "eslint": "^9",
-    "eslint-config-next": "^16.3.5",
-    "postcss": "^8.5.28",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "workflow-builder": "file:./packages/heis-workflow/packages/workflow-builder",
+    "xtend": "^4.0.2"
   },
   "main": "dist-electron/main.js",
   "engines": {

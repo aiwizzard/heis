@@ -1,3 +1,4 @@
+const { handleTrusted } = require("./trustedIpc");
 // Wan2GP HTTP provider — alternate local engine alongside sd.cpp.
 // User runs Wan2GP themselves (https://github.com/deepbeepmeep/Wan2GP) and
 // points this app at its Gradio server. We never bundle Python or weights.
@@ -444,13 +445,13 @@ function cancelGeneration() {
 function getMainWindow() { return BrowserWindow.getAllWindows()[0] || null; }
 
 function register() {
-    ipcMain.handle('wan2gp:get-config',  () => readConfig());
-    ipcMain.handle('wan2gp:set-url',     (_, url) => { writeConfig({ url: normalizeUrl(url) }); return { ok: true }; });
-    ipcMain.handle('wan2gp:probe',       (_, url) => probe(url));
-    ipcMain.handle('wan2gp:list-models', () => listModels());
-    ipcMain.handle('wan2gp:generate',    (_, params) => generate(params, getMainWindow()));
-    ipcMain.handle('wan2gp:cancel-generation', () => cancelGeneration());
-    ipcMain.handle('wan2gp:upload-file', (_, payload) => uploadFile(payload));
+    handleTrusted('wan2gp:get-config',  () => readConfig());
+    handleTrusted('wan2gp:set-url',     (_, url) => { writeConfig({ url: normalizeUrl(url) }); return { ok: true }; });
+    handleTrusted('wan2gp:probe',       (_, url) => probe(url));
+    handleTrusted('wan2gp:list-models', () => listModels());
+    handleTrusted('wan2gp:generate',    (_, params) => generate(params, getMainWindow()));
+    handleTrusted('wan2gp:cancel-generation', () => cancelGeneration());
+    handleTrusted('wan2gp:upload-file', (_, payload) => uploadFile(payload));
 }
 
 module.exports = { register, WAN2GP_CATALOG };

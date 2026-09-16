@@ -4,17 +4,17 @@ const { pathToFileURL } = require('node:url');
 const { register: registerLocalInference } = require('./lib/localInference');
 const { register: registerWan2gp } = require('./lib/wan2gpProvider');
 const { register: registerCommercialServices } = require('./lib/commercialServices');
-const { NextServer } = require('./lib/nextServer');
+const { installDesktopProtocol, desktopUrl } = require('./lib/desktopRenderer');
 const { UpdaterService } = require('./lib/updater');
 const { LocalMediaService } = require('./lib/localMediaService');
 const { ProjectService } = require('./lib/projectService');
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'heis-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'heis-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }, { scheme: 'heis-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
 process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
     try {
-        dialog.showErrorBox('heis — Unexpected Error', err && err.stack ? err.stack : String(err));
+        dialog.showErrorBox('Heis: Unexpected Error', err && err.stack ? err.stack : String(err));
     } catch (_) {
         // dialog unavailable this early; the console log above is the fallback
     }
@@ -32,7 +32,7 @@ if (process.platform === 'linux') {
 let mainWindow;
 let commercialServices;
 const pendingAuthCallbacks = [];
-const desktopRenderer = new NextServer();
+
 const updater = new UpdaterService();
 
 function createWindow(rendererUrl) {
@@ -47,6 +47,7 @@ function createWindow(rendererUrl) {
             webSecurity: true,
             contextIsolation: true,
             nodeIntegration: false,
+            sandbox: true,
             preload: path.join(__dirname, 'preload.js'),
         },
         ...(isMac ? { titleBarStyle: 'hiddenInset' } : {}),
@@ -56,7 +57,7 @@ function createWindow(rendererUrl) {
     });
 
     mainWindow.loadURL(`${rendererUrl}/studio`).catch((err) => {
-        console.error('Failed to load the Next.js studio:', err);
+        console.error('Failed to load the desktop studio:', err);
         mainWindow.show();
     });
 
@@ -65,9 +66,15 @@ function createWindow(rendererUrl) {
     });
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
+        if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
         return { action: 'deny' };
     });
+
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        const expected = new URL(rendererUrl); const target = new URL(url);
+        if(target.protocol !== expected.protocol || target.host !== expected.host) event.preventDefault();
+    });
+    mainWindow.webContents.on('will-attach-webview', event => event.preventDefault());
 
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
@@ -83,9 +90,8 @@ app.whenReady().then(async () => {
     const projectService = new ProjectService(app.getPath('userData'));
     protocol.handle('heis-media', (request) => net.fetch(pathToFileURL(localMediaService.resolveUrl(request.url)).toString()));
     app.setAsDefaultProtocolClient('heis');
-    const rendererUrl = await desktopRenderer.start();
-    createWindow(rendererUrl);
-
+    installDesktopProtocol();
+    const rendererUrl = desktopUrl();
     try {
         registerLocalInference();
         registerWan2gp();
@@ -101,6 +107,8 @@ app.whenReady().then(async () => {
             `heis started, but local model support failed to initialize:\n\n${err.message}`
         );
     }
+
+    createWindow(rendererUrl);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -131,5 +139,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     commercialServices?.dispose();
-    desktopRenderer.stop();
+    
 });

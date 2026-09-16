@@ -1,3 +1,4 @@
+const { handleTrusted } = require("./trustedIpc");
 const { BrowserWindow, ipcMain } = require("electron");
 const { fail, IPC_CHANNELS, ok } = require("@heis/core");
 const { AuthSession } = require("./authSession");
@@ -16,7 +17,7 @@ function errorEnvelope(error: any): any {
 }
 
 function handle(channel: string, handler: (...args: any[]) => any): void {
-  ipcMain.handle(channel, async (_event: any, ...args: any[]) => {
+  handleTrusted(channel, async (_event: any, ...args: any[]) => {
     try { return ok(await handler(...args)); }
     catch (error) { return errorEnvelope(error); }
   });
