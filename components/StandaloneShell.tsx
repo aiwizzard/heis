@@ -24,6 +24,7 @@ const LazyAiInfluencerStudio = lazy(() => import('../packages/studio/src/compone
 const AiInfluencerStudio = (props: any) => <Suspense fallback={<div className="p-8 text-white/50">Loading studio...</div>}><LazyAiInfluencerStudio {...props} /></Suspense>;
 import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
 import CodexStudio from './CodexStudio';
+import './workspace-theme.css';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
 
 // Tab/category ids, icons, and English `label` fallbacks are stable
@@ -376,9 +377,12 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   const [showSettings, setShowSettings] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
-  const [showVadooBanner, setShowVadooBanner] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('vadoo_banner_dismissed') !== '1';
-    return true;
+  const [agentSidebarTarget, setAgentSidebarTarget] = useState<HTMLDivElement | null>(null);
+  const [workspaceTheme, setWorkspaceTheme] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('heis.workspace.theme') || 'dark' : 'dark');
+  const changeTheme = () => setWorkspaceTheme(current => {
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('heis.workspace.theme', next);
+    return next;
   });
 
   // Sidebar Collapsed & Mobile Drawer State
@@ -723,7 +727,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   );
 
   if (!apiKey) {
-    return <HeisAccessModal
+    return <div className="heis-workspace" data-theme={workspaceTheme}><HeisAccessModal
       stage={accessStage}
       onGoogle={async () => {
         const result = await window.heis?.auth.startGoogle();
@@ -734,12 +738,15 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
         if (result && !result.ok) throw new Error(result.error.message);
       }}
       onSaveRunwareKey={handleKeySave}
-    />;
+    /></div>;
   }
 
   return (
     <div 
-      className="h-screen bg-[#030303] flex flex-col overflow-hidden text-white relative"
+      data-theme={workspaceTheme}
+      data-platform={typeof window !== "undefined" ? window.heisAgent?.platform : undefined}
+      data-studio={activeTab}
+      className="heis-workspace h-screen bg-[#030303] flex flex-col overflow-hidden text-white relative"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -762,33 +769,9 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
         </div>
       )}
 
-      {/* Vadoo promo banner */}
-      {showVadooBanner && (
-        <div className="flex-shrink-0 w-full bg-indigo-600 flex items-center justify-center px-4 py-2 gap-3 relative z-50">
-          <a
-            href="https://vadoo.tv"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[13px] font-bold text-white hover:opacity-80 transition-opacity text-center"
-          >
-            {copy.shell.vadooPromo}
-          </a>
-          <button
-            onClick={() => {
-              setShowVadooBanner(false);
-              localStorage.setItem('vadoo_banner_dismissed', '1');
-            }}
-            className="absolute right-3 text-white/60 hover:text-white transition-colors text-lg leading-none"
-            aria-label={copy.shell.dismiss}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       {isHeaderVisible && (
-        <header className="flex-shrink-0 h-14 border-b border-white/[0.05] flex items-center justify-between px-4 bg-[#0a0a0b]/80 backdrop-blur-md z-50 gap-4">
+        <header className="workspace-chrome flex-shrink-0 h-14 border-b border-white/[0.05] flex items-center justify-between px-4 bg-[#0a0a0b]/80 backdrop-blur-md z-50 gap-4">
           {/* Left: Mobile menu toggle + Logo + Desktop Sidebar Toggle */}
           <div className="flex items-center gap-3">
             {/* Mobile drawer toggle */}
@@ -854,6 +837,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
 
           {/* Right: Actions */}
           <div className="flex-shrink-0 flex items-center gap-3">
+            <button className="workspace-theme-toggle" aria-label={workspaceTheme === 'dark' ? 'Use light theme' : 'Use dark theme'} onClick={changeTheme}>{workspaceTheme === 'dark' ? 'Light' : 'Dark'}</button>
             <div className="flex items-center gap-2.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 transition-colors">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs font-bold text-white/90">
@@ -892,10 +876,10 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
             className={`
               fixed top-14 bottom-0 left-0 md:static md:h-full z-30 bg-[#0a0a0b]/95 backdrop-blur-md border-r border-white/[0.06] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 select-none
               ${isMobileOpen ? 'translate-x-0 w-60 z-50' : '-translate-x-full md:translate-x-0'}
-              ${isSidebarCollapsed ? 'md:w-16' : 'md:w-52'}
+              workspace-sidebar ${isSidebarCollapsed && activeTab !== 'agents' ? 'workspace-sidebar-collapsed' : ''}
             `}
           >
-            <nav aria-label={copy.shell.studioNavigation} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none py-2 px-2">
+            <nav data-agent-navigation={activeTab === "agents"} aria-label={copy.shell.studioNavigation} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none py-2 px-2">
               <div className="space-y-1">
                 {NAVIGATION_CATEGORIES.map((category) => {
                   const isCategoryActive = activeCategory?.id === category.id;
@@ -1028,6 +1012,8 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
                 </div>
               )}
             </nav>
+            {activeTab === 'agents' && <div ref={setAgentSidebarTarget} className="heis-agent-root agent-sidebar-slot" />}
+            <div className="workspace-sidebar-caption">HEIS <span>Creative workspace</span></div>
           </aside>
         )}
 
@@ -1065,7 +1051,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
           {activeTab === 'body-swap' && <RecastStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('body-swap')} onGenerationEnd={makeGenerationEndCallback('body-swap')} onGenerationComplete={makeSuccessCallback('body-swap')} onGenerationError={makeErrorCallback('body-swap')} />}
         </div>
         <div className={activeTab === 'agents' ? "h-full w-full" : "hidden"}>
-          {activeTab === 'agents' && <CodexStudio />}
+          {activeTab === 'agents' && <CodexStudio sidebarTarget={agentSidebarTarget} />}
         </div>
         <div className={activeTab === 'ai-influencer' ? "h-full w-full" : "hidden"}>
           {activeTab === 'ai-influencer' && <AiInfluencerStudio

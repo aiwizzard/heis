@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp,
@@ -27,7 +28,7 @@ const initial: Snapshot = {
   codex: { state: "connecting", message: "Connecting to Codex..." },
 };
 const api = typeof window === "undefined" ? undefined : window.heisAgent;
-export function App() {
+export function App({ sidebarTarget }: { sidebarTarget?: HTMLElement | null }) {
   const [workspace, setWorkspace] = useState(initial);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [project, setProject] = useState<string | null>(null);
@@ -233,18 +234,7 @@ export function App() {
       </div>
     </form>
   );
-  return (
-    <div
-      className={`app ${light ? "light" : ""} `}
-    >
-      {sidebar && (
-        <aside className="sidebar">
-          <div className="sidebar-chrome drag-region" />
-          <div className="brand">
-            <span className="brand-icon">h</span>
-            <strong>heis</strong>
-            <span className="alpha">CODEX</span>
-          </div>
+  const sidebarContent = (<aside className="sidebar">
           <nav aria-label="Workspace">
             <button className="nav-item primary-nav" onClick={newThread}>
               <Plus size={16} />
@@ -341,18 +331,24 @@ export function App() {
               <i className={connected ? "" : "offline"} />
               {connected ? "Codex connected" : "Codex offline"}
             </span>
-            <button
+            {!sidebarTarget && <button
               onClick={() => setLight(!light)}
               aria-label={light ? "Use dark theme" : "Use light theme"}
             >
               {light ? <Moon size={15} /> : <Sun size={15} />}
-            </button>
+            </button>}
           </div>
-        </aside>
-      )}
+        </aside>);
+  return (
+    <div
+      className={`app ${light ? "light" : ""} `}
+    >
+      {sidebarTarget ? createPortal(<div className="app embedded-agent-sidebar">{sidebarContent}</div>, sidebarTarget) : sidebar && sidebarContent}
+
       <main>
         <header className="topbar drag-region">
           <button
+            style={sidebarTarget ? { display: "none" } : undefined}
             aria-label="Toggle sidebar"
             onClick={() => setSidebar(!sidebar)}
           >
