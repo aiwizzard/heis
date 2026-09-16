@@ -87,7 +87,7 @@ export default function LandingPage() {
             Generate images, videos, audio, cinematic sequences, and more with selected cloud and local AI models in one creative workspace.
           </p>
           <div className="landing-hero-actions landing-reveal is-visible">
-            <Link href="/studio" className="landing-pill landing-pill-orange">
+            <Link href="/studio" className="landing-pill landing-pill-red">
               Start creating <ArrowIcon />
             </Link>
             <a href="#works" className="landing-text-link">Explore the studios</a>
@@ -122,7 +122,7 @@ export default function LandingPage() {
             <p>Go from a single prompt to a complete production with focused tools for every stage of the process.</p>
           </header>
           <div className="landing-cards">
-            <Link href="/studio" className="landing-card landing-card-orange landing-reveal">
+            <Link href="/studio" className="landing-card landing-card-red landing-reveal">
               <div className="landing-card-top">
                 <span className="landing-icon"><SparkIcon /></span><span className="landing-card-number">01</span>
               </div>

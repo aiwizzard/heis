@@ -2,7 +2,7 @@
 /* Shared desktop tokens. Media pixels and the public landing page are untouched. */
 .heis-workspace{
  --ws-bg:#131416;--ws-side:#101113;--ws-panel:#1a1b1e;--ws-hover:#232428;--ws-line:#292a2e;
- --ws-text:#eeeae5;--ws-muted:#929097;--ws-accent:#ff7048;--ws-accent-soft:#ff704818;--ws-on-accent:#18110e;
+ --ws-text:#eeeae5;--ws-muted:#929097;--ws-accent:#ac2430;--ws-accent-text:#ec7881;--ws-accent-soft:#ac243024;--ws-on-accent:#fff4f2;
  --color-primary:var(--ws-accent);--bg-app:var(--ws-bg);--bg-panel:var(--ws-panel);--bg-card:var(--ws-panel);--border-color:var(--ws-line);
  --glass-bg:var(--ws-panel);--glass-border:var(--ws-line);--border-radius-xl:10px;
  color-scheme:dark;font-family:'DM Sans Variable',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -10,10 +10,10 @@
 }
 .heis-workspace[data-theme='light']{
  --ws-bg:#faf8f5;--ws-side:#f1eee9;--ws-panel:#fffdfa;--ws-hover:#e9e4de;--ws-line:#dcd6ce;
- --ws-text:#292622;--ws-muted:#706b65;--ws-accent:#bd3e1a;--ws-accent-soft:#bd3e1a12;--ws-on-accent:#fff;
+ --ws-text:#292622;--ws-muted:#706b65;--ws-accent:#a51d2a;--ws-accent-text:#a51d2a;--ws-accent-soft:#a51d2a12;--ws-on-accent:#fff;
  color-scheme:light;
 }
-.heis-workspace ::selection{background:var(--ws-accent-soft);color:var(--ws-accent)}
+.heis-workspace ::selection{background:var(--ws-accent-soft);color:var(--ws-accent-text)}
 .heis-workspace :is(button,input,textarea,select){font-family:inherit;-webkit-app-region:no-drag}
 .heis-workspace :is(button,a,input,textarea,select):focus-visible{outline:2px solid var(--ws-accent);outline-offset:3px}
 .heis-workspace :is(button,a){transition:background-color .12s,color .12s,border-color .12s;}
@@ -21,11 +21,11 @@
 .heis-workspace :is(input:not([type='range']):not([type='checkbox']),textarea,select){background-color:var(--ws-panel);color:var(--ws-text);border-color:var(--ws-line);border-radius:7px;font-size:13px;box-shadow:none}
 .heis-workspace :is(input,textarea)::placeholder{color:var(--ws-muted);opacity:.8}
 .heis-workspace select option{background:var(--ws-panel);color:var(--ws-text)}
-.heis-workspace input[type='range']{accent-color:var(--ws-accent)}
+.heis-workspace input[type='range']{accent-color:var(--ws-accent-text)}
 .heis-workspace .workspace-chrome{height:48px;background:var(--ws-side);border-color:var(--ws-line);backdrop-filter:none;-webkit-app-region:drag;padding:0 16px;gap:16px}
 .heis-workspace[data-platform='darwin'] .workspace-chrome{padding-left:84px}
 .heis-workspace .workspace-chrome :is(button,a){-webkit-app-region:no-drag;min-height:28px;font-size:12px;font-weight:500;border-radius:6px}
-.heis-workspace .workspace-chrome .shadow-lg{box-shadow:none;background:var(--ws-accent-soft);color:var(--ws-accent);width:26px;height:26px;border-radius:7px}
+.heis-workspace .workspace-chrome .shadow-lg{box-shadow:none;background:var(--ws-accent-soft);color:var(--ws-accent-text);width:26px;height:26px;border-radius:7px}
 .heis-workspace .workspace-chrome .shadow-lg svg{stroke:var(--ws-accent);width:17px;height:17px}
 .heis-workspace .workspace-chrome .animate-pulse{animation:none;background:var(--ws-muted)}
 .heis-workspace .workspace-theme-toggle{padding:4px 9px;color:var(--ws-muted)}
@@ -36,7 +36,7 @@
 .heis-workspace .workspace-sidebar nav :is(a,button){min-height:34px;padding-top:6px;padding-bottom:6px;border-radius:6px;font-size:12px;font-weight:450;box-shadow:none;border-color:transparent;background-image:none;}
 .heis-workspace .workspace-sidebar nav :is(a,button):hover{background:var(--ws-hover);color:var(--ws-text)}
 .heis-workspace .workspace-sidebar nav [aria-current='page']{background:var(--ws-hover);color:var(--ws-text);border-color:transparent;}
-.heis-workspace .workspace-sidebar nav [aria-current='page'] svg{color:var(--ws-accent)}
+.heis-workspace .workspace-sidebar nav [aria-current='page'] svg{color:var(--ws-accent-text)}
 .heis-workspace .workspace-sidebar nav :is(a,button)>span.absolute{display:none}
 .heis-workspace .workspace-sidebar nav [aria-expanded='true']{background:transparent;color:var(--ws-text)}
 .heis-workspace .workspace-sidebar nav [role='group']{border:0;margin-left:8px;padding-left:8px}
@@ -55,7 +55,7 @@
 .heis-workspace .heis-agent-root .section-label{margin-top:16px}
 .heis-workspace .heis-agent-root .topbar{height:40px;min-height:40px}
 .heis-workspace .heis-agent-root .hero h1{font-size:28px;letter-spacing:-.9px;font-weight:500}
-.heis-workspace .heis-agent-root .brand-icon{background:var(--ws-accent-soft);color:var(--ws-accent)}
+.heis-workspace .heis-agent-root .brand-icon{background:var(--ws-accent-soft);color:var(--ws-accent-text)}
 .heis-workspace .heis-agent-root .composer{border-radius:10px;box-shadow:none}
 .heis-workspace .heis-agent-root .send:not(:disabled){background:var(--ws-accent);color:var(--ws-on-accent)}
 .heis-workspace :is(.rounded-3xl,.rounded-2xl){border-radius:10px}
@@ -68,10 +68,10 @@
 .heis-workspace :is([class~="text-white/10"],[class~="text-white/20"],[class~="text-white/30"],[class~="text-white/35"],[class~="text-white/40"],[class~="text-white/45"],[class~="text-white/50"],[class~="text-white/55"],[class~="text-white/60"],[class~="text-white/70"],[class~="text-white/75"],[class~="text-white/80"],[class~="text-white/85"],[class~="text-white/90"],[class~="text-white/95"]){color:var(--ws-muted)}
 .heis-workspace :is(.text-white,:is([class~="text-white/80"]),:is([class~="text-white/90"])){color:var(--ws-text)}
 .heis-workspace :is([class~="bg-white/10"],[class~="bg-white/15"],[class~="bg-white/5"],[class~="bg-white/[0.01]"],[class~="bg-white/[0.02]"],[class~="bg-white/[0.03]"],[class~="bg-white/[0.04]"],[class~="bg-white/[0.05]"],[class~="bg-white/[0.06]"],[class~="bg-white/[0.07]"]){background-color:var(--ws-hover)}
-.heis-workspace :is(:is([class~="text-cyan-300"],[class~="text-cyan-400"],[class~="text-cyan-600"]),:is([class~="text-primary"],[class~="text-primary/80"]),:is([class~="text-[#22d3ee]"],[class~="text-[#22d3ee]/40"],[class~="text-[#22d3ee]/70"],[class~="text-[#22d3ee]/75"]),:is([class~="text-purple-400"]),:is([class~="text-indigo-400"])){color:var(--ws-accent)}
+.heis-workspace :is(:is([class~="text-cyan-300"],[class~="text-cyan-400"],[class~="text-cyan-600"]),:is([class~="text-primary"],[class~="text-primary/80"]),:is([class~="text-[#22d3ee]"],[class~="text-[#22d3ee]/40"],[class~="text-[#22d3ee]/70"],[class~="text-[#22d3ee]/75"]),:is([class~="text-purple-400"]),:is([class~="text-indigo-400"])){color:var(--ws-accent-text)}
 .heis-workspace :is(:is([class~="border-cyan-400/40"],[class~="border-cyan-500/25"],[class~="border-cyan-500/40"],[class~="border-cyan-600/30"]),:is([class~="border-primary"],[class~="border-primary/10"],[class~="border-primary/20"],[class~="border-primary/25"],[class~="border-primary/30"],[class~="border-primary/60"]),:is([class~="border-[#22d3ee]"],[class~="border-[#22d3ee]/10"],[class~="border-[#22d3ee]/20"],[class~="border-[#22d3ee]/25"],[class~="border-[#22d3ee]/30"],[class~="border-[#22d3ee]/50"],[class~="border-[#22d3ee]/60"])){border-color:color-mix(in srgb,var(--ws-accent) 25%,var(--ws-line))}
 .heis-workspace :is(:is([class~="bg-cyan-400"],[class~="bg-cyan-50"],[class~="bg-cyan-500/10"]),:is([class~="bg-primary"],[class~="bg-primary/10"],[class~="bg-primary/15"],[class~="bg-primary/20"],[class~="bg-primary/5"]),:is([class~="bg-[#22d3ee]"],[class~="bg-[#22d3ee]/10"],[class~="bg-[#22d3ee]/12"],[class~="bg-[#22d3ee]/20"],[class~="bg-[#22d3ee]/30"],[class~="bg-[#22d3ee]/5"],[class~="bg-[#22d3ee]/[0.07]"])){background-color:var(--ws-accent);color:var(--ws-on-accent)}
-.heis-workspace :is(:is([class~="bg-primary/10"],[class~="bg-primary/15"],[class~="bg-primary/20"],[class~="bg-primary/5"]),:is([class~="bg-[#22d3ee]/10"],[class~="bg-[#22d3ee]/12"],[class~="bg-[#22d3ee]/20"],[class~="bg-[#22d3ee]/30"],[class~="bg-[#22d3ee]/5"],[class~="bg-[#22d3ee]/[0.07]"]),[class*='bg-cyan-400/']){background-color:var(--ws-accent-soft);color:var(--ws-accent)}
+.heis-workspace :is(:is([class~="bg-primary/10"],[class~="bg-primary/15"],[class~="bg-primary/20"],[class~="bg-primary/5"]),:is([class~="bg-[#22d3ee]/10"],[class~="bg-[#22d3ee]/12"],[class~="bg-[#22d3ee]/20"],[class~="bg-[#22d3ee]/30"],[class~="bg-[#22d3ee]/5"],[class~="bg-[#22d3ee]/[0.07]"]),[class*='bg-cyan-400/']){background-color:var(--ws-accent-soft);color:var(--ws-accent-text)}
 .heis-workspace :is(button,[role='tab'],[role='dialog']) :is([class~="bg-gradient-to-b"],[class~="bg-gradient-to-br"],[class~="bg-gradient-to-r"],[class~="bg-gradient-to-t"]),.heis-workspace button:is([class~="bg-gradient-to-b"],[class~="bg-gradient-to-br"],[class~="bg-gradient-to-r"],[class~="bg-gradient-to-t"]){background-image:none;background-color:var(--ws-accent);color:var(--ws-on-accent)}
 .heis-workspace .bg-clip-text{background-image:none;color:var(--ws-text);-webkit-text-fill-color:var(--ws-text)}
 .heis-workspace :is(.text-5xl,.text-6xl,.text-7xl){font-size:32px;line-height:1.2;letter-spacing:-1px}
@@ -135,13 +135,13 @@
 .heis-workspace .heis-prompt-control:hover{background:var(--ws-hover);color:var(--ws-text)}
 .heis-workspace .heis-prompt-action{min-height:32px;border-radius:6px;padding:7px 16px;box-shadow:none;font-weight:500;font-size:12px;transform:none;background:var(--ws-accent);color:var(--ws-on-accent)}
 .heis-workspace .heis-prompt-action *{color:inherit}
-.heis-workspace .studio-empty-mark{display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--ws-line);border-radius:12px;color:var(--ws-accent);background:var(--ws-panel);margin-bottom:28px}
+.heis-workspace .studio-empty-mark{display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--ws-line);border-radius:12px;color:var(--ws-accent-text);background:var(--ws-panel);margin-bottom:28px}
 .heis-workspace .studio-empty-title{gap:8px;margin-bottom:12px}
 .heis-workspace .studio-empty-title span:first-child{font-size:11px;font-weight:450;letter-spacing:.12em;color:var(--ws-muted)}
 .heis-workspace .studio-empty-title span:last-child{font-size:30px;font-weight:500;letter-spacing:-.8px;text-transform:none;color:var(--ws-text)}
 .heis-workspace .heis-agent-root .composer{border-color:var(--ws-line)}
-.heis-workspace .heis-agent-root .composer:focus-within{border-color:var(--ws-accent)}
-.heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);border-color:var(--ws-line);color:var(--ws-accent);box-shadow:none}
+.heis-workspace .heis-agent-root .composer:focus-within{border-color:var(--ws-accent-text)}
+.heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);border-color:var(--ws-line);color:var(--ws-accent-text);box-shadow:none}
 
 /* Legacy studio controls use the same palette as the workspace shell. */
 .heis-workspace [class~="bg-indigo-500/10"]{background-color:var(--ws-accent-soft)}
@@ -182,10 +182,10 @@
 .heis-workspace [class~="text-gray-500"]{color:var(--ws-muted)}
 .heis-workspace [class~="text-gray-600"]{color:var(--ws-muted)}
 .heis-workspace [class~="text-gray-700"]{color:var(--ws-muted)}
-.heis-workspace [class~="text-indigo-400"]{color:var(--ws-accent)}
-.heis-workspace [class~="text-purple-400"]{color:var(--ws-accent)}
-.heis-workspace [class~="text-violet-300"]{color:var(--ws-accent)}
-.heis-workspace [class~="text-violet-400"]{color:var(--ws-accent)}
+.heis-workspace [class~="text-indigo-400"]{color:var(--ws-accent-text)}
+.heis-workspace [class~="text-purple-400"]{color:var(--ws-accent-text)}
+.heis-workspace [class~="text-violet-300"]{color:var(--ws-accent-text)}
+.heis-workspace [class~="text-violet-400"]{color:var(--ws-accent-text)}
 .heis-workspace [class~="text-zinc-100"]{color:var(--ws-text)}
 .heis-workspace [class~="text-zinc-200"]{color:var(--ws-text)}
 .heis-workspace [class~="text-zinc-300"]{color:var(--ws-muted)}
@@ -202,8 +202,8 @@
 .heis-workspace .workspace-chrome .rounded-full{border-radius:6px;background:transparent;border-color:transparent}
 .heis-workspace .workspace-settings{padding:24px;border-radius:10px;background:var(--ws-panel);box-shadow:0 16px 60px #0005}
 .heis-workspace .workspace-settings button{height:34px}
-.heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);color:var(--ws-accent)}
-.heis-workspace .heis-agent-root .hero-icon svg{color:var(--ws-accent)}
+.heis-workspace .heis-agent-root .hero-icon{background:var(--ws-panel);color:var(--ws-accent-text)}
+.heis-workspace .heis-agent-root .hero-icon svg{color:var(--ws-accent-text)}
 .heis-workspace[data-studio='audio'] button.bg-primary{padding-block:9px;min-height:34px;font-size:13px;border-radius:6px;transform:none}
 .heis-workspace[data-studio='audio'] .w-20.h-20{width:52px;height:52px;border-radius:12px;border-color:var(--ws-line)}
 .heis-workspace[data-studio='audio'] .max-w-md.text-center{background:transparent;border:0}
@@ -213,7 +213,7 @@
 /* Selected controls and media-card captions retain readable semantic contrast. */
 .heis-workspace button [class*='bg-gradient-']{background:var(--ws-panel);color:var(--ws-text)}
 .heis-workspace button [class*='bg-gradient-'] *{color:inherit}
-.heis-workspace .heis-agent-root .welcome-mark{width:52px;height:52px;border-radius:12px;border-color:var(--ws-line);background:var(--ws-panel);color:var(--ws-accent);box-shadow:none}
+.heis-workspace .heis-agent-root .welcome-mark{width:52px;height:52px;border-radius:12px;border-color:var(--ws-line);background:var(--ws-panel);color:var(--ws-accent-text);box-shadow:none}
 .heis-workspace [class~='bg-violet-600']{color:var(--ws-on-accent)}
 .heis-workspace button[class*='bg-gradient-']{background:var(--ws-accent);color:var(--ws-on-accent)}
 .heis-workspace button[class*='bg-gradient-'] svg{color:inherit}
@@ -222,5 +222,5 @@
 .heis-workspace :is(button,a):hover [class*='group-hover:text-']{color:inherit}
 .heis-workspace[data-studio='ai-influencer'] button .heis-option-caption{padding:6px;background:var(--ws-panel);color:var(--ws-text)}
 .heis-workspace[data-studio='ai-influencer'] button .heis-option-caption span{color:var(--ws-text);font-weight:450}
-.heis-workspace[data-studio='ai-influencer'] button[aria-pressed='true']{border-color:var(--ws-accent);box-shadow:0 0 0 1px var(--ws-accent)}
+.heis-workspace[data-studio='ai-influencer'] button[aria-pressed='true']{border-color:var(--ws-accent-text);box-shadow:0 0 0 1px var(--ws-accent)}
 .heis-workspace[data-studio='ai-influencer'] button[aria-pressed='true'] .heis-option-caption{background:var(--ws-accent-soft)}

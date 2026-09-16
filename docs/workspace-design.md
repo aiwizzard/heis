@@ -1,10 +1,10 @@
 # Workspace design
 
-Heis uses Sai and T3 Code as its desktop visual foundation, with the public landing page's warm palette as an accent. The shared stylesheet is `components/workspace-theme.css`; it is scoped to `.heis-workspace` so the public landing page keeps its own design.
+Heis uses Sai and T3 Code as its desktop visual foundation, with the public landing page's deep red palette as an accent. The shared stylesheet is `components/workspace-theme.css`; it is scoped to `.heis-workspace` so the public landing page keeps its own design.
 
 - Locally bundled DM Sans variable font, 13 px interface text, 12 px navigation and controls.
 - A 1280 by 820 default window matching Sai, with a 1024 by 640 minimum for the media controls. A 248 px sidebar, 48 px window toolbar, 32 to 34 px compact controls, 6 to 10 px control and panel corners.
-- Charcoal surfaces, fine neutral borders, warm white text, and restrained orange selections and primary actions. Light mode uses cream surfaces and a darker orange for contrast.
+- Charcoal surfaces, fine neutral borders, warm white text, and restrained deep red selections and primary actions. Light mode uses cream surfaces and a deep red for contrast.
 - One persistent main sidebar. Agent projects, threads, search, and connection controls render into that sidebar through a portal, preserving the existing conversation state and interactions.
 - Shared compact studio empty-state mark and prompt composer styling. Media previews and domain-specific controls retain their functional layouts.
 - No promotional banner, decorative stock-card stack, neon glow, or gradient navigation treatment.
