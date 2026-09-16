@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"commonjs","moduleResolution":"node","strict":true,"noEmit":true,"skipLibCheck":true,"esModuleInterop":true,"types":["node"]},"include":["service.ts","rpc.ts","types.ts"]}

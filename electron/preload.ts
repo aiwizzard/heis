@@ -106,3 +106,14 @@ contextBridge.exposeInMainWorld('localAI', {
         return () => ipcRenderer.removeListener('local-ai:download-progress', listener);
     },
 });
+
+contextBridge.exposeInMainWorld('heisAgent', {
+ platform:process.platform,
+ chooseDirectory:()=>invoke('heis-agent:choose-directory'),
+ snapshot:()=>invoke('heis-agent:snapshot'), refreshCodex:()=>invoke('heis-agent:refresh'),
+ login:()=>invoke('heis-agent:login'), cancelLogin:()=>invoke('heis-agent:cancel-login'),
+ chooseCodex:()=>invoke('heis-agent:choose-codex'), send:input=>invoke('heis-agent:send',input),
+ stop:id=>invoke('heis-agent:stop',id),answer:input=>invoke('heis-agent:answer',input),
+ importDrafts:data=>invoke('heis-agent:import-drafts',data),
+ onSnapshot:callback=>{const listener=(_,state)=>callback(state);ipcRenderer.on('heis-agent:snapshot',listener);return()=>ipcRenderer.removeListener('heis-agent:snapshot',listener);},
+});

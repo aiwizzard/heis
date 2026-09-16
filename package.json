@@ -21,7 +21,7 @@
     "web:build": "npm run build -w @heis/web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "build:electron": "tsc -p electron/tsconfig.json && node scripts/finalize-electron-preload.js",
+    "build:electron": "npm run prepare:codex && tsc -p electron/tsconfig.json && node scripts/finalize-electron-preload.js",
     "build:tests": "tsc -p tests/tsconfig.json",
     "test": "npm run build:tests && node --test dist-tests/tests/*.test.js",
     "security:scan": "node scripts/scan-secrets.js",
@@ -43,12 +43,16 @@
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
     "electron:build:all": "npm run electron:build",
-    "desktop:dev": "node scripts/desktop-dev.mjs"
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "prepare:codex": "node -e \"import('./scripts/prepare-codex.mjs').then(m=>m.prepareCodex())\"",
+    "test:agent": "node scripts/test-codex.mjs",
+    "typecheck:agent": "tsc -p electron/agent/tsconfig.json",
+    "test:desktop": "node scripts/desktop-smoke.mjs"
   },
   "build": {
     "appId": "com.heis.desktop",
     "productName": "Heis",
-    "copyright": "Copyright © 2026 Heis",
+    "copyright": "Copyright \u00a9 2026 Heis",
     "directories": {
       "output": "release"
     },
@@ -64,7 +68,8 @@
     ],
     "files": [
       "dist-electron/**/*",
-      "packages/core/dist/**/*"
+      "packages/core/dist/**/*",
+      "!node_modules/@openai/**/*"
     ],
     "extraResources": [
       {
@@ -77,6 +82,10 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "dist-codex",
+        "to": "codex-runtime"
       }
     ],
     "mac": {
@@ -141,8 +150,10 @@
   },
   "dependencies": {
     "@heis/core": "*",
+    "@openai/codex": "0.154.0",
     "@supabase/supabase-js": "^2.57.4",
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "lucide-react": "0.564.0"
   },
   "devDependencies": {
     "@babel/plugin-transform-runtime": "^7.29.0",

@@ -2,7 +2,7 @@ const { handleTrusted } = require("./trustedIpc");
 const { BrowserWindow, ipcMain } = require("electron");
 const { fail, IPC_CHANNELS, ok } = require("@heis/core");
 const { AuthSession } = require("./authSession");
-const { CodexAppServer } = require("./codexAppServer");
+const { registerAgent } = require("../agent/register");
 const { EntitlementStore } = require("./entitlementStore");
 const { InstallationStore } = require("./installationStore");
 const { LicenseService } = require("./licenseService");
@@ -88,9 +88,7 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
       throw new Error("Project export is not connected to the agent yet.");
     },
   });
-  const codex = new CodexAppServer((event: any) => {
-    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.codexEvent, event);
-  }, bridge, secureStore);
+  const agent = registerAgent(bridge, secureStore);
 
   handle(IPC_CHANNELS.secretHas, (name: string) => secureStore.has(name));
   handle(IPC_CHANNELS.secretSet, (name: string, value: string) => secureStore.set(name, value));
@@ -103,17 +101,11 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
   handle(IPC_CHANNELS.entitlementGet, () => entitlementStore.get());
   handle(IPC_CHANNELS.entitlementSet, (snapshot: any) => entitlementStore.set(snapshot));
   handle(IPC_CHANNELS.entitlementRefresh, () => licenseService.refresh());
-  handle(IPC_CHANNELS.codexStatus, () => codex.status());
-  handle(IPC_CHANNELS.codexStartThread, (input: any) => codex.startThread(input));
-  handle(IPC_CHANNELS.codexStartTurn, (threadId: string, input: any) => codex.startTurn(threadId, input));
-  handle(IPC_CHANNELS.codexInterrupt, (threadId: string, turnId: string) => codex.interrupt(threadId, turnId));
-  handle(IPC_CHANNELS.codexRespondToServerRequest, (id: number | string, result: any) => codex.respondToServerRequest(id, result));
   handle(IPC_CHANNELS.codexResolveApproval, (id: string, decision: any) => {
     const pending = pendingApprovals.get(id);
     if (!pending) throw new Error("APPROVAL_NOT_FOUND");
     clearTimeout(pending.timer); pendingApprovals.delete(id); pending.resolve(decision);
   });
-  handle(IPC_CHANNELS.codexStop, () => codex.stop());
   handle(IPC_CHANNELS.generationListCapabilities, (mode: string) => providerFor(mode).listCapabilities());
   handle(IPC_CHANNELS.generationUpload, (mode: string, file: any) => {
     if (!file || typeof file.name !== "string" || typeof file.type !== "string" || !(file.bytes instanceof ArrayBuffer || ArrayBuffer.isView(file.bytes))) throw new Error("INVALID_UPLOAD");
@@ -157,7 +149,7 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
     return projectService.deleteWorkflow(workflowId);
   });
 
-  return { handleAuthCallback: (url: string) => desktopAuth.handleCallback(url), dispose: () => { codex.stop(); bridge.stop(); } };
+  return { handleAuthCallback: (url: string) => desktopAuth.handleCallback(url), dispose: () => { agent.dispose(); bridge.stop(); } };
 }
 
 module.exports = { register };
