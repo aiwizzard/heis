@@ -441,7 +441,7 @@ Every image you upload is saved locally (URL + thumbnail) so you never upload th
 
 Pick the entry point that matches your goal:
 
-- **Desktop app (Electron plus packaged Next.js renderer)**: `npm run electron:dev`
+- **Desktop app (Electron plus static Vite renderer)**: `npm run electron:dev`
 - **Hosted account and API application**: `npm run web:dev -- --port 3001`
 - **Renderer-only browser preview**: `npm run dev`
 
@@ -450,10 +450,10 @@ Pick the entry point that matches your goal:
 git clone https://github.com/aiwizzard/heis.git
 cd heis
 
-# Install dependencies + build workspace packages (studio, workflow, agents).
-# This step is REQUIRED — `npm install` alone is not enough; the workspaces
-# need to be built before either dev script will work.
-npm run setup
+# Install dependencies. Desktop scripts build their required core package.
+npm install
+# Build all legacy workspace packages when developing those packages.
+npm run build:packages
 
 # Validate without service credentials.
 npm test
@@ -472,6 +472,7 @@ The editor requires the Electron bridge. A browser-only renderer preview intenti
 ### Production Build
 
 ```bash
+npm run build:core
 npm run build:desktop-renderer
 npm run build:electron
 npm run web:build
@@ -479,27 +480,24 @@ npm run web:build
 
 ### Desktop App Build
 
-Build native desktop apps with Electron:
+Build for the current Mac architecture, or select a matching build host:
 
 ```bash
-# macOS (DMG — Intel + Apple Silicon)
 npm run electron:build
+npm run electron:build:arm64
+npm run electron:build:x64
 
-# Windows (NSIS installer — x64 + ARM64)
-npm run electron:build:win
-
-# Linux (AppImage + DEB — x64)
-npm run electron:build:linux
-
-# Both platforms in one pass
-npm run electron:build:all
+# Local build without Apple distribution credentials.
+HEIS_SKIP_NOTARIZE=1 CSC_IDENTITY_AUTO_DISCOVERY=false npm run electron:build:arm64
 ```
+
+Codex is bundled for the selected target. Cross compilation requires the matching `@openai/codex-<platform>-<arch>` optional package; packaging fails if it is absent instead of including the wrong executable. Public distribution requires signing and notarization credentials.
 
 Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/aiwizzard/heis/releases).
 
 ## 🏗️ Architecture
 
-The app is a **Next.js monorepo** with a shared `packages/studio` component library.
+The desktop app uses **Electron + Vite + React**, sharing `packages/studio` with the Next.js web applications. Desktop pages load from `heis-app://app`; no Next.js server runs inside the desktop app. See [desktop migration and validation](docs/desktop-migration.md).
 
 ```
 heis/

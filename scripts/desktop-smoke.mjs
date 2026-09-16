@@ -36,10 +36,15 @@ try {
  await page.getByRole('button',{name:'Open a project',exact:true}).click();
  if(process.env.HEIS_TEST_REAL_CODEX === '1') {
   const id=await page.evaluate(dir=>window.heisAgent.send({project:dir,text:'Call the heis MCP tool heis_project_info exactly once. Do not edit files or generate media. Report whether the tool succeeded.',model:'gpt-6-astra'}),userData);
-  await page.waitForFunction(async id=>{const s=await window.heisAgent.snapshot();const t=s.threads.find(t=>t.id===id);return t&&['idle','error'].includes(t.status);},id,{timeout:120000});
-  const state=await page.evaluate(()=>window.heisAgent.snapshot());
-  const thread=state.threads.find(t=>t.id===id);
-  console.log(JSON.stringify(thread.items));
+  let thread;
+  const deadline=Date.now()+120000;
+  do {
+   const state=await page.evaluate(()=>window.heisAgent.snapshot());
+   thread=state.threads.find(t=>t.id===id);
+   if(thread?.status==='error'||(thread?.status==='idle'&&thread.items.some(i=>i.role==='assistant'))) break;
+   await page.waitForTimeout(500);
+  } while(Date.now()<deadline);
+  console.log(JSON.stringify(thread));
   assert.equal(thread.status,'idle');
   assert.ok(thread.items.some(i=>i.role==='tool'&&JSON.stringify(i).includes('heis_project_info')),'real Codex invoked Heis MCP');
  } else {
