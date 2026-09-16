@@ -11,7 +11,7 @@ const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const entitlement = { accountId:'test', installationId:'test', mode:'trial', checkedAt:new Date().toISOString(), validUntil:new Date(Date.now()+3600000).toISOString(), deviceLimit:3, canEdit:true, canExport:true, canUseManagedGeneration:true, canUseByokGeneration:false };
 entitlement.signature = sign(null, Buffer.from(JSON.stringify(entitlement,Object.keys(entitlement).sort())),privateKey).toString('base64');
 await writeFile(join(userData,'entitlement.json'),JSON.stringify(entitlement));
-const env = {...process.env, HEIS_ENTITLEMENT_PUBLIC_KEY:publicKey.export({type:'spki',format:'pem'}), HEIS_CODEX_BINARY:resolve('scripts/fixtures/codex-mock.mjs')};
+const env = {...process.env, HEIS_DISABLE_UPDATES:"1", HEIS_ENTITLEMENT_PUBLIC_KEY:publicKey.export({type:'spki',format:'pem'}), HEIS_CODEX_BINARY:resolve('scripts/fixtures/codex-mock.mjs')};
 if(process.env.HEIS_TEST_REAL_CODEX === '1') delete env.HEIS_CODEX_BINARY;
 delete env.ELECTRON_RUN_AS_NODE; delete env.HEIS_DEV_SERVER_URL;
 const packaged = process.env.HEIS_TEST_EXECUTABLE;
@@ -65,7 +65,7 @@ try {
  await mkdir('test-results',{recursive:true});
  await page.screenshot({path:'test-results/desktop-agent.png'});
  assert.deepEqual(errors,[]);
- console.log('PASS: static Electron renderer, ten studios, sandbox, Codex IPC, approvals, questions, persistence and interruption.');
+ console.log(process.env.HEIS_TEST_REAL_CODEX === '1' ? 'PASS: packaged Codex runtime and real Heis MCP project tool.' : 'PASS: static Electron renderer, ten studios, sandbox, Codex IPC, approvals, questions, persistence and interruption.');
 } catch(error) {
  const page=await app.firstWindow();
  await mkdir('test-results',{recursive:true});

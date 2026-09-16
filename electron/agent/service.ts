@@ -238,7 +238,7 @@ export class CodexService {
         );
         this.rpc = rpc;
         await rpc.request("initialize", {
-          clientInfo: { name: "heis_desktop", title: "Heis", version: "0.2.0" },
+          clientInfo: { name: "heis_desktop", title: "Heis", version: "2.0.0" },
           capabilities: { experimentalApi: true },
         });
         rpc.write({ method: "initialized", params: {} });

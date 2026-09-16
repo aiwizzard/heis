@@ -31,6 +31,8 @@ A local build can use `HEIS_SKIP_NOTARIZE=1 CSC_IDENTITY_AUTO_DISCOVERY=false`. 
 
 Tests create temporary user data and do not modify production entitlement policy. No paid generation or real local model inference is included in this verification.
 
+Verified on 2026-09-16: the Apple Silicon packaged app passed native smoke checks. The bundled Codex 0.154.0 runtime used the existing account with GPT-6-Astra and successfully called `heis_project_info` once, returning `available: true`. Both web builds and all tests above passed.
+
 ## Existing product boundaries
 
 This migration completes the desktop architecture consolidation. It does not turn preexisting placeholders into finished features: general timeline/project export remains unconnected to the agent, some studios are gated, local FFmpeg and model assets need provisioning, and commercial services require configured accounts and credentials. These are product implementation or deployment tasks beyond replacing the desktop foundation. They must be resolved before claiming the entire media product is production ready.

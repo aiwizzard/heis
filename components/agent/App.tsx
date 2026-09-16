@@ -241,7 +241,7 @@ export function App() {
         <aside className="sidebar">
           <div className="sidebar-chrome drag-region" />
           <div className="brand">
-            <span className="brand-icon">s</span>
+            <span className="brand-icon">h</span>
             <strong>heis</strong>
             <span className="alpha">CODEX</span>
           </div>
@@ -364,7 +364,7 @@ export function App() {
           <span className="divider">/</span>
           <span className="truncate">{active?.title ?? "New thread"}</span>
           <button className="version" onClick={() => setSettings(!settings)}>
-            Codex <span>0.2</span>
+            Codex
           </button>
         </header>
         {notice && (
