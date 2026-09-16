@@ -1,4 +1,4 @@
-import { i2vModels, t2vModels, v2vModels } from "./models.js";
+import { i2vModels, t2vModels, v2vModels } from "./models";
 
 const MODEL_IDS = new Set([...t2vModels, ...i2vModels, ...v2vModels].map((model) => model.id));
 const EMPTY_OPTIONS = Object.freeze([]);

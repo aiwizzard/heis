@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateImage, uploadFile } from "../heisProvider.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+import { generateImage, uploadFile } from "../heisProvider";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import MobileGenerationActions, {
   CopyContentIcon,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   PromptAspectRatioIcon,
   PromptAction,
@@ -20,7 +20,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/cinemaStudio.json";
 import zh from "../messages/zh/cinemaStudio.json";
 import { resolveCopy } from "../i18nUtils";

@@ -1,5 +1,5 @@
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
-import { getAlibabaConfiguration, resolveAlibabaVariant } from "./alibabaModels.js";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
+import { getAlibabaConfiguration, resolveAlibabaVariant } from "./alibabaModels";
 
 export const alibabaParameters = createNativeVideoParameters({
   getConfiguration: getAlibabaConfiguration,

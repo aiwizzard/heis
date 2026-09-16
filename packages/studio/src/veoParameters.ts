@@ -1,5 +1,5 @@
-import { getVeoConfiguration, resolveVeoVariant } from "./veoModels.js";
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
+import { getVeoConfiguration, resolveVeoVariant } from "./veoModels";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
 
 export const {
   plan: planVeoSelection,

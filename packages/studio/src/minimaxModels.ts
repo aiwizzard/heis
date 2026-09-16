@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const MINIMAX_FAMILY_NAMES = Object.freeze({
   "minimax-h3": "MiniMax H3",

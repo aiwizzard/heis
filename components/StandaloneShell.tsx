@@ -443,30 +443,6 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   }, []);
 
   useEffect(() => {
-    if (!window.heis?.codex?.onEvent) return undefined;
-    return window.heis.codex.onEvent(async (rawEvent) => {
-      const event = rawEvent as { type?: string; requestId?: number | string; method?: string; params?: Record<string, any> };
-      if (event.type !== 'server-request' || event.requestId === undefined || !event.method) return;
-
-      let result: unknown;
-      if (event.method === 'item/commandExecution/requestApproval' || event.method === 'item/fileChange/requestApproval') {
-        const detail = event.params?.reason ?? event.params?.command ?? event.params?.cwd ?? 'Codex requested permission to change the selected project.';
-        const accepted = window.confirm(`Codex permission request\n\n${String(detail).slice(0, 2000)}`);
-        result = { decision: accepted ? 'accept' : 'decline' };
-      } else if (event.method === 'item/permissions/requestApproval') {
-        result = { permissions: {}, scope: 'turn' };
-      } else if (event.method === 'mcpServer/elicitation/request') {
-        result = { action: 'decline', content: null };
-      } else if (event.method === 'tool/requestUserInput') {
-        result = { answers: {} };
-      } else {
-        result = { decision: 'decline' };
-      }
-      await window.heis.codex.respondToServerRequest(event.requestId, result);
-    });
-  }, []);
-
-  useEffect(() => {
     setNotifications(loadStoredNotifications());
     setNotificationsHydrated(true);
   }, []);

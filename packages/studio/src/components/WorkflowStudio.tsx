@@ -13,7 +13,7 @@ import {
   executeWorkflow,
   getAllNodeSchemas,
   getWorkflowData,
-} from "../workflowStore.js";
+} from "../workflowStore";
 import dynamic from "next/dynamic";
 
 const WorkflowUI = dynamic(() => import("./WorkflowUI"), {

@@ -1,16 +1,16 @@
-import { videoModelCatalog } from "./modelFamilies.js";
+import { videoModelCatalog } from "./modelFamilies";
 import {
   getSeedanceConfiguration,
   getSeedanceEndpointResolution,
   getSeedanceVariantOptions,
   resolveSeedanceVariant,
-} from "./seedanceModels.js";
+} from "./seedanceModels";
 
 import {
   getVideoCommonOptions,
   getVideoCommonValues,
   matchingVideoParameterValue as matchingValue,
-} from "./videoModelParameters.js";
+} from "./videoModelParameters";
 
 function resolutionLabel(value) {
   return String(value).toLowerCase() === "4k" ? "4K" : String(value);

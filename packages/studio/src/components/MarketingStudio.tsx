@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { uploadFile, generateMarketingStudioAd } from "../heisProvider.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+import { uploadFile, generateMarketingStudioAd } from "../heisProvider";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAspectRatioIcon,
@@ -23,7 +23,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/marketingStudio.json";
 import zh from "../messages/zh/marketingStudio.json";
 import { resolveCopy } from "../i18nUtils";

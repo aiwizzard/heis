@@ -1,8 +1,8 @@
 import { createRequire } from "node:module";
-import { cp, mkdir, readFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 const require = createRequire(import.meta.url);
-export async function prepareCodex() {
+export async function prepareCodex(options = {}) {
   const triples = {
     "darwin-arm64": "aarch64-apple-darwin",
     "darwin-x64": "x86_64-apple-darwin",
@@ -11,7 +11,7 @@ export async function prepareCodex() {
     "win32-arm64": "aarch64-pc-windows-msvc",
     "win32-x64": "x86_64-pc-windows-msvc",
   };
-  const platform = `${process.platform}-${process.arch}`;
+  const platform = `${options.platform ?? process.platform}-${options.arch ?? process.arch}`;
   const packagePath = require.resolve(`@openai/codex-${platform}/package.json`);
   const target = path.join(
     path.dirname(packagePath),
@@ -20,6 +20,7 @@ export async function prepareCodex() {
   );
   const version = JSON.parse(await readFile(packagePath, "utf8")).version;
   // The complete target includes Codex's helper binaries and runtime resources.
+  await rm("dist-codex", { recursive: true, force: true });
   await mkdir("dist-codex", { recursive: true });
   await cp(target, "dist-codex", { recursive: true, force: true });
   console.log(`Prepared Codex ${version} for ${platform}`);

@@ -2,8 +2,8 @@
 
 import { useId } from "react";
 
-import usePromptMenu from "./prompt/usePromptMenu.js";
-import ModelParameterControls from "./ModelParameterControls.js";
+import usePromptMenu from "./prompt/usePromptMenu";
+import ModelParameterControls from "./ModelParameterControls";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptChevronIcon,
@@ -11,7 +11,7 @@ import {
   PromptPopover,
   PromptPopoverHeader,
   promptControlClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 
 const SELECT_CLASS = "w-full rounded-lg border border-white/10 bg-[#17191c] px-3 py-2 text-xs text-white outline-none focus:border-[#22d3ee]/50";
 const ADVANCED_KEYS = ["seed"];

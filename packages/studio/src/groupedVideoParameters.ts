@@ -2,39 +2,39 @@ import {
   getSeedanceResolutionOptions,
   getSeedanceSelectionAdjustments,
   planSeedanceSelection,
-} from "./seedanceParameters.js";
-import { SEEDANCE_MODEL_GROUP } from "./seedanceModels.js";
-import { VEO_MODEL_GROUP } from "./veoModels.js";
-import { MINIMAX_MODEL_GROUP } from "./minimaxModels.js";
-import { ALIBABA_MODEL_GROUP } from "./alibabaModels.js";
-import { alibabaParameters } from "./alibabaParameters.js";
-import { HAPPY_HORSE_MODEL_GROUP } from "./happyHorseModels.js";
-import { happyHorseParameters } from "./happyHorseParameters.js";
-import { KLING_MODEL_GROUP } from "./klingModels.js";
-import { klingParameters } from "./klingParameters.js";
-import { VIDU_MODEL_GROUP } from "./viduModels.js";
-import { viduParameters } from "./viduParameters.js";
-import { PIXVERSE_MODEL_GROUP } from "./pixverseModels.js";
-import { pixverseParameters } from "./pixverseParameters.js";
-import { LTX_MODEL_GROUP } from "./ltxModels.js";
-import { ltxParameters } from "./ltxParameters.js";
-import { SORA_MODEL_GROUP } from "./soraModels.js";
-import { soraParameters } from "./soraParameters.js";
-import { XAI_MODEL_GROUP } from "./xaiModels.js";
-import { xaiParameters } from "./xaiParameters.js";
+} from "./seedanceParameters";
+import { SEEDANCE_MODEL_GROUP } from "./seedanceModels";
+import { VEO_MODEL_GROUP } from "./veoModels";
+import { MINIMAX_MODEL_GROUP } from "./minimaxModels";
+import { ALIBABA_MODEL_GROUP } from "./alibabaModels";
+import { alibabaParameters } from "./alibabaParameters";
+import { HAPPY_HORSE_MODEL_GROUP } from "./happyHorseModels";
+import { happyHorseParameters } from "./happyHorseParameters";
+import { KLING_MODEL_GROUP } from "./klingModels";
+import { klingParameters } from "./klingParameters";
+import { VIDU_MODEL_GROUP } from "./viduModels";
+import { viduParameters } from "./viduParameters";
+import { PIXVERSE_MODEL_GROUP } from "./pixverseModels";
+import { pixverseParameters } from "./pixverseParameters";
+import { LTX_MODEL_GROUP } from "./ltxModels";
+import { ltxParameters } from "./ltxParameters";
+import { SORA_MODEL_GROUP } from "./soraModels";
+import { soraParameters } from "./soraParameters";
+import { XAI_MODEL_GROUP } from "./xaiModels";
+import { xaiParameters } from "./xaiParameters";
 import {
   getMiniMaxResolutionOptions,
   getMiniMaxSelectionAdjustments,
   planMiniMaxSelection,
-} from "./minimaxParameters.js";
-import { getGroupedVideoConfiguration } from "./groupedVideoModels.js";
-import { videoModelCatalog } from "./modelFamilies.js";
-import { getVideoWorkflowMediaAdjustments } from "./videoWorkflows.js";
+} from "./minimaxParameters";
+import { getGroupedVideoConfiguration } from "./groupedVideoModels";
+import { videoModelCatalog } from "./modelFamilies";
+import { getVideoWorkflowMediaAdjustments } from "./videoWorkflows";
 import {
   getVeoResolutionOptions,
   getVeoSelectionAdjustments,
   planVeoSelection,
-} from "./veoParameters.js";
+} from "./veoParameters";
 
 const groups = [
   { familyNames: XAI_MODEL_GROUP.familyNames, ...xaiParameters },

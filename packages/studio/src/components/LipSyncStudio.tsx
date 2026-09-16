@@ -9,12 +9,12 @@ import {
   imageLipSyncModels,
   videoLipSyncModels,
   getResolutionsForLipSyncModel,
-} from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+} from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAction,
@@ -32,7 +32,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/lipSyncStudio.json";
 import zh from "../messages/zh/lipSyncStudio.json";
 import { resolveCopy } from "../i18nUtils";

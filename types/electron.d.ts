@@ -21,14 +21,7 @@ declare global {
         delete(name: "runwareApiKey" | "openaiApiKey"): Promise<ResultEnvelope<void>>;
       };
       codex: {
-        status(): Promise<ResultEnvelope<AgentStatus>>;
-        startThread(input: AgentThreadInput): Promise<ResultEnvelope<AgentThread>>;
-        startTurn(threadId: string, input: AgentTurnInput): Promise<ResultEnvelope<unknown>>;
-        interrupt(threadId: string, turnId: string): Promise<ResultEnvelope<void>>;
-        respondToServerRequest(id: number | string, result: unknown): Promise<ResultEnvelope<void>>;
         resolveApproval(id: string, decision: { approved: boolean; mode?: "managed" | "byok" }): Promise<ResultEnvelope<void>>;
-        stop(): Promise<ResultEnvelope<void>>;
-        onEvent(callback: (event: unknown) => void): () => void;
         onApprovalRequired(callback: (request: { id: string; tool: string; args: unknown }) => void): () => void;
       };
       generation: {

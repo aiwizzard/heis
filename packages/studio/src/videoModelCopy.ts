@@ -1,4 +1,4 @@
-import { getVideoWorkflowMediaSlots } from "./videoWorkflows.js";
+import { getVideoWorkflowMediaSlots } from "./videoWorkflows";
 
 export function getVideoDurationLabel(value, copy) {
   return copy.durationLabels?.[value] || `${value}s`;

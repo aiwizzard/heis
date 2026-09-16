@@ -21,7 +21,7 @@
     "web:build": "npm run build -w @heis/web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "build:electron": "npm run prepare:codex && tsc -p electron/tsconfig.json && node scripts/finalize-electron-preload.js",
+    "build:electron": "npm run prepare:codex && node -e \"require('node:fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p electron/tsconfig.json && node scripts/finalize-electron-preload.js",
     "build:tests": "tsc -p tests/tsconfig.json",
     "test": "npm run build:tests && node --test dist-tests/tests/*.test.js",
     "security:scan": "node scripts/scan-secrets.js",
@@ -35,9 +35,9 @@
     "stage:next-standalone": "node scripts/stage-next-standalone.js",
     "build:desktop-renderer": "vite build",
     "electron:dev": "npm run build:core && npm run build:desktop-renderer && npm run build:electron && node scripts/start-desktop.mjs",
-    "electron:build": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac",
-    "electron:build:arm64": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --arm64",
-    "electron:build:x64": "npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --x64",
+    "electron:build": "npm run build:core && npm run build:desktop-renderer && npm run build:electron && electron-builder --mac",
+    "electron:build:arm64": "npm run build:core && npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --arm64",
+    "electron:build:x64": "npm run build:core && npm run build:desktop-renderer && npm run build:electron && electron-builder --mac --x64",
     "stage:local-ai": "node scripts/stage-local-ai-binary.js",
     "package:linux:deb": "node scripts/package-linux-deb.js",
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
@@ -56,7 +56,6 @@
     "directories": {
       "output": "release"
     },
-    "afterPack": "./afterPack.js",
     "afterSign": "./scripts/notarize.cjs",
     "generateUpdatesFilesForAllChannels": true,
     "publish": [
@@ -96,13 +95,7 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "dmg"
       ]
     },
     "win": {
@@ -146,7 +139,8 @@
           ]
         }
       ]
-    }
+    },
+    "beforePack": "./scripts/prepare-package.cjs"
   },
   "dependencies": {
     "@heis/core": "*",

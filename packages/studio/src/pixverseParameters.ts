@@ -1,5 +1,5 @@
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
-import { getPixVerseConfiguration, resolvePixVerseVariant } from "./pixverseModels.js";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
+import { getPixVerseConfiguration, resolvePixVerseVariant } from "./pixverseModels";
 
 export const pixverseParameters = createNativeVideoParameters({
   getConfiguration: getPixVerseConfiguration,

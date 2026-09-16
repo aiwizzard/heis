@@ -1,11 +1,11 @@
-import { getMediaCapability } from "./modelCapabilities.js";
+import { getMediaCapability } from "./modelCapabilities";
 
 // Synced from the canonical Muapi schema_data.json catalog.
 import {
   getAspectRatioOptions,
   I2I_DIMENSION_RATIOS,
   T2I_DIMENSION_RATIOS,
-} from './imageSizing.js';
+} from './imageSizing';
 
 // Verified against https://api.muapi.ai/openapi.json on 2026-09-09.
 // Seedance 2.5 shares common inputs across its Standard, Intl and Spicy routes.

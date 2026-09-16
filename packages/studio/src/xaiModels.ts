@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const XAI_FAMILY_NAMES = Object.freeze({
   "grok-imagine-video-1.5": "Grok Imagine 1.5 Preview",

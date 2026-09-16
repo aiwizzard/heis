@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const VIDU_FAMILY_NAMES = Object.freeze({
   "vidu-q3": "Vidu Q3",

@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { runClipping, uploadLocalMedia } from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+import { runClipping, uploadLocalMedia } from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -24,7 +24,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/clippingStudio.json";
 import zh from "../messages/zh/clippingStudio.json";
 import { resolveCopy } from "../i18nUtils";

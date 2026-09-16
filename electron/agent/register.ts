@@ -14,7 +14,7 @@ function registerAgent(bridge: any, secureStore: any): { dispose(): void } {
   const mcp = path.join(__dirname,'../mcp/heisMcpServer.js');
   const env: NodeJS.ProcessEnv = { HEIS_MCP_BRIDGE_URL: connection.url, HEIS_MCP_BRIDGE_TOKEN: connection.token, ELECTRON_RUN_AS_NODE: '1' };
   const key = secureStore.get('openaiApiKey'); if(key) env.OPENAI_API_KEY=key;
-  return {args:['-c',`mcp_servers.heis.command=${JSON.stringify(process.execPath)}`,'-c',`mcp_servers.heis.args=${JSON.stringify([mcp])}`],env};
+  return {args:['-c',`mcp_servers.heis.command=${JSON.stringify(process.execPath)}`,'-c',`mcp_servers.heis.args=${JSON.stringify([mcp])}`,'-c',`mcp_servers.heis.env_vars=${JSON.stringify(['HEIS_MCP_BRIDGE_URL','HEIS_MCP_BRIDGE_TOKEN','ELECTRON_RUN_AS_NODE'])}`],env};
  });
  const register = (name: string, fn: (...args: any[])=>any) => handleTrusted('heis-agent:'+name, (_event: any,...args: any[])=>fn(...args));
  register('snapshot',()=>service.snapshot());

@@ -1,6 +1,6 @@
-import { getMiniMaxConfiguration, getMiniMaxVariants, resolveMiniMaxVariant } from "./minimaxModels.js";
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
-import { normalizeVideoResolution } from "./videoModelParameters.js";
+import { getMiniMaxConfiguration, getMiniMaxVariants, resolveMiniMaxVariant } from "./minimaxModels";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
+import { normalizeVideoResolution } from "./videoModelParameters";
 
 const nativeParameters = createNativeVideoParameters({
   getConfiguration: getMiniMaxConfiguration,

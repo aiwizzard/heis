@@ -1,5 +1,5 @@
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
-import { getKlingConfiguration, getKlingVariants, resolveKlingVariant } from "./klingModels.js";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
+import { getKlingConfiguration, getKlingVariants, resolveKlingVariant } from "./klingModels";
 
 export const klingParameters = createNativeVideoParameters({
   getConfiguration: getKlingConfiguration,

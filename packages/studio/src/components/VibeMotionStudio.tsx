@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { runMotionGraphics, runMotionGraphicsEdit } from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+import { runMotionGraphics, runMotionGraphicsEdit } from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PromptAspectRatioIcon,
@@ -25,7 +25,7 @@ import {
   PromptSegmentOption,
   PromptTextarea,
   promptControlClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/vibeMotionStudio.json";
 import zh from "../messages/zh/vibeMotionStudio.json";
 import { resolveCopy } from "../i18nUtils";

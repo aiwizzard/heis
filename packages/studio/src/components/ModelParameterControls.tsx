@@ -8,7 +8,7 @@ import {
   PromptPopover,
   PromptPopoverHeader,
   promptControlClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white outline-none transition-colors focus:border-[#22d3ee]/50";

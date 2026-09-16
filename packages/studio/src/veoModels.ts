@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const VEO_FAMILY_NAMES = Object.freeze({
   "veo-4": "Veo 4",

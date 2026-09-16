@@ -4,13 +4,13 @@ import {
   t2iModels,
   t2vModels,
   v2vModels,
-} from "./models.js";
-import { getModelMediaCapabilities } from "./modelCapabilities.js";
+} from "./models";
+import { getModelMediaCapabilities } from "./modelCapabilities";
 import {
   getGroupedVideoConfiguration,
   resolveGroupedVideoVariant,
   GROUPED_VIDEO_FAMILY_NAMES,
-} from "./groupedVideoModels.js";
+} from "./groupedVideoModels";
 
 const IMAGE_FAMILY_ALIASES = {
   "bytedance-seededit-v3": "bytedance-seedream-v3",

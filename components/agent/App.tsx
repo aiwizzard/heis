@@ -26,7 +26,7 @@ const initial: Snapshot = {
   models: [],
   codex: { state: "connecting", message: "Connecting to Codex..." },
 };
-const api = window.heisAgent;
+const api = typeof window === "undefined" ? undefined : window.heisAgent;
 export function App() {
   const [workspace, setWorkspace] = useState(initial);
   const [activeId, setActiveId] = useState<string | null>(null);

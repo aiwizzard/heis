@@ -9,8 +9,8 @@ import {
   upscaleImage,
   removeBackground,
   expandImage,
-} from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
+} from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
 import en from "../messages/en/layersStudio.json";
 import zh from "../messages/zh/layersStudio.json";
 import { resolveCopy } from "../i18nUtils";

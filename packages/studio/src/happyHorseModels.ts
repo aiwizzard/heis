@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const HAPPY_HORSE_FAMILY_NAMES = Object.freeze({
   "happy-horse-1.1": "Happy Horse 1.1",

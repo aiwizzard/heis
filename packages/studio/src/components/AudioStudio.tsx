@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { audioModels, generateAudio, getAudioModelById, uploadFile } from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
+import { audioModels, generateAudio, getAudioModelById, uploadFile } from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
 import en from "../messages/en/audioStudio.json";
 import zh from "../messages/zh/audioStudio.json";
 import { resolveCopy } from "../i18nUtils";

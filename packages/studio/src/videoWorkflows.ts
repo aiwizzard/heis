@@ -1,14 +1,14 @@
-import { getModelMediaCapabilities } from "./modelCapabilities.js";
+import { getModelMediaCapabilities } from "./modelCapabilities";
 import {
   videoModelCatalog,
   videoModelPickerEntryByVariantId,
-} from "./modelFamilies.js";
-import { getSeedanceConfiguration } from "./seedanceModels.js";
+} from "./modelFamilies";
+import { getSeedanceConfiguration } from "./seedanceModels";
 import {
   GROUPED_VIDEO_WORKFLOW_VARIANTS,
   getGroupedVideoConfiguration,
   resolveGroupedVideoVariant,
-} from "./groupedVideoModels.js";
+} from "./groupedVideoModels";
 
 export const VIDEO_WORKFLOW_IDS = Object.freeze([
   "animate_image",

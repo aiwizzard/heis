@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, useId } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { generateVideo, generateI2V, processV2V, uploadFile } from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
-import DrawModal from "./DrawModal.js";
-import ModelParameterControls from "./ModelParameterControls.js";
-import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.js";
+import { generateVideo, generateI2V, processV2V, uploadFile } from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
+import DrawModal from "./DrawModal";
+import ModelParameterControls from "./ModelParameterControls";
+import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   t2vModels,
   getAspectRatiosForVideoModel,
@@ -21,41 +21,41 @@ import {
   getResolutionsForI2VModel,
   getEffectsForI2VModel,
   getDefaultEffectForI2VModel,
-} from "../models.js";
+} from "../models";
 import {
   getFamilyVariant,
   videoModelCatalog,
   videoModelMenuEntries as videoModelPickerEntries,
   videoModelMenuEntryByVariantId as videoModelPickerEntryByVariantId,
-} from "../modelFamilies.js";
-import { getSeedanceEndpointResolution, getSeedanceToolConfiguration } from "../seedanceModels.js";
-import { getVeoToolConfiguration } from "../veoModels.js";
-import { getGroupedVideoConfiguration, getGroupedVideoCopyKey, getGroupedVideoVariantOptions } from "../groupedVideoModels.js";
+} from "../modelFamilies";
+import { getSeedanceEndpointResolution, getSeedanceToolConfiguration } from "../seedanceModels";
+import { getVeoToolConfiguration } from "../veoModels";
+import { getGroupedVideoConfiguration, getGroupedVideoCopyKey, getGroupedVideoVariantOptions } from "../groupedVideoModels";
 import {
   getVideoCommonOptions,
   getVideoCommonValues,
   buildVideoCommonPayload,
-} from "../videoModelParameters.js";
+} from "../videoModelParameters";
 import {
   getGroupedVideoResolutionOptions,
   planGroupedVideoSelection,
   getGroupedVideoSelectionAdjustments,
-} from "../groupedVideoParameters.js";
-import { migrateSeedanceResolutionSelection } from "../seedanceParameters.js";
-import { getVideoAspectRatioLabel, getVideoDurationLabel, getVideoModeDescription } from "../videoModelCopy.js";
+} from "../groupedVideoParameters";
+import { migrateSeedanceResolutionSelection } from "../seedanceParameters";
+import { getVideoAspectRatioLabel, getVideoDurationLabel, getVideoModeDescription } from "../videoModelCopy";
 import {
   buildReferenceParams,
   getModelMediaCapabilities,
   recordGenerationSource,
   shouldDisableVideoPrompt,
-} from "../modelCapabilities.js";
+} from "../modelCapabilities";
 import {
   buildSupplementalInputPayload,
   createModelParameterValues,
   getSupplementalModelInputs,
   mergeModelParameterValues,
-} from "../modelParameters.js";
-import { getCompatibleContinuationSources, getContinuationConfig, isContinuationSourceModel } from "../videoToolCapabilities.js";
+} from "../modelParameters";
+import { getCompatibleContinuationSources, getContinuationConfig, isContinuationSourceModel } from "../videoToolCapabilities";
 import {
   appendVideoWorkflowMedia,
   buildVideoWorkflowMediaParams,
@@ -75,7 +75,7 @@ import {
   resolveVideoBaseVariant,
   resolveVideoWorkflowVariant,
   validateVideoWorkflowMedia,
-} from "../videoWorkflows.js";
+} from "../videoWorkflows";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -94,8 +94,8 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
-import usePromptMenu from "./prompt/usePromptMenu.js";
+} from "./prompt/PromptComposer";
+import usePromptMenu from "./prompt/usePromptMenu";
 import en from "../messages/en/videoStudio.json";
 import zh from "../messages/zh/videoStudio.json";
 import { resolveCopy } from "../i18nUtils";

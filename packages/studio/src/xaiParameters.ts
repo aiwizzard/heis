@@ -1,5 +1,5 @@
-import { createNativeVideoParameters } from "./nativeVideoParameters.js";
-import { getXaiConfiguration, resolveXaiVariant } from "./xaiModels.js";
+import { createNativeVideoParameters } from "./nativeVideoParameters";
+import { getXaiConfiguration, resolveXaiVariant } from "./xaiModels";
 
 export const xaiParameters = createNativeVideoParameters({
   getConfiguration: getXaiConfiguration,

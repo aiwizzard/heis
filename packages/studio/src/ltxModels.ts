@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const LTX_FAMILY_NAMES = Object.freeze({
   "ltx-2.5": "LTX 2.5",

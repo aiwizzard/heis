@@ -1,11 +1,11 @@
-import { videoModelCatalog } from "./modelFamilies.js";
+import { videoModelCatalog } from "./modelFamilies";
 import {
   formatVideoResolution,
   getVideoCommonOptions,
   getVideoCommonValues,
   matchingVideoResolution,
   normalizeVideoResolution,
-} from "./videoModelParameters.js";
+} from "./videoModelParameters";
 
 const modelForId = (modelId) => videoModelCatalog.variantById.get(modelId)?.model;
 const FACETS = ["profile", "speed"];

@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { generateImage, generateI2I, uploadFile } from "../heisProvider.js";
-import { formatErrorMessage } from "../utils/formatError.js";
-import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
-import DrawModal from "./DrawModal.js";
-import ModelParameterControls from "./ModelParameterControls.js";
+import { generateImage, generateI2I, uploadFile } from "../heisProvider";
+import { formatErrorMessage } from "../utils/formatError";
+import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
+import DrawModal from "./DrawModal";
+import ModelParameterControls from "./ModelParameterControls";
 import MobileGenerationActions, {
   GenerationCopyButtons,
-} from "./MobileGenerationActions.js";
+} from "./MobileGenerationActions";
 import {
   t2iModels,
   getAspectRatiosForModel,
@@ -22,23 +22,23 @@ import {
   getEffectsForI2IModel,
   getDefaultEffectForI2IModel,
   getI2IModelById,
-} from "../models.js";
+} from "../models";
 import {
   getFamilyVariant,
   getImageReferenceVariant,
   imageModelCatalog,
   imageModelPickerEntries,
   imageModelPickerEntryByVariantId,
-} from "../modelFamilies.js";
+} from "../modelFamilies";
 import {
   buildReferenceParams,
   getModelMediaCapabilities,
-} from "../modelCapabilities.js";
+} from "../modelCapabilities";
 import {
   buildSupplementalInputPayload,
   createModelParameterValues,
   getSupplementalModelInputs,
-} from "../modelParameters.js";
+} from "../modelParameters";
 import {
   PROMPT_CONTROL_LABEL_CLASS,
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -56,7 +56,7 @@ import {
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
-} from "./prompt/PromptComposer.js";
+} from "./prompt/PromptComposer";
 import en from "../messages/en/imageStudio.json";
 import zh from "../messages/zh/imageStudio.json";
 import { resolveCopy } from "../i18nUtils";

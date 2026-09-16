@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const ALIBABA_FAMILY_NAMES = Object.freeze({
   "wan-3": "Wan 3.0",

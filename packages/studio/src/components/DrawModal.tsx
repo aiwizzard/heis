@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { uploadFile, generateI2I } from "../heisProvider.js";
+import { uploadFile, generateI2I } from "../heisProvider";
 
 export default function DrawModal({
   isOpen,

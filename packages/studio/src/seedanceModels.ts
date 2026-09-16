@@ -1,4 +1,4 @@
-import { i2vModels, t2vModels, v2vModels } from "./models.js";
+import { i2vModels, t2vModels, v2vModels } from "./models";
 
 // Endpoint coordinates are separate from ordinary generation parameters for
 // routes whose schema has no native resolution input.

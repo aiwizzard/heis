@@ -28,18 +28,7 @@ contextBridge.exposeInMainWorld('heis', {
         delete: (name) => invoke(IPC_CHANNELS.secretDelete, name),
     },
     codex: {
-        status: () => invoke(IPC_CHANNELS.codexStatus),
-        startThread: (input) => invoke(IPC_CHANNELS.codexStartThread, input),
-        startTurn: (threadId, input) => invoke(IPC_CHANNELS.codexStartTurn, threadId, input),
-        interrupt: (threadId, turnId) => invoke(IPC_CHANNELS.codexInterrupt, threadId, turnId),
-        respondToServerRequest: (id, result) => invoke(IPC_CHANNELS.codexRespondToServerRequest, id, result),
         resolveApproval: (id, decision) => invoke(IPC_CHANNELS.codexResolveApproval, id, decision),
-        stop: () => invoke(IPC_CHANNELS.codexStop),
-        onEvent: (callback) => {
-            const listener = (_, event) => callback(event);
-            ipcRenderer.on(IPC_CHANNELS.codexEvent, listener);
-            return () => ipcRenderer.removeListener(IPC_CHANNELS.codexEvent, listener);
-        },
         onApprovalRequired: (callback) => {
             const listener = (_, request) => callback(request);
             ipcRenderer.on(IPC_CHANNELS.codexApprovalRequired, listener);

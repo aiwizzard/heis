@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { generateKeyPairSync, sign } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { _electron as electron } from 'playwright-core';
+const require = createRequire(import.meta.url);
+const userData = await mkdtemp(join(tmpdir(), 'heis-desktop-smoke-'));
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+const entitlement = { accountId:'test', installationId:'test', mode:'trial', checkedAt:new Date().toISOString(), validUntil:new Date(Date.now()+3600000).toISOString(), deviceLimit:3, canEdit:true, canExport:true, canUseManagedGeneration:true, canUseByokGeneration:false };
+entitlement.signature = sign(null, Buffer.from(JSON.stringify(entitlement,Object.keys(entitlement).sort())),privateKey).toString('base64');
+await writeFile(join(userData,'entitlement.json'),JSON.stringify(entitlement));
+const env = {...process.env, HEIS_ENTITLEMENT_PUBLIC_KEY:publicKey.export({type:'spki',format:'pem'}), HEIS_CODEX_BINARY:resolve('scripts/fixtures/codex-mock.mjs')};
+if(process.env.HEIS_TEST_REAL_CODEX === '1') delete env.HEIS_CODEX_BINARY;
+delete env.ELECTRON_RUN_AS_NODE; delete env.HEIS_DEV_SERVER_URL;
+const packaged = process.env.HEIS_TEST_EXECUTABLE;
+const app = await electron.launch({executablePath:packaged || require('electron'),args:[...(packaged?[]:['.']),'--user-data-dir='+userData],env});
+const errors=[];
+try {
+ const page=await app.firstWindow();
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.waitForURL('heis-app://app/**');
+ await page.waitForLoadState('domcontentloaded');
+ assert.equal(new URL(page.url()).protocol,'heis-app:');
+ assert.equal(await page.evaluate(()=>typeof window.require),'undefined');
+ for(const tab of ['image','video','audio','lipsync','cinema','marketing','motion-control','vibe-motion','body-swap','ai-influencer']) {
+  await page.goto('heis-app://app/studio/'+tab);
+  await page.waitForTimeout(1200);
+  assert.ok((await page.locator('body').innerText()).length>100,tab+' renders');
+  assert.equal(await page.getByText('Loading studio...', {exact:true}).count(),0,tab+' loaded');
+ }
+ await page.goto('heis-app://app/studio/agents');
+ await page.getByText('Codex connected',{exact:true}).waitFor();
+ await app.evaluate(({dialog},dir)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[dir]});},userData);
+ await page.getByRole('button',{name:'Open a project',exact:true}).click();
+ if(process.env.HEIS_TEST_REAL_CODEX === '1') {
+  const id=await page.evaluate(dir=>window.heisAgent.send({project:dir,text:'Call the heis MCP tool heis_project_info exactly once. Do not edit files or generate media. Report whether the tool succeeded.',model:'gpt-6-astra'}),userData);
+  await page.waitForFunction(async id=>{const s=await window.heisAgent.snapshot();const t=s.threads.find(t=>t.id===id);return t&&['idle','error'].includes(t.status);},id,{timeout:120000});
+  const state=await page.evaluate(()=>window.heisAgent.snapshot());
+  const thread=state.threads.find(t=>t.id===id);
+  console.log(JSON.stringify(thread.items));
+  assert.equal(thread.status,'idle');
+  assert.ok(thread.items.some(i=>i.role==='tool'&&JSON.stringify(i).includes('heis_project_info')),'real Codex invoked Heis MCP');
+ } else {
+ await page.getByRole('textbox',{name:'Message Codex'}).fill('approval-input');
+ await page.getByRole('button',{name:'Send to Codex'}).click();
+ await page.getByRole('button',{name:'Allow once'}).click();
+ await page.getByRole('button',{name:'Blue',exact:true}).click();
+ await page.getByRole('button',{name:'Send answers'}).click();
+ await page.getByText('Hello from Codex.',{exact:true}).waitFor();
+ await page.reload();
+ await page.getByRole('button',{name:'approval-input',exact:true}).click();
+ await page.getByText('Hello from Codex.',{exact:true}).waitFor();
+ await page.getByRole('textbox',{name:'Message Codex'}).fill('hold');
+ await page.getByRole('button',{name:'Send to Codex'}).click();
+ await page.getByRole('button',{name:'Stop Codex'}).click();
+ await page.getByText('Turn stopped.',{exact:true}).waitFor();
+ }
+ await mkdir('test-results',{recursive:true});
+ await page.screenshot({path:'test-results/desktop-agent.png'});
+ assert.deepEqual(errors,[]);
+ console.log('PASS: static Electron renderer, ten studios, sandbox, Codex IPC, approvals, questions, persistence and interruption.');
+} catch(error) {
+ const page=await app.firstWindow();
+ await mkdir('test-results',{recursive:true});
+ await page.screenshot({path:'test-results/desktop-failure.png'});
+ console.log('Renderer errors:',errors,'Page:',(await page.locator('body').innerText()).slice(0,5000));
+ throw error;
+} finally {await app.close();await rm(userData,{recursive:true,force:true});}

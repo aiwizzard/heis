@@ -1,4 +1,4 @@
-import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
+import { createGroupedVideoRegistry } from "./groupedVideoRegistry";
 
 export const SORA_FAMILY_NAMES = Object.freeze({
   "sora-2": "Sora 2",
