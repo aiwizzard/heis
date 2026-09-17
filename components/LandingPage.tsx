@@ -96,10 +96,21 @@ export default function LandingPage() {
         <section id="questions" className="landing-section landing-container landing-faq"><div><h2>A few good<br /><em>questions.</em></h2></div><div>{faqs.map(([question,answer])=><details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
         <section id="download" className="landing-download landing-container" aria-labelledby="download-title"><img src="/brand/heis-icon-192.png" width={72} height={72} alt="Heis app icon" loading="lazy" /><h2 id="download-title">Make room for<br /><em>your next idea.</em></h2><p>{installer ? 'The Heis desktop app for Apple silicon Macs.' : 'Coming to Apple silicon Macs.'}</p><div className="landing-actions">{installer ? <a className="landing-button landing-button-primary" href={installer}>Download for Mac <Arrow down /></a> : <span className="landing-release-status"><span className="landing-status" /> Mac download coming soon</span>}<a href={account} className="landing-text-link">Your account <Arrow /></a></div></section>
       </main>
-      <div className="landing-signature landing-container" aria-hidden="true">
-        <img src="/brand/heis-wordmark-dark.svg" alt="" width={900} height={400} loading="lazy" />
-      </div>
-      <footer className="landing-footer landing-container"><a href="#main" aria-label="Heis home"><HeisBrand theme="dark" height={30} /></a><span>© {new Date().getFullYear()} Heis</span><nav aria-label="Footer navigation"><a href="#workspace">Workspace</a><a href="#questions">Questions</a><a href={account}>Account</a><a href="#main">Back to top ↑</a></nav></footer>
+      <footer className="landing-end">
+        <div className="landing-end-inner landing-container">
+          <a className="landing-signature" href="#main" aria-label="Heis home">
+            <img src="/brand/heis-wordmark-dark.svg" alt="" width={900} height={400} loading="lazy" />
+          </a>
+          <div className="landing-end-aside">
+            <nav aria-label="Footer navigation">
+              <a href="#workspace">Workspace</a>
+              <a href="#questions">Questions</a>
+              <a href={account}>Account</a>
+            </nav>
+            <p>© {new Date().getFullYear()} Heis.<br />All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
