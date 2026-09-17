@@ -2,6 +2,12 @@
 
 The sculpted H joins two pillars with a rising diagonal bridge. The clipped outer corners give the mark a precise silhouette. The lowercase wordmark uses optically spaced DM Sans at weight 560, exported entirely as vector outlines.
 
+## Revision 02
+
+The separate lockup now uses a 16-unit visible gap, with the symbol and lettering aligned to the same 12-to-88 vertical bounds. The integrated alternative replaces the first letter with the H symbol and uses an 8-unit gap before `eis`. Both use the same lettering scale and baseline.
+
+Compare them in `heis-logo-comparison.png` or `comparison.html`. `heis-integrated.svg` is the two-color integrated wordmark; `heis-integrated-black.svg`, `heis-integrated-ivory.svg`, and `heis-integrated-crimson.svg` are single-color alternatives. Neither alternative has been applied to the application.
+
 ## Files
 
 - `heis-lockup.svg`: crimson symbol and ivory wordmark, for dark backgrounds.
