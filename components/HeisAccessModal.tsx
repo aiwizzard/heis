@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import HeisBrand from './HeisBrand';
 
 export type AccessStage = 'loading' | 'desktop-required' | 'sign-in' | 'byok' | 'upgrade' | 'ready';
 
 interface HeisAccessModalProps {
+  theme?: "light" | "dark";
   stage: AccessStage;
   onGoogle: () => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onSaveRunwareKey: (key: string) => Promise<void>;
 }
 
-export default function HeisAccessModal({ stage, onGoogle, onMagicLink, onSaveRunwareKey }: HeisAccessModalProps) {
+export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMagicLink, onSaveRunwareKey }: HeisAccessModalProps) {
   const [email, setEmail] = useState('');
   const [key, setKey] = useState('');
   const [message, setMessage] = useState('');
@@ -38,6 +40,7 @@ export default function HeisAccessModal({ stage, onGoogle, onMagicLink, onSaveRu
     <div className="min-h-screen bg-[#030303] flex items-center justify-center px-4 font-inter text-white">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a0a] p-8 shadow-2xl">
         <div className="mb-7">
+          <div className="mb-6"><HeisBrand theme={theme} height={36} /></div>
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-400">Heis access</p>
           <h1 className="text-2xl font-semibold">
             {needsKey ? 'Connect your Runware key' : desktopRequired ? 'Open the Heis desktop app' : upgradeRequired ? 'Generation access required' : 'Sign in to Heis'}

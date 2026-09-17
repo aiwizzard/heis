@@ -53,7 +53,8 @@ function createWindow(rendererUrl) {
         ...(isMac ? { titleBarStyle: 'hiddenInset' } : {}),
         backgroundColor: '#101113',
         show: false,
-        title: 'heis',
+        title: 'Heis',
+        icon: path.join(app.isPackaged ? path.join(process.resourcesPath, 'desktop') : path.join(app.getAppPath(), 'public'), 'brand', 'heis-icon-256.png'),
     });
 
     mainWindow.loadURL(`${rendererUrl}/studio`).catch((err) => {
@@ -86,6 +87,9 @@ function createWindow(rendererUrl) {
 }
 
 app.whenReady().then(async () => {
+    if (process.platform === 'darwin') {
+        app.dock?.setIcon(path.join(app.isPackaged ? path.join(process.resourcesPath, 'desktop') : path.join(app.getAppPath(), 'public'), 'brand', 'heis-icon-1024.png'));
+    }
     const localMediaService = new LocalMediaService(app.getPath('userData'), process.resourcesPath);
     const projectService = new ProjectService(app.getPath('userData'));
     protocol.handle('heis-media', (request) => net.fetch(pathToFileURL(localMediaService.resolveUrl(request.url)).toString()));

@@ -1,5 +1,7 @@
 'use client';
 
+import HeisBrand from './HeisBrand';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -57,7 +59,7 @@ export default function LandingPage() {
       <nav className={`landing-nav${scrolled ? ' is-scrolled' : ''}`} aria-label="Main navigation">
         <div className="landing-container landing-nav-inner">
           <Link href="/" className="landing-logo" aria-label="heis home">
-            heis<span>.</span>
+            <HeisBrand theme="dark" height={32} />
           </Link>
           <div className="landing-nav-links">
             <a href="#expertise">Why heis</a>
@@ -167,7 +169,7 @@ export default function LandingPage() {
               <Link href="/studio">Launch studio</Link>
             </div>
           </div>
-          <div className="landing-wordmark">HEIS.</div>
+          <div className="landing-wordmark"><img src="/brand/heis-wordmark-dark.svg" alt="Heis" style={{width:"min(100%, 640px)",height:"auto",opacity:0.3}} /></div>
           <div className="landing-footer-bottom">
             <span>© {new Date().getFullYear()} Heis. All rights reserved.</span>
             <div><a href="https://github.com/Anil-matcha/heis" target="_blank" rel="noreferrer">GitHub</a><a href="https://discord.gg/tANKJkHck" target="_blank" rel="noreferrer">Discord</a><a href="https://x.com/matchaman11" target="_blank" rel="noreferrer">X / Twitter</a></div>

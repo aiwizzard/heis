@@ -24,6 +24,7 @@ const LazyAiInfluencerStudio = lazy(() => import('../packages/studio/src/compone
 const AiInfluencerStudio = (props: any) => <Suspense fallback={<div className="p-8 text-white/50">Loading studio...</div>}><LazyAiInfluencerStudio {...props} /></Suspense>;
 import HeisAccessModal, { type AccessStage } from './HeisAccessModal';
 import CodexStudio from './CodexStudio';
+import HeisBrand from './HeisBrand';
 import './workspace-theme.css';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
 
@@ -728,6 +729,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
 
   if (!apiKey) {
     return <div className="heis-workspace" data-theme={workspaceTheme}><HeisAccessModal
+      theme={workspaceTheme === "light" ? "light" : "dark"}
       stage={accessStage}
       onGoogle={async () => {
         const result = await window.heis?.auth.startGoogle();
@@ -814,17 +816,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
               </div>
             </div>
 
-            {/* Logo & Title */}
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-[#22d3ee] rounded-lg flex items-center justify-center shadow-lg shadow-[#22d3ee]/20">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-              <span className="text-sm font-bold tracking-tight hidden sm:block text-white">
-                {copy.shell.brand}
-              </span>
-            </div>
+            <HeisBrand theme={workspaceTheme === 'light' ? 'light' : 'dark'} height={26} />
           </div>
 
           {/* Active Tab Breadcrumb Badge */}

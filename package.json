@@ -47,7 +47,8 @@
     "prepare:codex": "node -e \"import('./scripts/prepare-codex.mjs').then(m=>m.prepareCodex())\"",
     "test:agent": "node scripts/test-codex.mjs",
     "typecheck:agent": "tsc -p electron/agent/tsconfig.json",
-    "test:desktop": "node scripts/desktop-smoke.mjs"
+    "test:desktop": "node scripts/desktop-smoke.mjs",
+    "brand:export": "node scripts/export-brand.mjs"
   },
   "build": {
     "appId": "com.heis.desktop",
@@ -89,7 +90,7 @@
     ],
     "mac": {
       "category": "public.app-category.graphics-design",
-      "icon": "public/banner.png",
+      "icon": "build/heis.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -99,8 +100,7 @@
       ]
     },
     "win": {
-      "icon": "public/banner.png",
-      "signAndEditExecutable": false,
+      "icon": "build/heis.ico",
       "target": [
         {
           "target": "nsis",
@@ -116,7 +116,7 @@
       "include": "build/installer.nsh"
     },
     "linux": {
-      "icon": "public/banner.png",
+      "icon": "build/heis.png",
       "category": "Utility",
       "maintainer": "heis Team",
       "extraFiles": [

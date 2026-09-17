@@ -31,9 +31,11 @@ try {
   assert.ok((await page.locator('body').innerText()).length>100,tab+' renders');
   assert.equal(await page.getByText('Loading studio...', {exact:true}).count(),0,tab+' loaded');
   assert.equal(await page.locator('a[href="https://vadoo.tv"]').count(),0,'No promotional banner');
+  assert.ok(await page.locator('img.heis-brand').first().evaluate(img => img.src.endsWith('heis-wordmark-dark.svg') && img.naturalWidth > 0), 'Dark logo loaded');
   await page.screenshot({path:'test-results/theme/'+tab+'.png'});
   await page.getByRole('button',{name:'Use light theme',exact:true}).click();
   await page.waitForTimeout(250);
+  assert.ok(await page.locator('img.heis-brand').first().evaluate(img => img.src.endsWith('heis-wordmark-light.svg') && img.naturalWidth > 0), 'Light logo loaded');
   await page.screenshot({path:'test-results/theme/'+tab+'-light.png'});
   await page.getByRole('button',{name:'Use dark theme',exact:true}).click();
   await page.waitForTimeout(250);

@@ -1,8 +1,9 @@
+import HeisBrand from '../../../components/HeisBrand';
 import Link from "next/link";
 
 export default function HomePage() {
   return <main className="shell">
-    <nav className="nav"><span className="brand">Heis</span><Link className="button secondary" href="/account">Account</Link></nav>
+    <nav className="nav"><span className="brand"><HeisBrand theme="dark" /></span><Link className="button secondary" href="/account">Account</Link></nav>
     <section className="hero">
       <h1>Your AI creative studio, on your Mac.</h1>
       <p>Generate and edit images, video, audio, workflows, and agent-driven projects. Keep projects local and choose managed credits or your own provider keys.</p>

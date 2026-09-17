@@ -18,10 +18,12 @@ The approved wordmark replaces the first letter with the sculpted H, followed by
 
 Use `HeisBrand` for application headers, passing the actual surface theme. The desktop follows its theme selector; the landing page and hosted account pages use dark branding. Favicons and native icons share an ivory-on-crimson tile for stable contrast in either operating system theme. The icon does not change with the app theme.
 
-Keep the wordmark at least 100px wide and the symbol at least 16px high. Preserve its aspect ratio and leave clear space around it. Do not add shadows to the mark itself. Historical lockup, integrated, comparison, and plain-lettering files remain design explorations; use the explicit light/dark filenames in new UI.
+Keep the wordmark at least 56px wide in compact application chrome and 100px wide in presentations and the symbol at least 16px high. Preserve its aspect ratio and leave clear space around it. Do not add shadows to the mark itself. Historical lockup, integrated, comparison, and plain-lettering files remain design explorations; use the explicit light/dark filenames in new UI.
 
 ## Regeneration
 
 Run `python scripts/generate-brand.py` with fonttools and brotli installed, then `npm run brand:export`. The export script rasterizes assets, creates ICO and (on macOS) ICNS, and synchronizes hosted web public assets. Commit the exports together with source changes. Font license: `../fonts/DM-Sans-LICENSE.txt`.
+
+Sharing metadata defaults to https://heis.studio. Set NEXT_PUBLIC_SITE_URL to the deployed origin when hosting either web surface.
 
 The proposed domain is heis.studio. It is separate from the wordmark; this asset kit does not configure or publish a domain.

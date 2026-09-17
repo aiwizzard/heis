@@ -15,6 +15,14 @@ const playfair = Playfair_Display({
 });
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://heis.studio'),
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: 'any' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  manifest: '/site.webmanifest',
+  openGraph: { images: [{ url: '/brand/heis-social.png', width: 1200, height: 630, alt: 'Heis creative workspace' }] },
+  twitter: { card: 'summary_large_image', images: ['/brand/heis-social.png'] },
   title: 'heis — Free AI Image & Video Studio',
   description: 'Generate AI images and videos using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.',
 };

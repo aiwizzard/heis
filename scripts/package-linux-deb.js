@@ -164,7 +164,7 @@ StartupNotify=true
     );
 
     fs.mkdirSync(path.dirname(iconPath), { recursive: true });
-    fs.copyFileSync(path.join(REPO_ROOT, 'public', 'banner.png'), iconPath);
+    fs.copyFileSync(path.join(REPO_ROOT, 'build', 'heis.png'), iconPath);
     fs.chmodSync(iconPath, 0o644);
 
     writeFile(
