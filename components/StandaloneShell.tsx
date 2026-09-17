@@ -200,18 +200,6 @@ const TABS = [
     )
   },
   {
-    id: 'apps',
-    label: 'Explore Apps',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7"/>
-        <rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/>
-      </svg>
-    )
-  },
-  {
     id: 'ai-influencer',
     label: 'AI Influencer Studio',
     icon: (
@@ -275,7 +263,6 @@ const NAVIGATION_CATEGORIES = [
   }
 ];
 
-const EXPLORE_APPS_TAB = TABS.find((tab) => tab.id === 'apps');
 const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'motion-control', 'vibe-motion', 'body-swap', 'agents', 'ai-influencer']);
 
 function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
@@ -364,7 +351,6 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
     if (idFromParams || slug.includes('workflow')) return 'workflows';
     if (slug.includes('agents')) return 'agents';
     if (slug.includes('design-agent')) return 'design-agent';
-    if (slug.includes('apps')) return 'apps';
     const firstSegment = slug[0];
     if (firstSegment && TABS.find(t => t.id === firstSegment)) return firstSegment;
     return 'image';
@@ -948,35 +934,6 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
                 })}
               </div>
 
-              {EXPLORE_APPS_TAB && (
-                <div className="mt-3 pt-3 border-t border-white/[0.07]">
-                  <a
-                    href={studioPath(EXPLORE_APPS_TAB.id)}
-                    onClick={(event) => handleNavigationItemClick(event, EXPLORE_APPS_TAB.id)}
-                    aria-current={activeTab === EXPLORE_APPS_TAB.id ? 'page' : undefined}
-                    aria-label={tabLabel(EXPLORE_APPS_TAB.id)}
-                    title={isSidebarCollapsed && !isMobileOpen ? tabLabel(EXPLORE_APPS_TAB.id) : undefined}
-                    className={`
-                      group relative flex items-center rounded-xl transition-all duration-150 text-[13px] font-semibold
-                      ${isSidebarCollapsed && !isMobileOpen ? 'h-11 w-11 justify-center mx-auto' : 'px-3 py-2.5 w-full gap-3'}
-                      ${activeTab === EXPLORE_APPS_TAB.id
-                        ? 'bg-gradient-to-r from-[#22d3ee]/15 to-purple-500/10 text-[#22d3ee] border border-[#22d3ee]/20'
-                        : 'text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent'
-                      }
-                    `}
-                  >
-                    {activeTab === EXPLORE_APPS_TAB.id && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-[#22d3ee] to-[#a855f7] rounded-r-full" />
-                    )}
-                    <span className={`flex-shrink-0 ${activeTab === EXPLORE_APPS_TAB.id ? 'text-[#22d3ee]' : 'text-white/50 group-hover:text-white'}`}>
-                      {EXPLORE_APPS_TAB.icon}
-                    </span>
-                    {(!isSidebarCollapsed || isMobileOpen) && (
-                      <span className="truncate">{tabLabel(EXPLORE_APPS_TAB.id)}</span>
-                    )}
-                  </a>
-                </div>
-              )}
             </nav>
             {activeTab === 'agents' && <div ref={setAgentSidebarTarget} className="heis-agent-root agent-sidebar-slot" />}
             <div className="workspace-sidebar-caption">HEIS <span>Creative workspace</span></div>

@@ -278,7 +278,6 @@ A healthy run on Apple Silicon prints `total params memory size = 1969.78MB (VRA
 - **Workflow Studio** — Build and run multi-step AI pipelines visually. Chain image, video, and audio models into automated flows. Browse community templates, create your own with a node-based editor, and run them via an interactive playground.
 - **Agent Studio** — Multi-turn creative agent that plans and executes generation tasks conversationally.
 - **Design Agent Studio** — Canvas-based autonomous design agent for iterative visual work.
-- **Explore Apps** — Directory of app templates and use-cases built on the same model catalog.
 - **AI Influencer Studio** — Tools for creating and managing consistent AI persona/influencer content.
 - **Upload History** — Reference images are uploaded once and stored locally. A picker panel lets you reuse any previously uploaded image across sessions — no re-uploading.
 - **Smart Controls** — Dynamic aspect ratio, resolution/quality, and duration pickers that adapt to each model's capabilities (including t2i models with resolution or quality options)
