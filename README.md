@@ -465,7 +465,7 @@ npm run security:scan
 npm run electron:dev
 ```
 
-The editor requires the Electron bridge. A browser-only renderer preview intentionally displays a desktop-required message. Sign-in testing requires `HEIS_SUPABASE_URL`, `HEIS_SUPABASE_ANON_KEY`, `HEIS_API_URL`, and `HEIS_ENTITLEMENT_PUBLIC_KEY` in the Electron process. The hosted application uses `apps/web/.env.local`, based on `apps/web/.env.example`. BYOK generation prompts the signed-in user for a Runware key and stores it using macOS encrypted storage.
+The editor requires the Electron bridge. A browser-only renderer preview intentionally displays a desktop-required message. Sign-in testing requires `HEIS_SUPABASE_URL`, `HEIS_SUPABASE_ANON_KEY`, `HEIS_API_URL`, and `HEIS_ENTITLEMENT_PUBLIC_KEY` in the Electron process. The hosted application uses `apps/web/.env.local`, based on `apps/web/.env.example`. Free desktop access needs no Heis sign-in. Connect your own Codex account. Heis generation requires an active Creator or Pro subscription; provider credentials stay on the account server. See [the subscription model](docs/subscription-model.md) for allowances and local setup.
 
 > **Troubleshooting: `Couldn't find a 'pages' directory`**: this means Next.js can't see the `app/` folder. Confirm you're running `npm run dev` from the repo root (the directory that contains `app/`, `package.json`, and `next.config.mjs`). Re-run `npm run setup` if the vendored packages are missing dependencies.
 
@@ -507,7 +507,7 @@ heis/
 │   └── studio/
 │       └── page.js             # Studio page — renders StandaloneShell
 ├── components/
-│   ├── StandaloneShell.js      # Tab nav + BYOK (API key from localStorage)
+│   ├── StandaloneShell.tsx     # Desktop navigation and account access
 │   └── ApiKeyModal.js          # API key entry modal
 ├── packages/
 │   └── studio/                 # Shared React component library

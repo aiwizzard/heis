@@ -35,12 +35,14 @@ class EntitlementStore {
     try {
       const snapshot = JSON.parse(fs.readFileSync(this.filePath, "utf8"));
       if (!verifySnapshot(snapshot, this.publicKeyPem)) return null;
-      if (new Date(snapshot.validUntil).getTime() < Date.now()) return null;
+      if (!new Set(["free","creator","pro"]).has(snapshot.mode) || !(new Date(snapshot.validUntil).getTime() >= Date.now())) return null;
       return snapshot;
     } catch {
       return null;
     }
   }
+
+  clear(): void { fs.rmSync(this.filePath, { force: true }); }
 
   set(snapshot: any): void {
     if (!verifySnapshot(snapshot, this.publicKeyPem)) {

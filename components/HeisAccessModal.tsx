@@ -3,19 +3,18 @@
 import { useState } from 'react';
 import HeisBrand from './HeisBrand';
 
-export type AccessStage = 'loading' | 'desktop-required' | 'sign-in' | 'byok' | 'upgrade' | 'ready';
+export type AccessStage = 'loading' | 'desktop-required' | 'sign-in' | 'upgrade' | 'ready';
 
 interface HeisAccessModalProps {
   theme?: "light" | "dark";
   stage: AccessStage;
   onGoogle: () => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
-  onSaveRunwareKey: (key: string) => Promise<void>;
+  onContinueFree: () => void;
 }
 
-export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMagicLink, onSaveRunwareKey }: HeisAccessModalProps) {
+export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMagicLink, onContinueFree }: HeisAccessModalProps) {
   const [email, setEmail] = useState('');
-  const [key, setKey] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +31,6 @@ export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMag
     }
   };
 
-  const needsKey = stage === 'byok';
   const desktopRequired = stage === 'desktop-required';
   const upgradeRequired = stage === 'upgrade';
 
@@ -43,26 +41,14 @@ export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMag
           <div className="mb-6"><HeisBrand theme={theme} height={36} /></div>
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-400">Heis access</p>
           <h1 className="text-2xl font-semibold">
-            {needsKey ? 'Connect your Runware key' : desktopRequired ? 'Open the Heis desktop app' : upgradeRequired ? 'Generation access required' : 'Sign in to Heis'}
+            {desktopRequired ? 'Open the Heis desktop app' : upgradeRequired ? 'Generation access required' : 'Sign in to Heis'}
           </h1>
           <p className="mt-2 text-sm leading-6 text-white/45">
-            {needsKey
-              ? 'Your key is encrypted by macOS and is never exposed to the studio renderer.'
-              : desktopRequired
-                ? 'The editor uses a secure Electron bridge and is not available as a browser application.'
-                : upgradeRequired
-                  ? 'Your projects remain readable and exportable. Activate Creator or Lifetime access to generate again.'
-                  : 'Sign in to activate this Mac and start your trial or use an existing purchase.'}
+            {desktopRequired ? 'Download Heis to work with Codex and local projects.' : upgradeRequired ? 'Subscribe to Creator or Pro for generation credits.' : 'Sign in for cloud storage and subscription credits. You can continue free without an account.'}
           </p>
         </div>
 
-        {needsKey ? (
-          <form onSubmit={(event) => { event.preventDefault(); void run(() => onSaveRunwareKey(key)); }} className="space-y-4">
-            <input type="password" value={key} onChange={(event) => setKey(event.target.value)} placeholder="Runware API key" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-cyan-400/50" />
-            <button disabled={busy || !key.trim()} className="w-full rounded-lg bg-cyan-400 px-4 py-3 font-semibold text-black disabled:opacity-40">Save encrypted key</button>
-            <a href="https://my.runware.ai/" target="_blank" rel="noreferrer" className="block text-center text-sm text-cyan-300 hover:text-cyan-200">Create or manage a Runware key</a>
-          </form>
-        ) : !desktopRequired && !upgradeRequired ? (
+        {!desktopRequired && !upgradeRequired ? (
           <div className="space-y-5">
             <button disabled={busy} onClick={() => void run(onGoogle)} className="w-full rounded-lg bg-white px-4 py-3 font-semibold text-black disabled:opacity-40">Continue with Google</button>
             <form onSubmit={(event) => { event.preventDefault(); void run(() => onMagicLink(email), 'Check your email to finish signing in.'); }} className="space-y-3">
@@ -71,8 +57,10 @@ export default function HeisAccessModal({ theme = "dark", stage, onGoogle, onMag
             </form>
           </div>
         ) : upgradeRequired ? (
-          <a href="https://heis.app/account" target="_blank" rel="noreferrer" className="block w-full rounded-lg bg-cyan-400 px-4 py-3 text-center font-semibold text-black">Open Heis account</a>
+          <a href="https://app.heis.studio/account" target="_blank" rel="noreferrer" className="block w-full rounded-lg bg-cyan-400 px-4 py-3 text-center font-semibold text-black">Open Heis account</a>
         ) : null}
+
+        {!desktopRequired && <button className="mt-5 w-full text-sm text-white/70" onClick={onContinueFree}>Continue free with Codex</button>}
 
         {message && <p className="mt-5 rounded-lg bg-white/5 px-3 py-2 text-sm text-white/70">{message}</p>}
       </div>

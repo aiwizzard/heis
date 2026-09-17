@@ -21,16 +21,16 @@ declare global {
         delete(name: "runwareApiKey" | "openaiApiKey"): Promise<ResultEnvelope<void>>;
       };
       codex: {
-        resolveApproval(id: string, decision: { approved: boolean; mode?: "managed" | "byok" }): Promise<ResultEnvelope<void>>;
+        resolveApproval(id: string, decision: { approved: boolean; mode?: "managed" }): Promise<ResultEnvelope<void>>;
         onApprovalRequired(callback: (request: { id: string; tool: string; args: unknown }) => void): () => void;
       };
       generation: {
-        listCapabilities(mode: "managed" | "byok"): Promise<ResultEnvelope<readonly ModelCapability[]>>;
-        upload(mode: "managed" | "byok", file: { name: string; type: string; bytes: ArrayBuffer }): Promise<ResultEnvelope<{ url: string }>>;
+        listCapabilities(mode: "managed"): Promise<ResultEnvelope<readonly ModelCapability[]>>;
+        upload(mode: "managed", file: { name: string; type: string; bytes: ArrayBuffer }): Promise<ResultEnvelope<{ url: string }>>;
         getBalance(): Promise<ResultEnvelope<{ balance: number | null }>>;
         submit(request: GenerationRequest): Promise<ResultEnvelope<GenerationJob>>;
-        getJob(mode: "managed" | "byok", jobId: string): Promise<ResultEnvelope<GenerationJob>>;
-        cancel(mode: "managed" | "byok", jobId: string): Promise<ResultEnvelope<void>>;
+        getJob(mode: "managed", jobId: string): Promise<ResultEnvelope<GenerationJob>>;
+        cancel(mode: "managed", jobId: string): Promise<ResultEnvelope<void>>;
       };
       export: {
         importMedia(file: { name: string; type: string; bytes: ArrayBuffer }): Promise<ResultEnvelope<LocalMediaImport>>;

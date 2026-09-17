@@ -1,3 +1,5 @@
+> Historical implementation notes. The commercial model below is superseded by [the current subscription model](subscription-model.md). Trial, lifetime, purchased-credit and BYOK references describe the retired design.
+
 # Heis Product and Implementation Plan
 
 Status: Foundation implemented, product migration and production release work remain

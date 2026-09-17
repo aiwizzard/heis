@@ -285,7 +285,7 @@ function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: strin
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">Provider migration</p>
         <h2 className="text-xl font-semibold text-white">{label} is being connected to Heis providers</h2>
         <p className="mt-3 text-sm leading-6 text-white/45">
-          This studio is temporarily unavailable while its legacy MuAPI calls are replaced with secure managed and BYOK generation. Your existing local projects are not affected.
+          This studio is temporarily unavailable while its legacy MuAPI calls are replaced with Heis generation. Your existing local projects are not affected.
         </p>
         <p className="mt-4 text-xs text-white/30">Studio ID: {tabId}</p>
       </div>
@@ -438,11 +438,11 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
     if (!window.heis?.codex?.onApprovalRequired) return undefined;
     return window.heis.codex.onApprovalRequired(async ({ id, tool, args }) => {
       const summary = tool === 'heis_generate'
-        ? `Codex wants to generate ${args?.operation || 'media'} with ${args?.modelId || 'the selected model'}. This may consume credits or provider balance.`
+        ? `Codex wants to generate ${args?.operation || 'media'} with ${args?.modelId || 'the selected model'}. This uses your subscription generation credits.`
         : `Codex wants to run ${tool}. This may change or export project data.`;
       const approved = window.confirm(summary);
       const session = await window.heis.auth.getSession();
-      const mode = session.ok && session.value ? 'managed' : 'byok';
+      const mode = 'managed';
       await window.heis.codex.resolveApproval(id, { approved, mode });
     });
   }, []);
@@ -629,26 +629,10 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
     }
     const result = await window.heis.entitlements.get();
     const entitlement = result.ok ? result.value : null;
-    if (!entitlement) {
-      setApiKey(null);
-      setAccessStage('sign-in');
-    } else if (entitlement.canUseManagedGeneration && localStorage.getItem('heis_generation_mode') !== 'byok') {
-      setApiKey('heis-managed');
-      setAccessStage('ready');
-      void fetchBalance('heis-managed');
-    } else if (entitlement.canUseByokGeneration) {
-      const secret = await window.heis.secrets.has('runwareApiKey');
-      if (secret.ok && secret.value) {
-        setApiKey('heis-byok');
-        setAccessStage('ready');
-      } else {
-        setApiKey(null);
-        setAccessStage('byok');
-      }
-    } else {
-      setApiKey(null);
-      setAccessStage('upgrade');
-    }
+    setApiKey(entitlement?.canUseManagedGeneration ? 'heis-managed' : 'heis-free');
+    setAccessStage('ready');
+    if (entitlement?.canUseManagedGeneration) void fetchBalance('heis-managed');
+    else setBalance(null);
     setHasMounted(true);
   }, [fetchBalance]);
 
@@ -660,20 +644,10 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
     });
   }, [refreshAccess]);
 
-  const handleKeySave = useCallback(async (key) => {
-    if (!window.heis) throw new Error('Open the Heis desktop app to store a provider key.');
-    const result = await window.heis.secrets.set('runwareApiKey', key);
-    if (!result.ok) throw new Error(result.error.message);
-    localStorage.setItem('heis_generation_mode', 'byok');
-    await refreshAccess();
-  }, [refreshAccess]);
-
-  const handleKeyChange = useCallback(async () => {
-    if (window.heis) await window.heis.secrets.delete('runwareApiKey');
-    localStorage.setItem('heis_generation_mode', 'byok');
+  const handleAccount = useCallback(() => {
+    setShowSettings(false);
     setApiKey(null);
-    setBalance(null);
-    setAccessStage('byok');
+    setAccessStage('sign-in');
   }, []);
 
   // Poll for balance every 30 seconds if key is present
@@ -739,7 +713,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
         const result = await window.heis?.auth.sendMagicLink(email);
         if (result && !result.ok) throw new Error(result.error.message);
       }}
-      onSaveRunwareKey={handleKeySave}
+      onContinueFree={() => { setApiKey('heis-free'); setAccessStage('ready'); }}
     /></div>;
   }
 
@@ -833,7 +807,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
             <div className="flex items-center gap-2.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 transition-colors">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs font-bold text-white/90">
-                ${balance !== null ? `${balance}` : '---'}
+                {balance !== null ? `${balance} credits` : 'Free'}
               </span>
             </div>
 
@@ -1184,29 +1158,30 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
-          <div role="dialog" aria-modal="true" aria-label={copy.settingsModal.title} className="workspace-settings bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
-            <h2 className="text-white font-bold text-lg mb-2">{copy.settingsModal.title}</h2>
+          <div role="dialog" aria-modal="true" aria-label="Heis account" className="workspace-settings bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
+            <h2 className="text-white font-bold text-lg mb-2">Heis account</h2>
             <p className="text-white/40 text-[13px] mb-8">
-              {copy.settingsModal.subtitle}
+              Connect your account for subscription generation. Codex uses your own account.
             </p>
 
             <div className="space-y-4 mb-8">
               <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
                 <label className="block text-xs font-bold text-white/30 mb-2">
-                   {copy.settingsModal.activeApiKey}
+                   Plan
                 </label>
                 <div className="text-[13px] font-mono text-white/80">
-                  {apiKey.slice(0, 8)}••••••••••••••••
+                  {apiKey === 'heis-managed' ? 'Subscription credits' : 'Free · Codex and local projects'}
                 </div>
               </div>
             </div>
 
+            <a href="https://app.heis.studio/account" target="_blank" rel="noreferrer" className="mb-4 block text-sm underline">Manage subscription and cloud storage</a>
             <div className="flex gap-3">
               <button
-                onClick={handleKeyChange}
+                onClick={handleAccount}
                 className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
               >
-                {copy.settingsModal.changeKey}
+                Sign in / switch account
               </button>
               <button
                 onClick={() => setShowSettings(false)}

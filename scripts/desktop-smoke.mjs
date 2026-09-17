@@ -8,9 +8,9 @@ import { _electron as electron } from 'playwright-core';
 const require = createRequire(import.meta.url);
 const userData = await mkdtemp(join(tmpdir(), 'heis-desktop-smoke-'));
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
-const entitlement = { accountId:'test', installationId:'test', mode:'trial', checkedAt:new Date().toISOString(), validUntil:new Date(Date.now()+3600000).toISOString(), deviceLimit:3, canEdit:true, canExport:true, canUseManagedGeneration:true, canUseByokGeneration:false };
+const entitlement = { accountId:'test', installationId:'test', mode:'creator', checkedAt:new Date().toISOString(), validUntil:new Date(Date.now()+3600000).toISOString(), deviceLimit:3, canEdit:true, canExport:true, canUseManagedGeneration:true };
 entitlement.signature = sign(null, Buffer.from(JSON.stringify(entitlement,Object.keys(entitlement).sort())),privateKey).toString('base64');
-await writeFile(join(userData,'entitlement.json'),JSON.stringify(entitlement));
+if(process.env.HEIS_TEST_FREE !== '1') await writeFile(join(userData,'entitlement.json'),JSON.stringify(entitlement));
 const env = {...process.env, HEIS_DISABLE_UPDATES:"1", HEIS_ENTITLEMENT_PUBLIC_KEY:publicKey.export({type:'spki',format:'pem'}), HEIS_CODEX_BINARY:resolve('scripts/fixtures/codex-mock.mjs')};
 if(process.env.HEIS_TEST_REAL_CODEX === '1') delete env.HEIS_CODEX_BINARY;
 delete env.ELECTRON_RUN_AS_NODE; delete env.HEIS_DEV_SERVER_URL;
@@ -24,6 +24,11 @@ try {
  await page.waitForURL('heis-app://app/**');
  await page.waitForLoadState('domcontentloaded');
  assert.equal(new URL(page.url()).protocol,'heis-app:');
+ if(process.env.HEIS_TEST_FREE === '1') {
+   await page.getByRole('button',{name:'Settings',exact:true}).waitFor();
+   const result=await page.evaluate(()=>window.heis.generation.listCapabilities('managed'));
+   assert.equal(result.ok,false,'Free users cannot invoke managed generation');
+ }
  assert.equal(await page.evaluate(()=>typeof window.require),'undefined');
  for(const tab of ['image','video','audio','lipsync','cinema','marketing','motion-control','vibe-motion','body-swap','ai-influencer']) {
   await page.goto('heis-app://app/studio/'+tab);

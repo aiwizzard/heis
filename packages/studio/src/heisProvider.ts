@@ -1,4 +1,5 @@
-type BillingMode = "managed" | "byok";
+import { getCapability, reserveCredits } from "@heis/core";
+type BillingMode = "managed";
 
 interface LipSyncStudioModel {
   id: string;
@@ -161,11 +162,8 @@ function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: { messag
 async function mode(): Promise<BillingMode> {
   const heis = requireDesktop();
   const entitlement = unwrap(await heis.entitlements.get());
-  if (!entitlement) throw new Error("Sign in to activate Heis before generating.");
-  if (localStorage.getItem("heis_generation_mode") === "byok" && entitlement.canUseByokGeneration) return "byok";
-  if (entitlement.canUseManagedGeneration) return "managed";
-  if (entitlement.canUseByokGeneration) return "byok";
-  throw new Error("Your current Heis entitlement does not include generation.");
+  if (entitlement?.canUseManagedGeneration) return "managed";
+  throw new Error("Subscribe to Creator or Pro to generate with Heis credits. Codex and local projects remain free.");
 }
 
 function dimensions(aspectRatio = "1:1", shortEdge = 1024) {
@@ -211,6 +209,10 @@ function marketingVideoDimensions(resolution: string, aspectRatio: string) {
 async function submit(operation: any, modelId: string, inputs: Record<string, unknown>, onRequestId?: (id: string) => void) {
   const heis = requireDesktop();
   const billingMode = await mode();
+  const capability = getCapability(modelId);
+  if (!capability) throw new Error("Model unavailable");
+  const estimate = reserveCredits(capability.maximumEstimatedCostUsd);
+  if (!window.confirm(`Reserve up to ${estimate} Heis credits for this generation? Unused reserved credits are returned after completion.`)) throw new Error("Generation cancelled.");
   let job: any = unwrap(await heis.generation.submit({
     operation,
     modelId,

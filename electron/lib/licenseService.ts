@@ -7,7 +7,7 @@ class LicenseService {
   private readonly installationStore: any;
   private readonly baseUrl: string;
 
-  constructor(authSession: any, entitlementStore: any, installationStore: any, baseUrl = process.env.HEIS_API_URL ?? "http://127.0.0.1:3001") {
+  constructor(authSession: any, entitlementStore: any, installationStore: any, baseUrl = process.env.HEIS_API_URL ?? "https://app.heis.studio") {
     this.authSession = authSession;
     this.entitlementStore = entitlementStore;
     this.installationStore = installationStore;

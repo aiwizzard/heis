@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import HeisBrand from './HeisBrand';
+import { PLANS } from '../packages/core/src/plans';
 
 const screens = [
   { id: 'video', name: 'Video', title: 'Start with a scene in mind.', alt: 'Heis Video Studio with model, aspect ratio, duration and resolution controls' },
@@ -9,9 +10,9 @@ const screens = [
   { id: 'audio', name: 'Audio', title: 'Give the idea a voice.', alt: 'Heis Audio Studio with the audio generation interface' },
 ];
 const faqs = [
-  ['Is Heis a desktop app?', 'Yes. Heis is built around a desktop workspace. This site introduces the app; your web account is used for sign-in, devices, and billing. See the download section below for the current release status.'],
-  ['Does everything run locally?', 'No. The interface and local project files live on your computer. Cloud generation sends the required prompts and media to the selected provider and needs an internet connection. Supported local models require a separate setup and suitable hardware.'],
-  ['How does generation pricing work?', 'Managed generation uses credits. Where supported by your plan, you can connect your own provider key and pay that provider directly. Model, duration, and resolution affect generation cost. Check your account for available plans and credits.'],
+  ['Is Heis a desktop app?', 'Yes. The desktop download is free. Connect your own Codex account and work with local projects without a Heis subscription. Codex usage is not included. Sign in for limited cloud storage, or subscribe for Heis generation credits.'],
+  ['Does everything run locally?', 'No. The interface and local project files live on your computer. Heis generation uses cloud providers and requires a paid subscription and internet access. Codex connects to your own account. Cloud storage is limited by plan; files on your computer are unlimited.'],
+  ['How does generation pricing work?', 'Free includes Codex connectivity and local projects, with no Heis generation. Creator and Pro include monthly generation credits. Costs vary by model, duration, and resolution. Credits expire at the end of each billing month, with no rollover or automatic overages.'],
   ['Can I edit and export a complete film?', 'Heis currently brings together focused generation and media tools. A full timeline editing workflow is not yet available in the public release. Save generated assets and use your preferred editor to assemble the final film.'],
   ['Which computer do I need?', 'The current desktop build targets Apple silicon Macs. Exact macOS requirements and installer details will accompany the public release. Local AI models have additional memory and storage requirements; cloud generation does not require running those models on your Mac.'],
 ];
@@ -62,7 +63,7 @@ export default function LandingPage() {
       <header className="landing-nav">
         <div className="landing-container landing-nav-inner">
           <a href="#main" aria-label="Heis home"><HeisBrand theme="dark" height={32} /></a>
-          <nav className="landing-links" aria-label="Main navigation"><a href="#workspace">Workspace</a><a href="#workflow">Workflow</a><a href="#questions">Questions</a></nav>
+          <nav className="landing-links" aria-label="Main navigation"><a href="#workspace">Workspace</a><a href="#workflow">Workflow</a><a href="#pricing">Pricing</a><a href="#questions">Questions</a></nav>
           <a className="landing-button landing-button-small" href="#download">Get Heis <Arrow down /></a>
         </div>
       </header>
@@ -92,9 +93,18 @@ export default function LandingPage() {
           <div className="landing-study-grid">{[{file:'classic_16mm_film',name:'Texture & character',detail:'Classic 16mm film'},{file:'classic_anamorphic',name:'A wider perspective',detail:'Classic anamorphic'},{file:'extreme_macro',name:'Closer to the detail',detail:'Extreme macro'}].map((item)=><figure key={item.file}><img src={`/assets/landing/${item.file}.webp`} width={640} height={640} loading="lazy" alt={`${item.detail} visual reference from Cinema Studio`} /><figcaption><h3>{item.detail}</h3></figcaption></figure>)}</div>
 
         </div></section>
-        <section className="landing-section landing-container landing-control" id="control"><div><h2>Keep the work close.<br /><em>Choose how you create.</em></h2></div><div className="landing-control-list"><article><span>01</span><div><h3>A home on your computer</h3><p>Keep local project files on your Mac and return to a familiar workspace with light and dark themes.</p></div></article><article><span>02</span><div><h3>Cloud when you need it</h3><p>Use supported cloud models through managed credits or your own provider key, where your plan allows. Requests are processed by the selected provider.</p></div></article><article><span>03</span><div><h3>Local where supported</h3><p>Connect supported local runtimes separately. Model availability and performance depend on your setup and hardware.</p></div></article></div></section>
+        <section className="landing-section landing-container landing-control" id="control"><div><h2>Keep the work close.<br /><em>Choose how you create.</em></h2></div><div className="landing-control-list"><article><span>01</span><div><h3>A home on your computer</h3><p>Keep local project files on your Mac and return to a familiar workspace with light and dark themes.</p></div></article><article><span>02</span><div><h3>Cloud when you need it</h3><p>Subscribe to Creator or Pro for monthly image, video, and audio generation credits. Cloud requests are processed by Heis providers.</p></div></article><article><span>03</span><div><h3>Codex on every plan</h3><p>Connect your own Codex account on every plan. Heis does not include or resell Codex usage. Keep local project files without a storage cap.</p></div></article></div></section>
+        <section id="pricing" className="landing-section landing-container">
+          <h2>Start free.<br /><em>Create more when you need to.</em></h2>
+          <div className="landing-pricing">{Object.values(PLANS).map(plan => <article key={plan.id}>
+            <h3>{plan.name}</h3><p className="landing-price">${plan.monthlyUsd}<span>{plan.id === 'free' ? 'forever' : '/ month'}</span></p>
+            <p>{plan.monthlyCredits ? `${plan.monthlyCredits.toLocaleString()} generation credits / month` : 'Codex and local projects. No Heis generation.'}</p><p>{plan.storageBytes / 1024 ** 3} GB cloud storage</p>
+            <a href={plan.id === 'free' ? '#download' : account} className="landing-button">{plan.id === 'free' ? 'Get Heis free' : `Choose ${plan.name}`} <Arrow /></a>
+          </article>)}</div>
+          <p className="landing-fine">Connect your own Codex account on every plan. Local files are unlimited. Cloud media is retained for up to 30 days. Monthly credits do not roll over. Taxes may apply.</p>
+        </section>
         <section id="questions" className="landing-section landing-container landing-faq"><div><h2>A few good<br /><em>questions.</em></h2></div><div>{faqs.map(([question,answer])=><details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
-        <section id="download" className="landing-download landing-container" aria-labelledby="download-title"><img src="/brand/heis-icon-192.png" width={72} height={72} alt="Heis app icon" loading="lazy" /><h2 id="download-title">Make room for<br /><em>your next idea.</em></h2><p>{installer ? 'The Heis desktop app for Apple silicon Macs.' : 'Coming to Apple silicon Macs.'}</p><div className="landing-actions">{installer ? <a className="landing-button landing-button-primary" href={installer}>Download for Mac <Arrow down /></a> : <span className="landing-release-status"><span className="landing-status" /> Mac download coming soon</span>}<a href={account} className="landing-text-link">Your account <Arrow /></a></div></section>
+        <section id="download" className="landing-download landing-container" aria-labelledby="download-title"><img src="/brand/heis-icon-192.png" width={72} height={72} alt="Heis app icon" loading="lazy" /><h2 id="download-title">Make room for<br /><em>your next idea.</em></h2><p>{installer ? 'The Heis desktop app for Apple silicon Macs.' : 'Free for Apple silicon Macs.'}</p><div className="landing-actions">{installer ? <a className="landing-button landing-button-primary" href={installer}>Download for Mac <Arrow down /></a> : <span className="landing-release-status"><span className="landing-status" /> Mac download coming soon</span>}<a href={account} className="landing-text-link">Your account <Arrow /></a></div></section>
       </main>
       <footer className="landing-end">
         <div className="landing-end-inner landing-container">

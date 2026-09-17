@@ -7,7 +7,7 @@ const { EntitlementStore } = require("./entitlementStore");
 const { InstallationStore } = require("./installationStore");
 const { LicenseService } = require("./licenseService");
 const { DesktopAuth } = require("./desktopAuth");
-const { ManagedMediaProvider, RunwareByokProvider } = require("./runwareProvider");
+const { ManagedMediaProvider } = require("./runwareProvider");
 const { McpBridge } = require("./mcpBridge");
 const { SecureStore } = require("./secureStore");
 
@@ -30,6 +30,7 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
   const installationStore = new InstallationStore();
   const licenseService = new LicenseService(authSession, entitlementStore, installationStore);
   const desktopAuth = new DesktopAuth(authSession, secureStore, (event: any) => {
+    if (event.type === "signed-out") entitlementStore.clear();
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.authEvent, event);
     if (event.type === "signed-in") {
       void licenseService.refresh().then((snapshot: any) => {
@@ -53,15 +54,11 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
       }
     }
   });
-  const byokProvider = new RunwareByokProvider(secureStore);
   const managedProvider = new ManagedMediaProvider(authSession);
   const providerFor = (mode: string) => {
     const entitlement = entitlementStore.get();
     if (!entitlement) throw new Error("VALID_ENTITLEMENT_REQUIRED");
-    if (mode === "byok") {
-      if (!entitlement.canUseByokGeneration) throw new Error("BYOK_ACCESS_REQUIRED");
-      return byokProvider;
-    }
+    if (mode !== "managed") throw new Error("UNSUPPORTED_BILLING_MODE");
     if (!entitlement.canUseManagedGeneration) throw new Error("MANAGED_ACCESS_REQUIRED");
     return managedProvider;
   };
@@ -73,12 +70,13 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.codexApprovalRequired, { id, tool, args });
   });
   const bridge = new McpBridge({
-    heis_list_capabilities: async () => ({ byok: await byokProvider.listCapabilities(), managed: await managedProvider.listCapabilities().catch(() => []) }),
+    heis_list_capabilities: async () => ({ managed: entitlementStore.get()?.canUseManagedGeneration ? await managedProvider.listCapabilities().catch(() => []) : [] }),
     heis_project_info: async () => ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
     heis_generate: async (args: any) => {
+      providerFor("managed");
       const approval = await requestApproval("heis_generate", args);
       if (!approval?.approved) throw new Error("Generation was declined by the user.");
-      const mode = approval.mode === "managed" ? "managed" : "byok";
+      const mode = "managed";
       const provider = providerFor(mode);
       return provider.submit({ operation: args.operation, modelId: args.modelId, inputs: args.inputs, billing: { mode, accountId: authSession.getUserId() ?? "local", idempotencyKey: require("node:crypto").randomUUID() } });
     },

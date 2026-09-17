@@ -3,12 +3,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ALLOWED_SECRET_NAMES = new Set([
-  "runwareApiKey",
   "openaiApiKey",
   "supabaseRefreshToken",
 ]);
 
-type SecretName = "runwareApiKey" | "openaiApiKey" | "supabaseRefreshToken";
+type SecretName = "openaiApiKey" | "supabaseRefreshToken";
 
 function assertSecretName(name: string): asserts name is SecretName {
   if (!ALLOWED_SECRET_NAMES.has(name)) throw new Error("Unsupported secret name.");
