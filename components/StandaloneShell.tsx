@@ -378,9 +378,9 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
     return false;
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [expandedCategoryId, setExpandedCategoryId] = useState(() => (
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState(() => new Set([
     getNavigationCategory(getInitialTab())?.id || NAVIGATION_CATEGORIES[0].id
-  ));
+  ]));
   const activeCategory = getNavigationCategory(activeTab);
 
   const toggleSidebar = useCallback(() => {
@@ -394,20 +394,20 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   const handleCategoryToggle = useCallback((categoryId) => {
     const isCollapsedNavigation = isSidebarCollapsed && !isMobileOpen;
 
-    if (!isCollapsedNavigation) {
-      setExpandedCategoryId((currentId) => (
-        currentId === categoryId ? null : categoryId
-      ));
-      return;
-    }
-
-    setExpandedCategoryId(categoryId);
-    toggleSidebar();
+    setExpandedCategoryIds((currentIds) => {
+      const next = new Set(currentIds);
+      if (!isCollapsedNavigation && next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+    if (isCollapsedNavigation) toggleSidebar();
   }, [isMobileOpen, isSidebarCollapsed, toggleSidebar]);
 
   useEffect(() => {
     if (activeCategory?.id) {
-      setExpandedCategoryId(activeCategory.id);
+      setExpandedCategoryIds((currentIds) => (
+        currentIds.has(activeCategory.id) ? currentIds : new Set([...currentIds, activeCategory.id])
+      ));
     }
   }, [activeCategory?.id]);
 
@@ -836,7 +836,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
                 {NAVIGATION_CATEGORIES.map((category) => {
                   const isCategoryActive = activeCategory?.id === category.id;
                   const isCollapsed = isSidebarCollapsed && !isMobileOpen;
-                  const isCategoryOpen = !isCollapsed && expandedCategoryId === category.id;
+                  const isCategoryOpen = !isCollapsed && expandedCategoryIds.has(category.id);
                   const categoryPanelId = `navigation-category-${category.id}`;
                   const categoryLabelText = categoryLabel(category.id);
 
