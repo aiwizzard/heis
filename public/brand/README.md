@@ -1,28 +1,27 @@
-# Heis logo
+# Heis identity
 
-The sculpted H joins two pillars with a rising diagonal bridge. The clipped outer corners give the mark a precise silhouette. The lowercase wordmark uses optically spaced DM Sans at weight 560, exported entirely as vector outlines.
+The approved wordmark replaces the first letter with the sculpted H, followed by outlined `eis`. Geometry, spacing, and alignment are identical in both themes. Lettering uses DM Sans weight 560, converted to vector paths.
 
-## Revision 02
+## Production assets
 
-The separate lockup now uses a 16-unit visible gap, with the symbol and lettering aligned to the same 12-to-88 vertical bounds. The integrated alternative replaces the first letter with the H symbol and uses an 8-unit gap before `eis`. Both use the same lettering scale and baseline.
+- `heis-wordmark-light.svg` and `.png`: deep crimson H with charcoal lettering for light backgrounds.
+- `heis-wordmark-dark.svg` and `.png`: brighter crimson H with ivory lettering for dark backgrounds.
+- `heis-symbol-light.svg` and `.png`: standalone crimson H.
+- `heis-symbol-dark.svg` and `.png`: standalone ivory H.
+- `heis-app-icon-crimson.svg`, `heis-app-icon-1024.png`: app thumbnail, ivory H on deep crimson.
+- `heis-icon-{size}.png`: 16, 24, 32, 48, 64, 128, 180, 192, 256, 512, and 1024 pixels.
+- `heis-favicon.svg`: browser tile. Root public also contains favicon.svg, multi-resolution favicon.ico, apple-touch-icon.png, and site.webmanifest.
+- `heis-maskable.svg` and 192/512 PNGs: full-bleed install icons with safe padding.
+- `heis-social.svg` and `.png`: 1200 by 630 social sharing card.
+- `../../build/heis.icns`, `heis.ico`, `heis.png`: macOS, Windows, and Linux packaging icons.
+- `identity.html` and `heis-identity.png`: current identity presentation.
 
-Compare them in `heis-logo-comparison.png` or `comparison.html`. `heis-integrated.svg` is the two-color integrated wordmark; `heis-integrated-black.svg`, `heis-integrated-ivory.svg`, and `heis-integrated-crimson.svg` are single-color alternatives. Neither alternative has been applied to the application.
+Use `HeisBrand` for application headers, passing the actual surface theme. The desktop follows its theme selector; the landing page and hosted account pages use dark branding. Favicons and native icons share an ivory-on-crimson tile for stable contrast in either operating system theme. The icon does not change with the app theme.
 
-## Files
+Keep the wordmark at least 100px wide and the symbol at least 16px high. Preserve its aspect ratio and leave clear space around it. Do not add shadows to the mark itself. Historical lockup, integrated, comparison, and plain-lettering files remain design explorations; use the explicit light/dark filenames in new UI.
 
-- `heis-lockup.svg`: crimson symbol and ivory wordmark, for dark backgrounds.
-- `heis-lockup-black.svg`: single-color dark lockup, for light backgrounds.
-- `heis-lockup-ivory.svg`: reversed single-color lockup.
-- `heis-symbol-*.svg` and `heis-wordmark-*.svg`: separate symbol and lettering in crimson, ivory, and black.
-- `heis-app-icon-crimson.svg`: recommended app icon, ivory on crimson.
-- `heis-app-icon.svg`: alternate app icon, crimson on charcoal.
-- `heis-app-icon-1024.png`: 1024px PNG of the recommended icon.
-- `heis-logo-board.png` and `preview.html`: presentation and size comparisons.
+## Regeneration
 
-Use the symbol at 16px or larger and the full lockup at 100px or larger. Keep clear space of at least one pillar width around the symbol. Do not stretch, add shadows to the mark itself, or change the diagonal angle. Use the ivory or black version when stronger contrast is needed.
+Run `python scripts/generate-brand.py` with fonttools and brotli installed, then `npm run brand:export`. The export script rasterizes assets, creates ICO and (on macOS) ICNS, and synchronizes hosted web public assets. Commit the exports together with source changes. Font license: `../fonts/DM-Sans-LICENSE.txt`.
 
-Colors: crimson `#AC2430`, ivory `#F5EEE6`, charcoal `#101113`.
-
-`heis.studio` is the proposed address, not part of the primary logo. Domain availability and trademark clearance have not been checked. These are design assets; existing application branding has not been replaced in this step.
-
-Regenerate the SVG files with `python scripts/generate-brand.py` after installing `fonttools` and `brotli` into a temporary Python environment. Font license: `../fonts/DM-Sans-LICENSE.txt`. No font installation is required to use the outlined SVG files.
+The proposed domain is heis.studio. It is separate from the wordmark; this asset kit does not configure or publish a domain.
