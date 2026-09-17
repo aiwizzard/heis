@@ -23,8 +23,8 @@ export const metadata = {
   manifest: '/site.webmanifest',
   openGraph: { images: [{ url: '/brand/heis-social.png', width: 1200, height: 630, alt: 'Heis creative workspace' }] },
   twitter: { card: 'summary_large_image', images: ['/brand/heis-social.png'] },
-  title: 'heis — Free AI Image & Video Studio',
-  description: 'Generate AI images and videos using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.',
+  title: 'Heis | Your desktop studio for AI video',
+  description: 'Explore video, image, and audio creation in one focused desktop workspace. Heis for Apple silicon Macs.',
 };
 
 export default async function RootLayout({ children }) {

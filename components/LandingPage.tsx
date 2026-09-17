@@ -1,182 +1,72 @@
 'use client';
 
+import { useState } from 'react';
 import HeisBrand from './HeisBrand';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 19 19 5M9 5h10v10" />
-    </svg>
-  );
-}
-
-function SparkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7L12 2Z" />
-      <path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z" />
-    </svg>
-  );
+const screens = [
+  { id: 'video', name: 'Video', title: 'Start with a scene in mind.', description: 'Choose a video model, describe your shot, and set its duration and format. Keep the controls close and the canvas clear.', alt: 'Heis Video Studio with model, aspect ratio, duration and resolution controls' },
+  { id: 'image', name: 'Image', title: 'Find the look before the motion.', description: 'Explore visual directions in Image Studio. Keep image creation alongside your video tools, in the same desktop workspace.', alt: 'Heis Image Studio showing its prompt composer and image generation controls' },
+  { id: 'audio', name: 'Audio', title: 'Give the idea a voice.', description: 'Switch to Audio Studio for sound generation, or open Lip Sync to work with a speaking performance.', alt: 'Heis Audio Studio with the audio generation interface' },
+];
+const faqs = [
+  ['Is Heis a desktop app?', 'Yes. Heis is built around a desktop workspace. This site introduces the app; your web account is used for sign-in, devices, and billing. See the download section below for the current release status.'],
+  ['Does everything run locally?', 'No. The interface and local project files live on your computer. Cloud generation sends the required prompts and media to the selected provider and needs an internet connection. Supported local models require a separate setup and suitable hardware.'],
+  ['How does generation pricing work?', 'Managed generation uses credits. Where supported by your plan, you can connect your own provider key and pay that provider directly. Model, duration, and resolution affect generation cost. Check your account for available plans and credits.'],
+  ['Can I edit and export a complete film?', 'Heis currently brings together focused generation and media tools. A full timeline editing workflow is not yet available in the public release. Save generated assets and use your preferred editor to assemble the final film.'],
+  ['Which computer do I need?', 'The current desktop build targets Apple silicon Macs. Exact macOS requirements and installer details will accompany the public release. Local AI models have additional memory and storage requirements; cloud generation does not require running those models on your Mac.'],
+];
+function Arrow({ down = false }: { down?: boolean }) {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d={down ? 'M12 4v16m-6-6 6 6 6-6' : 'M5 12h14m-6-6 6 6-6 6'} /></svg>;
 }
 
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-
-    const updateScroll = () => {
-      const scrollY = window.scrollY;
-      setScrolled(scrollY > 40);
-      document.documentElement.style.setProperty('--landing-scroll', `${Math.min(scrollY, 650) * 0.22}px`);
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add('is-visible');
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -40px' },
-    );
-
-    document.querySelectorAll('.landing-reveal').forEach((element) => observer.observe(element));
-    updateScroll();
-    window.addEventListener('scroll', updateScroll, { passive: true });
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', updateScroll);
-    };
-  }, []);
-
+  const [active, setActive] = useState(0);
+  const screen = screens[active];
+  const download = process.env.NEXT_PUBLIC_MAC_DOWNLOAD_URL;
+  const installer = download && /^https:\/\//.test(download) ? download : null;
+  const account = process.env.NEXT_PUBLIC_ACCOUNT_URL || 'https://app.heis.studio/account';
   return (
-    <main className="landing-shell">
-      <div className="landing-noise" aria-hidden="true" />
-
-      <nav className={`landing-nav${scrolled ? ' is-scrolled' : ''}`} aria-label="Main navigation">
+    <div className="landing-shell">
+      <a className="landing-skip" href="#main">Skip to content</a>
+      <header className="landing-nav">
         <div className="landing-container landing-nav-inner">
-          <Link href="/" className="landing-logo" aria-label="heis home">
-            <HeisBrand theme="dark" height={32} />
-          </Link>
-          <div className="landing-nav-links">
-            <a href="#expertise">Why heis</a>
-            <a href="#works">Studios</a>
-            <a href="#perspectives">Local-first</a>
-          </div>
-          <Link href="/studio" className="landing-pill landing-pill-light">
-            Launch studio <ArrowIcon />
-          </Link>
+          <a href="#main" aria-label="Heis home"><HeisBrand theme="dark" height={32} /></a>
+          <nav className="landing-links" aria-label="Main navigation"><a href="#workspace">Workspace</a><a href="#workflow">Workflow</a><a href="#questions">Questions</a></nav>
+          <a className="landing-button landing-button-small" href="#download">Get Heis <Arrow down /></a>
         </div>
-      </nav>
-
-      <section className="landing-hero" aria-labelledby="landing-title">
-        <div className="landing-hero-atmosphere" aria-hidden="true" />
-        <div className="landing-hand landing-hand-left" aria-hidden="true" />
-        <div className="landing-hand landing-hand-right" aria-hidden="true" />
-        <div className="landing-orbit landing-orbit-one" aria-hidden="true" />
-        <div className="landing-orbit landing-orbit-two" aria-hidden="true" />
-
-        <div className="landing-container landing-hero-content">
-
-          <h1 id="landing-title" className="landing-reveal is-visible">
-            heis.<br />
-            <em>Create on your terms.</em>
-          </h1>
-          <p className="landing-hero-copy landing-reveal is-visible">
-            Generate images, videos, audio, cinematic sequences, and more with selected cloud and local AI models in one creative workspace.
-          </p>
-          <div className="landing-hero-actions landing-reveal is-visible">
-            <Link href="/studio" className="landing-pill landing-pill-red">
-              Start creating <ArrowIcon />
-            </Link>
-            <a href="#works" className="landing-text-link">Explore the studios</a>
+      </header>
+      <main id="main">
+        <section className="landing-hero landing-container" aria-labelledby="landing-title">
+          <p className="landing-eyebrow"><span className="landing-status" /> A creative workspace for your Mac</p>
+          <div className="landing-hero-grid">
+            <h1 id="landing-title">Your desktop studio<br />for <em>AI video.</em></h1>
+            <div className="landing-intro"><p>Find the look. Create the motion. Give it a voice. Bring your video, image, and audio tools into one focused workspace.</p><div className="landing-actions"><a href="#download" className="landing-button landing-button-primary">Get Heis for Mac <Arrow down /></a><a href="#workspace" className="landing-text-link">Explore the app <Arrow /></a></div><span className="landing-fine">{installer ? 'Apple silicon · macOS' : 'Apple silicon · Public release in preparation'}</span></div>
           </div>
-
-        </div>
-
-      </section>
-
-      <section id="expertise" className="landing-mission">
-        <div className="landing-container">
-          <p className="landing-section-label landing-reveal"><span>01</span> Why heis</p>
-          <div className="landing-mission-grid">
-            <h2 className="landing-reveal">One focused studio. Every way to bring an idea to life.</h2>
-            <div className="landing-mission-copy landing-reveal">
-              <p>Move from a prompt to a finished image, video, soundtrack, or lip-synced performance without jumping between disconnected tools.</p>
-              <p>Run locally, connect cloud models, build reusable workflows, and keep control of the creative stack.</p>
-            </div>
+          <div className="landing-preview" id="workspace">
+            <div className="landing-preview-toolbar"><div className="landing-preview-tabs" role="group" aria-label="Choose a studio preview">{screens.map((item, i) => <button key={item.id} type="button" aria-pressed={active === i} onClick={() => setActive(i)}>{item.name}</button>)}</div><span>Inside Heis <span aria-hidden="true">↗</span></span></div>
+            <img className="landing-app-shot" src={`/assets/landing/studio-${screen.id}.webp`} alt={screen.alt} width={1280} height={820} fetchPriority="high" />
+            <div className="landing-preview-caption" aria-live="polite"><span>0{active + 1} / THE WORKSPACE</span><p><strong>{screen.title}</strong> {screen.description}</p></div>
           </div>
-          <div className="landing-brand-row landing-reveal" aria-label="Featured AI model families">
-            <span>FLUX</span><span>KLING</span><span>VEO</span><span>SORA</span>
+          <div className="landing-feature-strip"><span>Video generation</span><span>Image creation</span><span>Audio & lip sync</span><span>Cloud & local options</span></div>
+        </section>
+        <section id="workflow" className="landing-section landing-container">
+          <div className="landing-section-heading"><p className="landing-eyebrow">01 / A connected process</p><h2>Follow the idea.<br /><em>Keep your focus.</em></h2><p>Move between creative tasks without rebuilding your workspace each time.</p></div>
+          <div className="landing-steps">
+            <article><span className="landing-step-number">01</span><h3>Set the visual direction</h3><p>Explore an image or describe a cinematic scene. Use camera and lens references to shape the look you are after.</p><a href="#workspace" onClick={() => setActive(1)}>See Image Studio <Arrow /></a></article>
+            <article><span className="landing-step-number">02</span><h3>Make it move</h3><p>Choose a video model and set the shot’s format and duration. Explore motion tools as the idea takes shape.</p><a href="#workspace" onClick={() => setActive(0)}>See Video Studio <Arrow /></a></article>
+            <article><span className="landing-step-number">03</span><h3>Build the sound</h3><p>Create audio or work with lip sync. Save the assets you want to keep, ready for assembly in your preferred editor.</p><a href="#workspace" onClick={() => setActive(2)}>See Audio Studio <Arrow /></a></article>
           </div>
-        </div>
-      </section>
-
-      <section id="works" className="landing-works">
-        <div className="landing-grid-pattern" aria-hidden="true" />
-        <div className="landing-container">
-          <p className="landing-section-label landing-reveal"><span>02</span> Creative studios</p>
-          <header className="landing-works-heading landing-reveal">
-            <h2>Make the image.<br /><em>Direct the motion.</em></h2>
-            <p>Go from a single prompt to a complete production with focused tools for every stage of the process.</p>
-          </header>
-          <div className="landing-cards">
-            <Link href="/studio" className="landing-card landing-card-red landing-reveal">
-              <div className="landing-card-top">
-                <span className="landing-icon"><SparkIcon /></span><span className="landing-card-number">01</span>
-              </div>
-              <div>
-                <p className="landing-card-tag">Image and design</p>
-                <h3>Images &<br />Design</h3>
-                <p className="landing-card-copy">Create and edit with Flux, Midjourney, Nano Banana, Seedream, and more—then hand the work to an autonomous design agent.</p>
-              </div>
-              <div className="landing-card-footer"><span>Open image studio</span><ArrowIcon /></div>
-            </Link>
-            <Link href="/studio" className="landing-card landing-card-dark landing-reveal">
-              <div className="landing-card-top">
-                <span className="landing-icon"><ArrowIcon /></span><span className="landing-card-number">02</span>
-              </div>
-              <div>
-                <p className="landing-card-tag">Video, cinema, and audio</p>
-                <h3>Motion &<br />Sound</h3>
-                <p className="landing-card-copy">Generate with Kling, Veo, Sora, Seedance, and Wan. Build scenes in Cinema Studio, add audio, and create precise lip sync.</p>
-              </div>
-              <div className="landing-card-footer"><span>Open video studio</span><ArrowIcon /></div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="perspectives" className="landing-perspective">
-        <div className="landing-container landing-perspective-inner">
-          <p className="landing-section-label landing-reveal"><span>03</span> Local-first by design</p>
-          <blockquote className="landing-reveal">“Your ideas, your models, your machine. A creative platform should help you make more while keeping your projects close.”</blockquote>
-          <Link href="/studio" className="landing-circle-cta landing-reveal" aria-label="Launch heis studio">
-            <span>Launch<br />heis</span><ArrowIcon />
-          </Link>
-        </div>
-      </section>
-
-      <footer id="contact" className="landing-footer">
-        <div className="landing-container">
-          <div className="landing-footer-top">
-            <h2>Make anything.<br /><em>Own the process.</em></h2>
-            <div className="landing-footer-links">
-              <a href="https://github.com/Anil-matcha/heis" target="_blank" rel="noreferrer">View on GitHub</a>
-              <Link href="/studio">Launch studio</Link>
-            </div>
-          </div>
-          <div className="landing-wordmark"><img src="/brand/heis-wordmark-dark.svg" alt="Heis" style={{width:"min(100%, 640px)",height:"auto",opacity:0.3}} /></div>
-          <div className="landing-footer-bottom">
-            <span>© {new Date().getFullYear()} Heis. All rights reserved.</span>
-            <div><a href="https://github.com/Anil-matcha/heis" target="_blank" rel="noreferrer">GitHub</a><a href="https://discord.gg/tANKJkHck" target="_blank" rel="noreferrer">Discord</a><a href="https://x.com/matchaman11" target="_blank" rel="noreferrer">X / Twitter</a></div>
-            <a href="#landing-title">Back to top ↑</a>
-          </div>
-        </div>
-      </footer>
-    </main>
+        </section>
+        <section className="landing-studies" aria-labelledby="studies-title"><div className="landing-container">
+          <div className="landing-studies-heading"><div><p className="landing-eyebrow">02 / Think like a filmmaker</p><h2 id="studies-title">A feel for <em>the frame.</em></h2></div><p>Explore camera and lens references in Cinema Studio. Start with a visual intention, then shape your prompt.</p></div>
+          <div className="landing-study-grid">{[{file:'classic_16mm_film',name:'Texture & character',detail:'Classic 16mm film'},{file:'classic_anamorphic',name:'A wider perspective',detail:'Classic anamorphic'},{file:'extreme_macro',name:'Closer to the detail',detail:'Extreme macro'}].map((item,i)=><figure key={item.file}><img src={`/assets/landing/${item.file}.webp`} width={640} height={640} loading="lazy" alt={`${item.detail} visual reference from Cinema Studio`} /><figcaption><span>0{i+1}</span><div><h3>{item.name}</h3><p>{item.detail}</p></div></figcaption></figure>)}</div>
+          <p className="landing-fine">Built-in Cinema Studio references. These illustrate visual styles, not outputs generated for this page.</p>
+        </div></section>
+        <section className="landing-section landing-container landing-control" id="control"><div><p className="landing-eyebrow">03 / Your workspace, your choices</p><h2>Keep the work close.<br /><em>Choose how you create.</em></h2><p className="landing-section-copy">A desktop home for your creative process, with a clear distinction between what stays on your machine and what runs in the cloud.</p></div><div className="landing-control-list"><article><span>01</span><div><h3>A home on your computer</h3><p>Keep local project files on your Mac and return to a familiar workspace with light and dark themes.</p></div></article><article><span>02</span><div><h3>Cloud when you need it</h3><p>Use supported cloud models through managed credits or your own provider key, where your plan allows. Requests are processed by the selected provider.</p></div></article><article><span>03</span><div><h3>Local where supported</h3><p>Connect supported local runtimes separately. Model availability and performance depend on your setup and hardware.</p></div></article></div></section>
+        <section id="questions" className="landing-section landing-container landing-faq"><div><p className="landing-eyebrow">Before you begin</p><h2>A few good<br /><em>questions.</em></h2></div><div>{faqs.map(([question,answer])=><details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+        <section id="download" className="landing-download landing-container" aria-labelledby="download-title"><img src="/brand/heis-icon-192.png" width={72} height={72} alt="Heis app icon" loading="lazy" /><p className="landing-eyebrow">Made for your creative process</p><h2 id="download-title">Make room for<br /><em>your next idea.</em></h2><p>{installer ? 'The Heis desktop app for Apple silicon Macs.' : 'Heis for Apple silicon Macs is on its way. Explore the workspace above while we prepare the public installer.'}</p><div className="landing-actions">{installer ? <a className="landing-button landing-button-primary" href={installer}>Download for Mac <Arrow down /></a> : <span className="landing-release-status"><span className="landing-status" /> Mac download coming soon</span>}<a href={account} className="landing-text-link">Your account <Arrow /></a></div><p className="landing-fine">Cloud generation requires internet access and provider usage is billed separately or through credits.</p></section>
+      </main>
+      <footer className="landing-footer landing-container"><a href="#main" aria-label="Heis home"><HeisBrand theme="dark" height={30} /></a><span>© {new Date().getFullYear()} Heis</span><nav aria-label="Footer navigation"><a href="#workspace">Workspace</a><a href="#questions">Questions</a><a href={account}>Account</a><a href="#main">Back to top ↑</a></nav></footer>
+    </div>
   );
 }
