@@ -34,6 +34,7 @@ function validateParameter(parameter: ModelParameter, value: unknown): void {
 
 export function validateGenerationRequest(request: GenerationRequest): ModelCapability {
   if (!request || !isPlainObject(request.inputs)) throw new Error("INVALID_GENERATION_REQUEST");
+  if (request.billing?.mode !== "managed") throw new Error("UNSUPPORTED_BILLING_MODE");
   const capability = getCapability(request.modelId);
   if (!capability?.enabled) throw new Error("UNKNOWN_OR_DISABLED_MODEL");
   if (request.operation !== capability.operation) throw new Error("MODEL_OPERATION_MISMATCH");

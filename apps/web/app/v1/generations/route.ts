@@ -1,3 +1,4 @@
+import { accountPlan } from "@/lib/plans";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { reserveCredits, validateGenerationRequest } from "@heis/core";
@@ -19,14 +20,8 @@ export async function POST(request: Request) {
     const { client, user } = await requireUser(request);
     const admin = createAdminClient();
     const body = await request.json();
-    const [subscription, trial] = await Promise.all([
-      client.from("subscriptions").select("status").eq("user_id", user.id).maybeSingle(),
-      client.from("trial_grants").select("expires_at").eq("user_id", user.id).maybeSingle(),
-    ]);
-    const creatorActive = ["active", "trialing"].includes(subscription.data?.status ?? "");
-    const trialActive = Boolean(trial.data?.expires_at && new Date(trial.data.expires_at).getTime() > Date.now());
-    if (!creatorActive && !trialActive) {
-      return NextResponse.json({ error: { code: "MANAGED_ACCESS_REQUIRED", message: "Managed generation requires an active trial or Creator subscription." } }, { status: 403 });
+    if (await accountPlan(client, user.id) === "free") {
+      return NextResponse.json({ error: { code: "SUBSCRIPTION_REQUIRED", message: "Subscribe to Creator or Pro to use Heis generation credits." } }, { status: 403 });
     }
     let capability;
     try {
@@ -41,31 +36,39 @@ export async function POST(request: Request) {
     const existing = await client.from("generation_jobs").select("*").eq("user_id", user.id).eq("idempotency_key", idempotencyKey).maybeSingle();
     if (existing.data) return NextResponse.json(existing.data);
 
+    // Validate provider configuration before reserving credits or storage.
+    const webhookURL = `${env.publicApiUrl()}/v1/webhooks/runware?token=${encodeURIComponent(env.runwareWebhookToken())}`;
+    const providerKey = env.runwareApiKey();
     const jobId = crypto.randomUUID();
     const providerJobId = crypto.randomUUID();
     const reservedCredits = reserveCredits(capability.maximumEstimatedCostUsd);
+    const storageKey = `users/${user.id}/jobs/${jobId}/reservation`;
+    const storage = await admin.rpc("reserve_cloud_storage", { p_user_id:user.id, p_object_key:storageKey, p_mime_type:"application/octet-stream", p_size_bytes:500*1024*1024 });
+    if (storage.error) return NextResponse.json({error:{code:"STORAGE_LIMIT_REACHED",message:"Free at least 500 MB of cloud storage before starting a generation."}},{status:409});
+    const releaseStorage = () => admin.from("upload_assets").delete().eq("user_id",user.id).eq("object_key",storageKey);
     const inserted = await client.from("generation_jobs").insert({
       id: jobId, user_id: user.id, provider: "runware", provider_job_id: providerJobId,
       operation: body.operation, model_id: body.modelId, status: "queued",
       reserved_credits: reservedCredits, request_payload: body.inputs, idempotency_key: idempotencyKey,
     }).select("*").single();
-    if (inserted.error) throw inserted.error;
+    if (inserted.error) { await releaseStorage(); throw inserted.error; }
 
     const reservation = await client.rpc("reserve_generation_credits", { p_job_id: jobId, p_amount: reservedCredits, p_idempotency_key: idempotencyKey });
     if (reservation.error) {
+      await releaseStorage();
       await admin.from("generation_jobs").update({ status: "failed", error_code: "INSUFFICIENT_CREDITS", error_message: reservation.error.message }).eq("id", jobId);
       return NextResponse.json({ error: { code: "INSUFFICIENT_CREDITS", message: "Not enough credits for this generation." } }, { status: 402 });
     }
 
-    const webhookURL = `${env.publicApiUrl()}/v1/webhooks/runware?token=${encodeURIComponent(env.runwareWebhookToken())}`;
     const providerResponse = await fetch("https://api.runware.ai/v1", {
       method: "POST",
-      headers: { Authorization: `Bearer ${env.runwareApiKey()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
       body: JSON.stringify([{ ...body.inputs, taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
     });
     const providerBody = await providerResponse.json().catch(() => ({}));
     if (!providerResponse.ok || providerBody.errors?.length) {
-      await client.rpc("release_generation_credits", { p_job_id: jobId, p_reason: "provider_submission_failed" });
+      await releaseStorage();
+      await admin.rpc("release_generation_credits", { p_job_id: jobId, p_reason: "provider_submission_failed" });
       await admin.from("generation_jobs").update({ status: "failed", error_code: "PROVIDER_SUBMISSION_FAILED", error_message: providerBody.errors?.[0]?.message ?? "Runware rejected the job." }).eq("id", jobId);
       return NextResponse.json({ error: { code: "PROVIDER_SUBMISSION_FAILED", message: "The generation provider rejected this job." } }, { status: 502 });
     }

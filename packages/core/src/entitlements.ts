@@ -8,14 +8,7 @@ export function canUseCachedEntitlement(snapshot: EntitlementSnapshot, now = new
   return Number.isFinite(validUntil.getTime()) && validUntil >= now && Boolean(snapshot.signature);
 }
 
-export function resolveAccess(input: {
-  hasLifetime: boolean;
-  creatorActive: boolean;
-  trialActive: boolean;
-}): Omit<EntitlementSnapshot, "accountId" | "installationId" | "checkedAt" | "validUntil" | "signature"> {
-  const { hasLifetime, creatorActive, trialActive } = input;
-  if (creatorActive) return { mode: "creator", deviceLimit: DEVICE_LIMIT, canEdit: true, canExport: true, canUseManagedGeneration: true, canUseByokGeneration: true };
-  if (hasLifetime) return { mode: "lifetime", deviceLimit: DEVICE_LIMIT, canEdit: true, canExport: true, canUseManagedGeneration: false, canUseByokGeneration: true };
-  if (trialActive) return { mode: "trial", deviceLimit: DEVICE_LIMIT, canEdit: true, canExport: true, canUseManagedGeneration: true, canUseByokGeneration: false };
-  return { mode: "read-only", deviceLimit: DEVICE_LIMIT, canEdit: false, canExport: true, canUseManagedGeneration: false, canUseByokGeneration: false };
+export function resolveAccess(input: { plan?: import("./plans").PlanId } = {}): Omit<EntitlementSnapshot, "accountId" | "installationId" | "checkedAt" | "validUntil" | "signature"> {
+  const plan = input.plan === "creator" || input.plan === "pro" ? input.plan : "free";
+  return { mode: plan, deviceLimit: DEVICE_LIMIT, canEdit: true, canExport: true, canUseManagedGeneration: plan !== "free" };
 }

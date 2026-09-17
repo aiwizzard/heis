@@ -16,10 +16,10 @@ export const GENERATION_OPERATIONS = [
 ] as const;
 
 export type GenerationOperation = (typeof GENERATION_OPERATIONS)[number];
-export type BillingMode = "trial" | "managed" | "byok";
+export type BillingMode = "managed";
 export type JobStatus = "queued" | "submitted" | "running" | "succeeded" | "failed" | "cancelled";
 export type MediaKind = "image" | "video" | "audio" | "other";
-export type CreditWalletKind = "trial" | "monthly" | "purchased";
+export type CreditWalletKind = "monthly";
 
 export interface BillingContext {
   mode: BillingMode;
@@ -200,13 +200,12 @@ export interface WorkflowEngine {
 export interface EntitlementSnapshot {
   accountId: string;
   installationId: string;
-  mode: "trial" | "lifetime" | "creator" | "read-only";
+  mode: "free" | "creator" | "pro";
   checkedAt: string;
   validUntil: string;
   deviceLimit: number;
   canEdit: boolean;
   canExport: boolean;
   canUseManagedGeneration: boolean;
-  canUseByokGeneration: boolean;
   signature: string;
 }

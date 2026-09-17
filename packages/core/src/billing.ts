@@ -28,9 +28,7 @@ export function reserveCredits(maximumEstimatedCostUsd: number): number {
 }
 
 const WALLET_PRIORITY: Readonly<Record<CreditWalletKind, number>> = {
-  trial: 0,
   monthly: 1,
-  purchased: 2,
 };
 
 export function planCreditDebits(

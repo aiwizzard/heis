@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canUseCachedEntitlement, creditsForProviderCost, getCapability, planCreditDebits, resolveAccess, validateGenerationRequest } from "../packages/core/src/index";
+import { canUseCachedEntitlement, creditsForProviderCost, getCapability, planCreditDebits, resolveAccess, subscriptionPlan, PLANS, validateGenerationRequest } from "../packages/core/src/index";
 
 test("provider costs are converted to credits with a 2x markup", () => {
   assert.equal(creditsForProviderCost(0), 0);
@@ -9,44 +9,38 @@ test("provider costs are converted to credits with a 2x markup", () => {
   assert.equal(creditsForProviderCost(1), 200);
 });
 
-test("credit debits consume trial, monthly, then purchased balances", () => {
+test("monthly balances debit the earliest expiry first", () => {
   assert.deepEqual(planCreditDebits([
-    { kind: "purchased", available: 100 },
-    { kind: "monthly", available: 20 },
-    { kind: "trial", available: 5 },
-  ], 30), [
-    { kind: "trial", amount: 5 },
-    { kind: "monthly", amount: 20 },
-    { kind: "purchased", amount: 5 },
-  ]);
+    {kind:"monthly",available:20,expiresAt:"2027-02-01"},
+    {kind:"monthly",available:5,expiresAt:"2027-01-01"},
+  ],10,new Date("2026-01-01")),[{kind:"monthly",amount:5},{kind:"monthly",amount:5}]);
 });
 
 test("expired credit wallets are not consumed", () => {
   assert.throws(() => planCreditDebits([
-    { kind: "trial", available: 100, expiresAt: "2025-01-01T00:00:00.000Z" },
+    { kind: "monthly", available: 100, expiresAt: "2025-01-01T00:00:00.000Z" },
   ], 1, new Date("2026-01-01T00:00:00.000Z")), /INSUFFICIENT_CREDITS/);
 });
 
-test("cancelled creators retain read and export access", () => {
-  assert.deepEqual(resolveAccess({ hasLifetime: false, creatorActive: false, trialActive: false }), {
-    mode: "read-only", deviceLimit: 3, canEdit: false, canExport: true,
-    canUseManagedGeneration: false, canUseByokGeneration: false,
-  });
+test("free and cancelled subscribers keep editing and export without generation", () => {
+  assert.deepEqual(resolveAccess(), {mode:"free",deviceLimit:3,canEdit:true,canExport:true,canUseManagedGeneration:false});
+  assert.equal(subscriptionPlan({plan_id:"pro",status:"canceled",current_period_end:"2099-01-01"}),"free");
 });
-
-test("lifetime owners retain BYOK access", () => {
-  const access = resolveAccess({ hasLifetime: true, creatorActive: false, trialActive: false });
-  assert.equal(access.canEdit, true);
-  assert.equal(access.canUseByokGeneration, true);
-  assert.equal(access.canUseManagedGeneration, false);
+test("only active, recognized and unexpired paid subscriptions enable generation", () => {
+  for(const status of ["trialing","past_due","unpaid","incomplete","canceled"]) assert.equal(subscriptionPlan({plan_id:"creator",status,current_period_end:"2099-01-01"}),"free");
+  for(const date of ["invalid","2020-01-01"]) assert.equal(subscriptionPlan({plan_id:"creator",status:"active",current_period_end:date}),"free");
+  assert.equal(subscriptionPlan({plan_id:"lifetime",status:"active",current_period_end:"2099-01-01"}),"free");
+  assert.equal(subscriptionPlan({plan_id:"pro",status:"active",current_period_end:"2099-01-01"}),"pro");
+  assert.equal(resolveAccess({plan:"pro"}).canUseManagedGeneration,true);
+  assert.equal(PLANS.free.monthlyCredits,0);
 });
 
 test("cached entitlement requires a signature and unexpired validity", () => {
   const base = {
-    accountId: "user-1", installationId: "install-1", mode: "lifetime" as const,
+    accountId: "user-1", installationId: "install-1", mode: "free" as const,
     checkedAt: "2026-01-01T00:00:00.000Z", validUntil: "2026-02-01T00:00:00.000Z",
     deviceLimit: 3, canEdit: true, canExport: true, canUseManagedGeneration: false,
-    canUseByokGeneration: true, signature: "signature",
+    signature: "signature",
   };
   assert.equal(canUseCachedEntitlement(base, new Date("2026-01-15T00:00:00.000Z")), true);
   assert.equal(canUseCachedEntitlement(base, new Date("2026-02-02T00:00:00.000Z")), false);
@@ -119,7 +113,7 @@ test("generation validation enforces catalog requirements and bounds", () => {
   const base = {
     operation: "text-to-image" as const,
     modelId: "heis-image-standard",
-    billing: { mode: "byok" as const, accountId: "local", idempotencyKey: "request-1" },
+    billing: { mode: "managed" as const, accountId: "local", idempotencyKey: "request-1" },
   };
   assert.equal(validateGenerationRequest({ ...base, inputs: { positivePrompt: "A lake", width: 1024, height: 1024 } }).id, "heis-image-standard");
   assert.throws(() => validateGenerationRequest({ ...base, inputs: { width: 1024, height: 1024 } }), /MISSING_REQUIRED_PARAMETER_POSITIVEPROMPT/);
