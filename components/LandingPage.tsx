@@ -41,7 +41,7 @@ export default function LandingPage() {
         animation.onfinish = () => animations.delete(animation);
       });
     }, { threshold: 0.12 });
-    surface.querySelectorAll('.landing-section-heading, .landing-steps article, .landing-studies-heading, .landing-study-grid figure, .landing-control > div, .landing-faq > div, .landing-download').forEach(element => observer.observe(element));
+    surface.querySelectorAll('.landing-section-heading, .landing-steps article, .landing-studies-heading, .landing-study-grid figure, .landing-control > div, .landing-faq > div, .landing-download, .landing-signature').forEach(element => observer.observe(element));
     const cancelMotion = () => {
       if (preference.matches) animations.forEach(animation => animation.cancel());
     };
@@ -96,6 +96,9 @@ export default function LandingPage() {
         <section id="questions" className="landing-section landing-container landing-faq"><div><h2>A few good<br /><em>questions.</em></h2></div><div>{faqs.map(([question,answer])=><details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
         <section id="download" className="landing-download landing-container" aria-labelledby="download-title"><img src="/brand/heis-icon-192.png" width={72} height={72} alt="Heis app icon" loading="lazy" /><h2 id="download-title">Make room for<br /><em>your next idea.</em></h2><p>{installer ? 'The Heis desktop app for Apple silicon Macs.' : 'Coming to Apple silicon Macs.'}</p><div className="landing-actions">{installer ? <a className="landing-button landing-button-primary" href={installer}>Download for Mac <Arrow down /></a> : <span className="landing-release-status"><span className="landing-status" /> Mac download coming soon</span>}<a href={account} className="landing-text-link">Your account <Arrow /></a></div></section>
       </main>
+      <div className="landing-signature landing-container" aria-hidden="true">
+        <img src="/brand/heis-wordmark-dark.svg" alt="" width={900} height={400} loading="lazy" />
+      </div>
       <footer className="landing-footer landing-container"><a href="#main" aria-label="Heis home"><HeisBrand theme="dark" height={30} /></a><span>© {new Date().getFullYear()} Heis</span><nav aria-label="Footer navigation"><a href="#workspace">Workspace</a><a href="#questions">Questions</a><a href={account}>Account</a><a href="#main">Back to top ↑</a></nav></footer>
     </div>
   );

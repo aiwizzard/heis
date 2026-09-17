@@ -690,3 +690,18 @@
 @media (prefers-reduced-motion: reduce) {
   .landing-shell *, .landing-shell *::before, .landing-shell *::after { animation: none !important; transition: none !important; }
 }
+
+.landing-signature {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 72px;
+}
+.landing-signature img {
+  display: block;
+  width: min(100%, 850px);
+  height: auto;
+  opacity: .46;
+}
+@media (max-width: 640px) {
+  .landing-signature { padding: 10px 8px 44px; }
+}
