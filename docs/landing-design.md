@@ -6,7 +6,7 @@ The landing page positions Heis as a desktop workspace for AI video, with suppor
 
 `components/LandingPage.tsx` and `components/landing.css` are the source of truth for both the original Next.js route and the standalone `apps/landing` marketing app. The standalone component re-exports the shared component. Avoid copying its markup or CSS into a second implementation.
 
-The page has a responsive hero, a three-studio screenshot tour, a connected workflow, Cinema Studio camera references, local/cloud explanations, native FAQ disclosures, and a download section. Content remains visible without entrance animations. Preview selection uses buttons with pressed states; FAQ controls support keyboard activation. All fragment links target real sections.
+The page has a responsive hero, a three-studio screenshot tour, a connected workflow, Cinema Studio camera references, local/cloud explanations, native FAQ disclosures, and a download section. Short entrance animations, one-time scroll reveals, studio crossfades, and pointer hover effects add motion. Reduced-motion preferences disable decorative animation, and all content remains visible when JavaScript is unavailable. Repeated section eyebrows and duplicate captions are intentionally omitted. Preview selection uses buttons with pressed states; FAQ controls support keyboard activation. All fragment links target real sections.
 
 ## Release configuration
 
