@@ -890,3 +890,15 @@
 .heis-transform-crop summary { cursor:pointer; }
 .heis-transform-crop p { color:var(--subtle); font-size:10px; }
 .heis-transform-reset { width:100%; }
+
+.heis-crop-overlay { position:absolute; inset:0; z-index:12; display:flex; flex-direction:column; background:#17181c; padding:10px; gap:10px; outline:none; }
+.heis-crop-toolbar,.heis-crop-footer { display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex:none; }
+.heis-crop-toolbar strong,.heis-crop-footer small { flex:1; }
+.heis-crop-footer small { font-size:10px; color:var(--subtle); }
+.heis-crop-stage { flex:1; min-height:0; display:flex; justify-content:center; align-items:center; overflow:hidden; padding:8px; }
+.heis-crop-source { position:relative; flex:none; }
+.heis-crop-source > img,.heis-crop-source > video { width:100%; height:100%; display:block; pointer-events:none; }
+.heis-crop-box { position:absolute; border:1px solid white; box-shadow:0 0 0 9999px #0009; cursor:move; touch-action:none; }
+.heis-crop-grid { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to right,transparent 33%,#fff5 33%,#fff5 33.3%,transparent 33.3%,transparent 66.6%,#fff5 66.6%,#fff5 67%,transparent 67%),linear-gradient(to bottom,transparent 33%,#fff5 33%,#fff5 33.3%,transparent 33.3%,transparent 66.6%,#fff5 66.6%,#fff5 67%,transparent 67%); }
+.heis-editor .heis-crop-handle { position:absolute; width:12px; height:12px; padding:0; min-height:0; background:white; border:1px solid #444; border-radius:2px; transform:translate(-50%,-50%); touch-action:none; }
+.heis-crop-handle.nw { left:0; top:0; cursor:nwse-resize; }.heis-crop-handle.n { left:50%; top:0; cursor:ns-resize; }.heis-crop-handle.ne { left:100%; top:0; cursor:nesw-resize; }.heis-crop-handle.e { left:100%; top:50%; cursor:ew-resize; }.heis-crop-handle.se { left:100%; top:100%; cursor:nwse-resize; }.heis-crop-handle.s { left:50%; top:100%; cursor:ns-resize; }.heis-crop-handle.sw { left:0; top:100%; cursor:nesw-resize; }.heis-crop-handle.w { left:0; top:50%; cursor:ew-resize; }

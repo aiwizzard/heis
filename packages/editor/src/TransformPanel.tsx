@@ -19,7 +19,9 @@ export function TransformPanel({
   disabled,
   onPreview,
   onCommit,
+  onCrop,
 }: {
+  onCrop: () => void;
   clip: TimelineClip;
   media: boolean;
   disabled: boolean;
@@ -262,9 +264,10 @@ export function TransformPanel({
         { opacity: 1 },
         100,
       )}
+      {media && <button className="heis-transform-reset" disabled={disabled} onClick={onCrop}>Crop on preview</button>}
       {media && (
         <details className="heis-transform-crop">
-          <summary>Crop edges</summary>
+          <summary>Advanced crop</summary>
           <p>Trim each edge of the source image.</p>
           {(["left", "right", "top", "bottom"] as const).map((side) => {
             const opposite = {

@@ -19,6 +19,7 @@ import type {
   Track,
   RecentEditorProject,
 } from "@heis/core";
+import { CropOverlay } from "./CropOverlay";
 import { TransformPanel, type Transform } from "./TransformPanel";
 import { ColorPanel } from "./ColorPanel";
 import { Filmstrip } from "./Filmstrip";
@@ -78,6 +79,7 @@ export function EditorApp({
   const [snapshot, setSnapshot] = useState<EditorSnapshot | null>(null),
     [recent, setRecent] = useState<RecentEditorProject[]>([]),
     [name, setName] = useState("Untitled project");
+  const [cropSession, setCropSession] = useState<{ clip: TimelineClip; asset: ProjectAsset; projectId: string; sequenceId: string; revision: number; sourceTime: number }>();
   const [transformDraft, setTransformDraft] = useState<{ id: string; value: Transform }>();
   const [colorDraft, setColorDraft] = useState<{ id: string; color: ColorCorrection }>();
   const [compareClip, setCompareClip] = useState<string>();
@@ -113,6 +115,7 @@ export function EditorApp({
       (s) => s.id === snapshot.project.activeSequenceId,
     ),
     clip = sequence?.clips.find((c) => selection.includes(c.id));
+  useEffect(() => setCropSession(undefined), [snapshot?.project.id, sequence?.id, clip?.id]);
   const rate = sequence ? fps(sequence) : 30,
     duration = sequence ? sequenceDuration(sequence) : 1;
   useEffect(() => {
@@ -266,6 +269,7 @@ export function EditorApp({
           "input,textarea,select,[contenteditable=true]",
         ) ||
         tool ||
+        cropSession ||
         !snapshot
       )
         return;
@@ -1051,6 +1055,9 @@ export function EditorApp({
                   onMeter={onMeter}
                   bypassColorClipId={compareClip === clip?.id ? compareClip : undefined}
                 />
+                {cropSession && <CropOverlay key={cropSession.clip.id} projectId={cropSession.projectId} asset={cropSession.asset} initial={cropSession.clip.crop} sourceTime={cropSession.sourceTime}
+                  onCancel={() => setCropSession(undefined)}
+                  onApply={async crop => { const next = await bridge.command({projectId: cropSession.projectId, expectedRevision: cropSession.revision, label: "Crop clip", edits: [{type: "clip.update", sequenceId: cropSession.sequenceId, id: cropSession.clip.id, linked: false, patch: {crop}}]}); if (current.current?.project.id === cropSession.projectId) setSnapshot(next); setCropSession(undefined); }} />}
                 {!sequence.clips.length && (
                   <div className="heis-preview-empty">
                     <span>▤</span>
@@ -1273,7 +1280,7 @@ export function EditorApp({
                       <button disabled={!copiedColor} onClick={() => { setCompareClip(undefined); void command("Paste color", sequence.clips.filter(c => selection.includes(c.id) && project.assets.some(a => a.id === c.assetId && a.kind !== "audio")).map(c => ({ type: "clip.update" as const, sequenceId: sequence.id, id: c.id, linked: false, patch: { color: { ...copiedColor! } } }))); }}>Paste color to selected</button>
                     </>}
                     <h4>Transform</h4>
-                    <TransformPanel key={clip.id} clip={clip} media={project.assets.some(a => a.id === clip.assetId && a.kind !== "audio")} disabled={busy}
+                    <TransformPanel onCrop={() => { const asset = project.assets.find(a => a.id === clip.assetId); if (!asset) return; setPlaying(false); setCropSession({clip: structuredClone(clip), asset, projectId: project.id, sequenceId: sequence.id, revision: project.revision, sourceTime: (clip.sourceIn + Math.max(0, Math.min(clip.duration - 1, frame - clip.start))) / rate}); }} key={clip.id} clip={clip} media={project.assets.some(a => a.id === clip.assetId && a.kind !== "audio")} disabled={busy}
                       onPreview={value => setTransformDraft(value ? { id: clip.id, value } : undefined)}
                       onCommit={value => command("Transform clip", [{ type: "clip.update", sequenceId: sequence.id, id: clip.id, linked: false, patch: value }])} />
                     <h4>Audio and fades</h4>
