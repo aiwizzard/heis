@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { getUserBalance } from '../packages/studio/src/heisProvider';
+const LazyWorkflowWorkspace = lazy(() => import("./WorkflowStudioWorkspace"));
 const LazyDesignWorkspace = lazy(() => import("./DesignAgentWorkspace"));
 const LazyClippingWorkspace = lazy(() => import("../packages/editor/src/ClippingWorkspace").then(m => ({ default: m.ClippingWorkspace })));
 const LazyLayersStudio = lazy(() => import('../packages/studio/src/components/ImageLayersStudio'));
@@ -267,7 +268,7 @@ const NAVIGATION_CATEGORIES = [
   }
 ];
 
-const COMMERCIAL_READY_TABS = new Set(['design-agent', 'clipping', 'layers', 'image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'motion-control', 'vibe-motion', 'body-swap', 'agents', 'ai-influencer']);
+const COMMERCIAL_READY_TABS = new Set(['workflows', 'design-agent', 'clipping', 'layers', 'image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'motion-control', 'vibe-motion', 'body-swap', 'agents', 'ai-influencer']);
 
 function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
   return (
@@ -952,6 +953,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
           <ProviderMigrationNotice tabId={activeTab} label={tabLabel(activeTab)} />
         ) : (
           <>
+        {activeTab === 'workflows' && <Suspense fallback={<div>Loading workflows...</div>}><LazyWorkflowWorkspace /></Suspense>}
         {activeTab === 'design-agent' && <Suspense fallback={<div>Loading designs...</div>}><LazyDesignWorkspace /></Suspense>}
         {activeTab === 'clipping'  && <Suspense fallback={<div>Loading clipping...</div>}><LazyClippingWorkspace bridge={window.heisEditor} api={window.heis.generation} /></Suspense>}
         {activeTab === 'layers' && <LayersStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('layers')} onGenerationEnd={makeGenerationEndCallback('layers')} onGenerationComplete={makeSuccessCallback('layers')} onGenerationError={makeErrorCallback('layers')} />}

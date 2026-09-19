@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ClippingWorkspace } from "../packages/editor/src/ClippingWorkspace";
+import WorkflowStudioWorkspace from "./WorkflowStudioWorkspace";
 import DesignAgentWorkspace from "./DesignAgentWorkspace";
 import StandaloneShell from "./StandaloneShell";
 
@@ -21,7 +22,7 @@ export default function EditorToolWorkspace({
   useEffect(() => {
     let cancelled = false;
     setFiles(undefined);
-    if (input && id !== "clipping" && id !== "design-agent")
+    if (input && id !== "clipping" && id !== "design-agent" && id !== "workflows")
       void fetch(input.url)
         .then(async (response) => {
           if (!response.ok) throw new Error("Could not load selected media");
@@ -34,6 +35,7 @@ export default function EditorToolWorkspace({
       cancelled = true;
     };
   }, [input?.url, id]);
+  if (id === "workflows") return <WorkflowStudioWorkspace projectId={projectId}/>;
   if (id === "design-agent") return <DesignAgentWorkspace projectId={projectId} input={input}/>;
   if (id === "clipping") return <ClippingWorkspace bridge={window.heisEditor} api={window.heis.generation} input={input} />;
   return (

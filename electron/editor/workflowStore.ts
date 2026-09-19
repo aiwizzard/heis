@@ -46,7 +46,11 @@ export class WorkflowStore {
     fs.mkdirSync(userData, { recursive: true });
     this.approvalPath = path.join(userData, "workflow-run-approvals.json");
     try {
-      this.approvals = JSON.parse(fs.readFileSync(this.approvalPath, "utf8"));
+      const saved = JSON.parse(fs.readFileSync(this.approvalPath, "utf8"));
+      this.approvals =
+        saved && typeof saved === "object" && !Array.isArray(saved)
+          ? saved
+          : {};
     } catch {
       this.approvals = {};
     }
@@ -484,23 +488,27 @@ export class WorkflowStore {
         this.schedule(projectId, id, runId, 0);
       } else this.schedule(projectId, id, runId);
     } catch (e) {
-      if (
-        !this.disposed &&
-        this.authorized(
-          this.read(projectId, id).runs.find((r) => r.id === runId)!,
+      try {
+        if (
+          !this.disposed &&
+          this.authorized(
+            this.read(projectId, id).runs.find((r) => r.id === runId)!,
+          )
         )
-      )
-        this.update(projectId, id, runId, (r) => {
-          if (r.status === "running") {
-            r.status = "failed";
-            r.message = String(e);
-            const s = r.steps.find((s) => s.nodeId === nodeId);
-            if (s) {
-              s.status = "failed";
-              s.message = String(e);
+          this.update(projectId, id, runId, (r) => {
+            if (r.status === "running") {
+              r.status = "failed";
+              r.message = String(e);
+              const s = r.steps.find((s) => s.nodeId === nodeId);
+              if (s) {
+                s.status = "failed";
+                s.message = String(e);
+              }
             }
-          }
-        });
+          });
+      } catch {
+        // Preserve damaged or externally modified records. Opening the workspace reports the error.
+      }
     } finally {
       this.busy.delete(runId);
     }
@@ -508,14 +516,14 @@ export class WorkflowStore {
   retryPlan(projectId: string, id: string, runId: string) {
     const d = this.read(projectId, id),
       r = d.runs.find((r) => r.id === runId);
+    if (!r) throw new Error("Workflow run not found.");
+    this.check(r);
     if (
-      !r ||
       !["failed", "cancelled"].includes(r.status) ||
       this.busy.has(runId) ||
       d.runs.some((r) => r.status === "running" && this.authorized(r))
     )
       throw new Error("Wait for the current run to stop before retrying.");
-    this.check(r);
     return {
       run: r,
       credits: this.estimate(

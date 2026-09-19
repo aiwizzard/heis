@@ -395,3 +395,103 @@ test("cancellation stops downstream execution and transferred runs cannot author
     x.cleanup();
   }
 });
+
+test("shorter replacements require a trim choice and preserve placement and transforms", async () => {
+  const x = setup();
+  try {
+    const d = x.start(),
+      run = d.runs[0];
+    await x.drain(run.id);
+    const p = x.doc.project.project;
+    let state = x.editor.workflows.insert(
+      x.projectId,
+      d.definition.id,
+      run.id,
+      "job-1",
+      p.activeSequenceId,
+      20,
+      p.revision,
+    );
+    const clip = state.project.project.sequences[0].clips[0];
+    x.editor.command({
+      projectId: x.projectId,
+      expectedRevision: state.project.project.revision,
+      label: "Extend still",
+      edits: [
+        {
+          type: "clip.update",
+          sequenceId: p.activeSequenceId,
+          id: clip.id,
+          patch: { duration: 300, opacity: 0.4, x: 0.42 },
+        },
+      ],
+    });
+    const revision = x.doc.project.project.revision;
+    assert.throws(
+      () =>
+        x.editor.workflows.insert(
+          x.projectId,
+          d.definition.id,
+          run.id,
+          "job-2",
+          p.activeSequenceId,
+          0,
+          revision,
+          clip.id,
+        ),
+      /shorter/,
+    );
+    state = x.editor.workflows.insert(
+      x.projectId,
+      d.definition.id,
+      run.id,
+      "job-2",
+      p.activeSequenceId,
+      0,
+      revision,
+      clip.id,
+      "trim",
+    );
+    const replaced = state.project.project.sequences[0].clips[0];
+    assert.equal(replaced.duration, 150);
+    assert.equal(replaced.start, 20);
+    assert.equal(replaced.opacity, 0.4);
+    assert.equal(replaced.x, 0.42);
+  } finally {
+    x.cleanup();
+  }
+});
+test("switching active projects never redirects workflow results", async () => {
+  const x = setup();
+  try {
+    const d = x.start(),
+      run = d.runs[0],
+      other = x.editor.create(path.join(x.root, "other-project"), "Other");
+    await x.drain(run.id);
+    assert.equal(x.doc.runs[0].status, "succeeded");
+    assert.equal(x.editor.snapshot(other.project.id).project.assets.length, 0);
+    assert.equal(x.editor.activeProjectId, other.project.id);
+    assert.equal(x.doc.project.project.assets.length, 3);
+  } finally {
+    x.cleanup();
+  }
+});
+test("newer workflow versions are rejected without modifying the record", () => {
+  const x = setup();
+  try {
+    const d = x.doc,
+      file = path.join(x.directory, "workflows", d.definition.id + ".json");
+    const text = JSON.stringify({
+      ...d,
+      definition: { ...d.definition, version: 99 },
+    });
+    fs.writeFileSync(file, text);
+    assert.throws(
+      () => x.editor.workflows.read(x.projectId, d.definition.id),
+      /Unsupported/,
+    );
+    assert.equal(fs.readFileSync(file, "utf8"), text);
+  } finally {
+    x.cleanup();
+  }
+});

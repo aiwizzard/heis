@@ -68,8 +68,7 @@ export const editorTools: EditorTool[] = [
     id: "workflows",
     name: "Automation workflows",
     group: "Workflow",
-    available: false,
-    note: "Workflow execution is being migrated.",
+    available: true,
   },
   {
     id: "design-agent",

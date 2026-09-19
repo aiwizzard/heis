@@ -63,6 +63,29 @@ function register(localMediaService?: any, projectService?: any, editorService?:
     if (!entitlement.canUseManagedGeneration) throw new Error("MANAGED_ACCESS_REQUIRED");
     return managedProvider;
   };
+  editorService?.workflows.setProvider({
+    upload:(file:any)=>providerFor('managed').upload(file),
+    submit:(request:any)=>providerFor('managed').submit(request),
+    getJob:(id:string)=>managedProvider.getJob(id),
+    cancel:(id:string)=>managedProvider.cancel(id),
+  });
+  const workflowApprovals = new Set<string>();
+  const approveWorkflow = async (projectId:string,id:string,revision?:number,runId?:string) => {
+    const key=projectId+':'+id;
+    if(workflowApprovals.has(key))throw new Error('This workflow is already awaiting approval.');
+    workflowApprovals.add(key);
+    try {
+      providerFor('managed');
+      const plan=runId?editorService.workflows.retryPlan(projectId,id,runId):editorService.workflows.plan(projectId,id,revision);
+      const graph=runId?plan.run.graph:plan.graph;
+      const {dialog}=require('electron');
+      const decision=await dialog.showMessageBox({type:'question',title:'Approve workflow',message:`${runId?'Resume':'Run'} ${graph.name}? Reserve up to ${plan.credits} credits for remaining steps.`,detail:'Input images and generated intermediate images will be uploaded to the managed provider. Completed steps are reused on retry. An interrupted submission is retried with its original billing key.\n\n'+graph.nodes.filter((n:any)=>n.prompt).map((n:any)=>n.name+': '+n.prompt).join('\n'),buttons:['Cancel','Run workflow'],defaultId:0,cancelId:0});
+      if(decision.response!==1)throw new Error('Workflow run cancelled before submission.');
+      return runId?await editorService.workflows.retry(projectId,id,runId):editorService.workflows.start(projectId,id,revision);
+    } finally {workflowApprovals.delete(key);}
+  };
+  handleTrusted('editor:workflowRun',(_event:any,projectId:string,id:string,revision:number)=>approveWorkflow(projectId,id,revision));
+  handleTrusted('editor:workflowRetry',(_event:any,projectId:string,id:string,runId:string)=>approveWorkflow(projectId,id,undefined,runId));
   const pendingApprovals = new Map<string, { resolve: (value: any) => void; timer: any }>();
   const requestApproval = (tool: string, args: any) => new Promise<any>((resolve, reject) => {
     const id = require("node:crypto").randomUUID();
