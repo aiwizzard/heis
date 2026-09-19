@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { drawEditorText, renderFrame } from "@heis/core";
+import { drawEditorText, renderFrame, applyColor, hasColor } from "@heis/core";
 import type { EditorProject, Sequence } from "@heis/core";
 
 export function assetUrl(projectId: string, relative: string): string {
@@ -8,6 +8,8 @@ export function assetUrl(projectId: string, relative: string): string {
 type MediaNode = {
   element: HTMLVideoElement | HTMLImageElement;
   gain?: GainNode;
+  corrected?: HTMLCanvasElement;
+  correctedKey?: string;
   source?: MediaElementAudioSourceNode;
 };
 export function Preview({
@@ -16,7 +18,9 @@ export function Preview({
   frame,
   playing,
   onMeter,
+  bypassColorClipId,
 }: {
+  bypassColorClipId?: string;
   project: EditorProject;
   sequence: Sequence;
   frame: number;
@@ -76,7 +80,11 @@ export function Preview({
         element.crossOrigin = "anonymous";
         element.src = url;
         element.dataset.assetUrl = url;
-        const repaint = () => setTick((value) => value + 1);
+        const repaint = () => {
+          const current = nodes.current.get(clip.id);
+          if (current) current.correctedKey = undefined;
+          setTick((value) => value + 1);
+        };
         if (element instanceof HTMLVideoElement) {
           element.onseeked = repaint;
           element.onloadeddata = repaint;
@@ -125,6 +133,22 @@ export function Preview({
             ? element.videoHeight
             : element.naturalHeight;
       if (!width || !height) continue;
+      let visual: CanvasImageSource = element;
+      if (hasColor(clip.color) && clip.id !== bypassColorClipId) {
+        const key = JSON.stringify([clip.color, element instanceof HTMLVideoElement ? element.currentTime : 0]);
+        if (!node.corrected) node.corrected = document.createElement("canvas");
+        if (node.correctedKey !== key) {
+          node.corrected.width = width;
+          node.corrected.height = height;
+          const colorContext = node.corrected.getContext("2d", { willReadFrequently: true })!;
+          colorContext.drawImage(element, 0, 0);
+          const pixels = colorContext.getImageData(0, 0, width, height);
+          applyColor(pixels.data, clip.color!);
+          colorContext.putImageData(pixels, 0, 0);
+          node.correctedKey = key;
+        }
+        visual = node.corrected;
+      }
       const crop = clip.crop,
         sw = width * (1 - crop.left - crop.right),
         sh = height * (1 - crop.top - crop.bottom);
@@ -137,7 +161,7 @@ export function Preview({
       ctx.translate(clip.x * sequence.width, clip.y * sequence.height);
       ctx.rotate((clip.rotation * Math.PI) / 180);
       ctx.drawImage(
-        element,
+        visual,
         width * crop.left,
         height * crop.top,
         sw,
@@ -168,7 +192,7 @@ export function Preview({
       analyser.current.getByteTimeDomainData(data);
       onMeter(Math.max(...data.map((v) => Math.abs(v - 128))) / 128);
     } else onMeter(0);
-  }, [project, sequence, frame, playing, onMeter, tick]);
+  }, [project, sequence, frame, playing, bypassColorClipId, onMeter, tick]);
   // Repaint paused images after the decoder finishes seeking or loading.
   useEffect(() => {
     if (playing) return;

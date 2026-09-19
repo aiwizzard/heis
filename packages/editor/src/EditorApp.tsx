@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  colorControls,
+  neutralColor,
+  type ColorCorrection,
   fps,
   newClip,
   newSequence,
@@ -74,6 +77,8 @@ export function EditorApp({
   const [snapshot, setSnapshot] = useState<EditorSnapshot | null>(null),
     [recent, setRecent] = useState<RecentEditorProject[]>([]),
     [name, setName] = useState("Untitled project");
+  const [compareClip, setCompareClip] = useState<string>();
+  const [copiedColor, setCopiedColor] = useState<ColorCorrection>();
   const [error, setError] = useState(""),
     [tab, setTab] = useState("Media"),
     [tool, setTool] = useState<string | null>(null),
@@ -1041,6 +1046,7 @@ export function EditorApp({
                   frame={frame}
                   playing={playing}
                   onMeter={onMeter}
+                  bypassColorClipId={compareClip === clip?.id ? compareClip : undefined}
                 />
                 {!sequence.clips.length && (
                   <div className="heis-preview-empty">
@@ -1253,6 +1259,17 @@ export function EditorApp({
                         </label>
                       </>
                     )}
+                    {project.assets.some(a => a.id === clip.assetId && a.kind !== "audio") && <>
+                      <h4>Color</h4>
+                      {colorControls.map(control => <Field key={`${clip.id}-${control.key}`} label={control.label}
+                        value={(clip.color || neutralColor)[control.key as keyof ColorCorrection]}
+                        min={control.min} max={control.max} step={control.step}
+                        onChange={value => patch({ color: { ...neutralColor, ...clip.color, [control.key]: value } })} />)}
+                      <button aria-pressed={compareClip === clip.id} onClick={() => setCompareClip(compareClip === clip.id ? undefined : clip.id)}>{compareClip === clip.id ? "Show corrected" : "Show original"}</button>
+                      <button onClick={() => { setCompareClip(undefined); patch({ color: { ...neutralColor } }); }}>Reset color</button>
+                      <button onClick={() => setCopiedColor({ ...neutralColor, ...clip.color })}>Copy color</button>
+                      <button disabled={!copiedColor} onClick={() => { setCompareClip(undefined); void command("Paste color", sequence.clips.filter(c => selection.includes(c.id) && project.assets.some(a => a.id === c.assetId && a.kind !== "audio")).map(c => ({ type: "clip.update" as const, sequenceId: sequence.id, id: c.id, linked: false, patch: { color: { ...copiedColor! } } }))); }}>Paste color to selected</button>
+                    </>}
                     <h4>Transform</h4>
                     <Field
                       label="X (%)"

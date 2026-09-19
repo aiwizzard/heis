@@ -6,6 +6,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import {
+  colorFilter,
   applyEditorCommand,
   newProject,
   newTrack,
@@ -59,6 +60,7 @@ export interface EditorOptions {
 }
 export class EditorService {
   private sessions = new Map<string, Session>();
+  private upgradingProxies = new Set<string>();
   private jobMap = new Map<string, EditorJob>();
   private children = new Map<string, Set<ChildProcess>>();
   private cancelled = new Set<string>();
@@ -279,7 +281,35 @@ export class EditorService {
       if (job.kind === "generation" && job.status === "running")
         void this.pollGeneration(job.id);
     this.workflows.resumeProject(project.id);
+    this.upgradeProxyColor(project.id);
     return this.snapshot(project.id);
+  }
+  private upgradeProxyColor(id: string) {
+    if (this.upgradingProxies.has(id)) return;
+    const session = this.session(id);
+    const assets = session.project.assets.filter(a => a.kind === "video" && a.proxyPath && !a.proxyPath.endsWith(".bt709.mp4") && fs.existsSync(this.safePath(session.directory, a.proxyPath)));
+    if (!assets.length) return;
+    this.upgradingProxies.add(id);
+    this.start(id, "import", async job => {
+      this.update(job, { message: "Updating preview color metadata" });
+      try {
+        for (const asset of assets) {
+          const relative = `cache/${asset.id}.bt709.mp4`;
+          const destination = this.safePath(session.directory, relative);
+          const temporary = destination + ".tmp.mp4";
+          try {
+            await this.run(this.ffmpeg, ["-v", "error", "-y", "-i", this.safePath(session.directory, asset.proxyPath!), "-map", "0", "-c", "copy", "-bsf:v", "h264_metadata=video_full_range_flag=0:colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1", "-movflags", "+faststart", temporary], job.id);
+            await fsp.rename(temporary, destination);
+            for (const project of [session.project, ...session.undo, ...session.redo]) {
+              const current = project.assets.find(a => a.id === asset.id);
+              if (current) current.proxyPath = relative;
+            }
+            session.project.revision++;
+            this.changed(session);
+          } finally { await fsp.rm(temporary, { force: true }); }
+        }
+      } finally { this.upgradingProxies.delete(id); }
+    });
   }
   flush(id: string) {
     const s = this.session(id);
@@ -607,7 +637,7 @@ export class EditorService {
       }
       if (!image && visual) {
         // A constant-frame-rate H.264 proxy is predictable in Chromium, including MOV/HEVC sources.
-        a.proxyPath = `cache/${assetId}.mp4`;
+        a.proxyPath = `cache/${assetId}.bt709.mp4`;
         await this.run(
           this.ffmpeg,
           [
@@ -627,6 +657,8 @@ export class EditorService {
             "bt709",
             "-color_range",
             "tv",
+            "-bsf:v",
+            "h264_metadata=video_full_range_flag=0:colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1",
             "-c:a",
             "aac",
             "-movflags",
@@ -914,6 +946,7 @@ export class EditorService {
         }
         let chain = `[${index}:v]trim=start=${asset?.kind === "video" ? clip.sourceIn / rate : 0}:duration=${length},setpts=PTS-STARTPTS,fps=${rate}${asset?.kind === "video" ? `,scale=in_color_matrix=${asset.colorMatrix || (asset.width >= 1280 || asset.height >= 720 ? "bt709" : "bt601")}` : ""},format=rgba`;
         if (asset) {
+          chain += colorFilter(clip.color);
           const cw = asset.width * (1 - clip.crop.left - clip.crop.right),
             ch = asset.height * (1 - clip.crop.top - clip.crop.bottom);
           const scale =
@@ -994,6 +1027,8 @@ export class EditorService {
             "bt709",
             "-color_range",
             "tv",
+            "-bsf:v",
+            "h264_metadata=video_full_range_flag=0:colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1",
             "-c:a",
             "aac",
             "-b:a",

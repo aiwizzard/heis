@@ -366,6 +366,26 @@ try {
     (id) => document.querySelector("[data-track-row]")?.dataset.trackRow === id,
     destinationId,
   );
+  await page.locator(`[data-clip-id="${clipId}"]`).click();
+  const exposure = page.getByRole("spinbutton", { name: "Exposure", exact: true });
+  await exposure.fill("0.7");
+  await exposure.blur();
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Exposure"]').value === "0.7");
+  await page.getByRole("button", { name: "Copy color", exact: true }).click();
+  await page.getByRole("button", { name: "Reset color", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Exposure"]').value === "0");
+  await page.getByRole("button", { name: "Paste color to selected", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Exposure"]').value === "0.7");
+  await page.getByRole("button", { name: "↶", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Exposure"]').value === "0");
+  await page.getByRole("button", { name: "↷", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Exposure"]').value === "0.7");
+  await page.waitForTimeout(250);
+  const correctedFrame = await canvasFrame();
+  await page.getByRole("button", { name: "Show original", exact: true }).click();
+  await page.waitForFunction(before => document.querySelector('[aria-label="Video preview"]').toDataURL() !== before, correctedFrame);
+  await page.getByRole("button", { name: "Show corrected", exact: true }).click();
+  await page.waitForFunction(expected => document.querySelector('[aria-label="Video preview"]').toDataURL() === expected, correctedFrame);
   await page.getByRole("button", { name: "T Title", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Text", exact: true })

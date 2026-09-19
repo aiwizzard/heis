@@ -203,3 +203,14 @@ test("track reordering preserves clips and validates positions and locks", () =>
     /locked/,
   );
 });
+
+test("color edits persist through project serialization and reject invalid settings", async () => {
+  const { neutralColor } = await import("../packages/core/src/editorColor");
+  const p = fixture();
+  const corrected = edit(p, [{type:"clip.update",sequenceId:"seq",id:"clip",patch:{color:{...neutralColor,temperature:25,exposure:0.7}}}]);
+  const reopened = JSON.parse(JSON.stringify(corrected));
+  validateProject(reopened);
+  assert.equal(reopened.sequences[0].clips[0].color.exposure,0.7);
+  assert.equal(p.sequences[0].clips[0].color,undefined);
+  assert.throws(()=>edit(corrected,[{type:"clip.update",sequenceId:"seq",id:"clip",patch:{color:{...neutralColor,saturation:201}}}]),/Invalid color/);
+});

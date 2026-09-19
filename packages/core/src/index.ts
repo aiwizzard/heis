@@ -15,3 +15,5 @@ export * from "./workflow";
 export * from "./workflowCapabilities";
 
 export * from './workflowTemplates';
+
+export * from "./editorColor";

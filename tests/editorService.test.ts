@@ -151,3 +151,34 @@ test("standalone library does not replace the active project or appear in recent
     cleanup();
   }
 });
+
+test("older preview proxies receive explicit color metadata without changing source media", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "heis-color-upgrade-"));
+  const ffmpeg = path.resolve(`build/media-runtime/${process.arch}/ffmpeg`);
+  const service = new EditorService({userData:path.join(root,"data"),resources:root,ffmpeg});
+  try {
+    const directory=path.join(root,"film.heis");
+    const snap=service.create(directory,"Old project");
+    const proxy=path.join(directory,"cache","old.mp4");
+    const generated=spawnSync(ffmpeg,['-v','error','-f','lavfi','-i','color=red:s=64x64:d=0.1','-c:v',process.platform==='darwin'?'h264_videotoolbox':'libx264',proxy]);
+    assert.equal(generated.status,0,generated.stderr.toString());
+    fs.copyFileSync(proxy,path.join(directory,'media','original.mp4'));
+    const original=fs.readFileSync(path.join(directory,'media','original.mp4'));
+    snap.project.id += '-legacy';
+    snap.project.assets.push({id:'old',name:'Old',kind:'video',path:'media/original.mp4',proxyPath:'cache/old.mp4',durationSeconds:0.1,width:64,height:64,hasAudio:false});
+    fs.writeFileSync(path.join(directory,'project.heis.json'),JSON.stringify(snap.project));
+    service.open(directory);
+    const deadline=Date.now()+10000;
+    while(service.jobs(snap.project.id).some(job=>job.status==='running') && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,20));
+    assert.equal(service.jobs(snap.project.id).at(-1)?.status,'succeeded');
+    const updated=service.snapshot(snap.project.id).project.assets[0];
+    assert.equal(updated.proxyPath,'cache/old.bt709.mp4');
+    assert.deepEqual(fs.readFileSync(path.join(directory,'media','original.mp4')),original);
+    const probe=spawnSync(path.resolve(`build/media-runtime/${process.arch}/ffprobe`),['-v','error','-show_entries','stream=color_space,color_transfer,color_primaries','-of','json',path.join(directory,updated.proxyPath!)]);
+    const stream=JSON.parse(probe.stdout.toString()).streams[0];
+    assert.equal(stream.color_space,'bt709');
+    assert.equal(stream.color_transfer,'bt709');
+    assert.equal(stream.color_primaries,'bt709');
+  } finally { service.dispose(); fs.rmSync(root,{recursive:true,force:true}); }
+});

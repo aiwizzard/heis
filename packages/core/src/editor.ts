@@ -1,3 +1,4 @@
+import { validColor, type ColorCorrection } from "./editorColor";
 import type { WorkflowBridge } from "./workflow";
 import type { DesignBridge } from "./design";
 import type { TranscriptCue, RankedHighlight } from "./highlights";
@@ -44,6 +45,7 @@ export interface TimelineClip {
   scale: number;
   rotation: number;
   opacity: number;
+  color?: ColorCorrection;
   fit: "fit" | "fill";
   crop: { left: number; right: number; top: number; bottom: number };
   volume: number;
@@ -409,6 +411,7 @@ export function validateProject(p: EditorProject): void {
           finite(c.volume, 0, 4),
         "Invalid clip properties",
       );
+      assert(!c.color || validColor(c.color), "Invalid color correction");
       assert(
         integer(c.fadeIn) &&
           integer(c.fadeOut) &&
