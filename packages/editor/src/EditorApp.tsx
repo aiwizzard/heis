@@ -1637,7 +1637,105 @@ function Timeline({
       id: string;
       delta: number;
       mode: string;
+      dy: number;
+      targetTrackId: string;
+      valid: boolean;
+      ids: string[];
+      starts: Record<string, number>;
+      originTrackId: string;
     } | null>(null);
+  const [trackDrag, setTrackDrag] = useState<{
+    id: string;
+    from: number;
+    to: number;
+    dy: number;
+    height: number;
+    order: string[];
+  } | null>(null);
+  const dragCleanup = useRef<(() => void) | null>(null);
+  const suppressClick = useRef(false);
+  useEffect(() => () => dragCleanup.current?.(), []);
+  const visualTracks = trackDrag
+    ? trackDrag.order
+        .map((id) => sequence.tracks.find((t) => t.id === id)!)
+        .filter(Boolean)
+    : [...sequence.tracks].reverse();
+  const reorderTrack = (event: React.PointerEvent, track: Track) => {
+    if (event.button !== 0 || !event.isPrimary || track.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragCleanup.current?.();
+    const grabbed = event.currentTarget;
+    grabbed.setPointerCapture(event.pointerId);
+    const order = visualTracks.map((t) => t.id);
+    const from = visualTracks.findIndex((t) => t.id === track.id),
+      y = event.clientY;
+    const height = event.currentTarget
+      .closest(".heis-track")!
+      .getBoundingClientRect().height;
+    let to = from,
+      dy = 0;
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== event.pointerId) return;
+      dy = e.clientY - y;
+      to = Math.max(
+        0,
+        Math.min(visualTracks.length - 1, from + Math.round(dy / height)),
+      );
+      setTrackDrag({ id: track.id, from, to, dy, height, order });
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("blur", cancel);
+      if (grabbed.hasPointerCapture(event.pointerId))
+        grabbed.releasePointerCapture(event.pointerId);
+      dragCleanup.current = null;
+    };
+    const cancel = () => {
+      cleanup();
+      setTrackDrag(null);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancel();
+      }
+    };
+    const end = (e: PointerEvent) => {
+      if (e.pointerId !== event.pointerId) return;
+      cleanup();
+      if (to === from) {
+        setTrackDrag(null);
+        return;
+      }
+      setTrackDrag({
+        id: track.id,
+        from,
+        to,
+        dy: (to - from) * height,
+        height,
+        order,
+      });
+      void onCommand("Reorder track", [
+        {
+          type: "track.move",
+          sequenceId: sequence.id,
+          id: track.id,
+          index: visualTracks.length - 1 - to,
+        },
+      ]).finally(() => setTrackDrag(null));
+    };
+    dragCleanup.current = cancel;
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("keydown", key);
+    window.addEventListener("blur", cancel);
+    setTrackDrag({ id: track.id, from, to, dy, height, order });
+  };
   const timeline = useRef<HTMLDivElement>(null);
   const scrubPointer = useRef<number | null>(null);
   const lastFrame = Math.max(0, sequenceDuration(sequence) - 1);
@@ -1681,7 +1779,10 @@ function Timeline({
     clip: TimelineClip,
     mode: "move" | "left" | "right",
   ) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
     event.stopPropagation();
+    dragCleanup.current?.();
     if (sequence.tracks.find((t) => t.id === clip.trackId)?.locked) return;
     const ids = event.shiftKey
       ? [...new Set([...selection, clip.id])]
@@ -1689,22 +1790,66 @@ function Timeline({
         ? selection
         : [clip.id];
     setSelection(ids);
-    const x = event.clientX;
+    const grabbed = event.currentTarget;
+    grabbed.setPointerCapture(event.pointerId);
+    const x = event.clientX,
+      y = event.clientY;
+    const scroller = timeline.current?.parentElement;
+    const scrollX = scroller?.scrollLeft || 0,
+      scrollY = scroller?.scrollTop || 0;
+    const links = new Set(
+      sequence.clips
+        .filter((c) => ids.includes(c.id))
+        .map((c) => c.linkId)
+        .filter(Boolean),
+    );
+    const moving = sequence.clips.filter(
+      (c) => ids.includes(c.id) || (c.linkId && links.has(c.linkId)),
+    );
+    if (
+      moving.some(
+        (c) => sequence.tracks.find((t) => t.id === c.trackId)?.locked,
+      )
+    )
+      return;
     let delta = 0,
+      dy = 0,
+      valid = true,
       targetTrackId = clip.trackId;
     const move = (e: PointerEvent) => {
-      const target = document
-        .elementFromPoint(e.clientX, e.clientY)
-        ?.closest("[data-track-id]")
-        ?.getAttribute("data-track-id");
-      if (
-        target &&
-        sequence.tracks.find((t) => t.id === target)?.kind ===
-          sequence.tracks.find((t) => t.id === clip.trackId)?.kind
-      )
-        targetTrackId = target;
-      delta = Math.round((e.clientX - x) / px);
-      if (mode === "move") delta = Math.max(-clip.start, delta);
+      if (e.pointerId !== event.pointerId) return;
+      const target = Array.from(
+        timeline.current?.querySelectorAll<HTMLElement>("[data-track-id]") ||
+          [],
+      ).find((el) => {
+        const r = el.getBoundingClientRect();
+        return (
+          e.clientX >= r.left &&
+          e.clientX <= r.right &&
+          e.clientY >= r.top &&
+          e.clientY <= r.bottom
+        );
+      })?.dataset.trackId;
+      const targetTrack = sequence.tracks.find((t) => t.id === target);
+      valid =
+        mode !== "move" ||
+        Boolean(
+          targetTrack &&
+            !targetTrack.locked &&
+            targetTrack.kind ===
+              sequence.tracks.find((t) => t.id === clip.trackId)?.kind &&
+            (ids.length === 1 || target === clip.trackId),
+        );
+      targetTrackId = valid && target ? target : clip.trackId;
+      delta = Math.round(
+        (e.clientX - x + (scroller?.scrollLeft || 0) - scrollX) / px,
+      );
+      dy =
+        mode === "move" && ids.length === 1
+          ? e.clientY - y + (scroller?.scrollTop || 0) - scrollY
+          : 0;
+      if (mode === "move")
+        delta = Math.max(-Math.min(...moving.map((c) => c.start)), delta);
       if (snap && mode === "move") {
         const target = clip.start + delta;
         const positions = [
@@ -1716,13 +1861,50 @@ function Timeline({
         const near = positions.find((v) => Math.abs(v - target) * px < 8);
         if (near !== undefined) delta = near - clip.start;
       }
-      setGhost({ id: clip.id, delta, mode });
+      setGhost({
+        id: clip.id,
+        delta,
+        mode,
+        dy,
+        targetTrackId,
+        valid,
+        ids: moving.map((c) => c.id),
+        starts: Object.fromEntries(moving.map((c) => [c.id, c.start])),
+        originTrackId: clip.trackId,
+      });
     };
-    const end = () => {
+    const cleanup = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("blur", cancel);
+      if (grabbed.hasPointerCapture(event.pointerId))
+        grabbed.releasePointerCapture(event.pointerId);
+      dragCleanup.current = null;
+    };
+    const cancel = () => {
+      cleanup();
       setGhost(null);
-      if (!delta && targetTrackId === clip.trackId) return;
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+      }
+    };
+    const end = (e: PointerEvent) => {
+      if (e.pointerId !== event.pointerId) return;
+      cleanup();
+      suppressClick.current = true;
+      setTimeout(() => {
+        suppressClick.current = false;
+      }, 0);
+      if (!valid || (!delta && targetTrackId === clip.trackId)) {
+        setGhost(null);
+        return;
+      }
       if (mode === "move") {
         const linked = new Set<string>();
         const edits: EditorEdit[] = [];
@@ -1739,7 +1921,7 @@ function Timeline({
             },
           });
         }
-        void onCommand("Move clips", edits);
+        void onCommand("Move clips", edits).finally(() => setGhost(null));
       } else {
         const patch =
           mode === "left"
@@ -1751,17 +1933,29 @@ function Timeline({
             : { duration: clip.duration + delta };
         void onCommand("Trim clip", [
           { type: "clip.update", sequenceId: sequence.id, id: clip.id, patch },
-        ]);
+        ]).finally(() => setGhost(null));
       }
     };
+    dragCleanup.current = cancel;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("keydown", key);
+    window.addEventListener("blur", cancel);
   };
   return (
-    <div className="heis-timeline-scroll">
+    <div
+      className="heis-timeline-scroll"
+      onClickCapture={(e) => {
+        if (suppressClick.current) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
       <div
         ref={timeline}
-        className="heis-timeline-inner"
+        className={`heis-timeline-inner ${trackDrag ? "reordering-tracks" : ""}`}
         style={{ width: width + 150 }}
       >
         <div className="heis-ruler">
@@ -1774,12 +1968,29 @@ function Timeline({
             ))}
           </div>
         </div>
-        {[...sequence.tracks].reverse().map((track) => (
+        {visualTracks.map((track, index) => (
           <div
-            className={`heis-track ${track.locked ? "locked" : ""}`}
+            className={`heis-track ${track.locked ? "locked" : ""} ${trackDrag?.id === track.id ? "reordering" : ""}`}
+            data-track-row={track.id}
+            style={
+              trackDrag
+                ? {
+                    transform: `translateY(${trackDrag.id === track.id ? trackDrag.dy : trackDrag.from < trackDrag.to && index > trackDrag.from && index <= trackDrag.to ? -trackDrag.height : trackDrag.from > trackDrag.to && index >= trackDrag.to && index < trackDrag.from ? trackDrag.height : 0}px)`,
+                  }
+                : undefined
+            }
             key={track.id}
           >
             <div className="heis-track-label">
+              <button
+                className="heis-track-grip"
+                aria-label={`Move track ${track.name}`}
+                title="Drag to reorder track"
+                disabled={track.locked}
+                onPointerDown={(e) => reorderTrack(e, track)}
+              >
+                ⠿
+              </button>
               <strong>{track.name}</strong>
               <div>
                 <button
@@ -1835,7 +2046,7 @@ function Timeline({
               )}
             </div>
             <div
-              className="heis-track-lane"
+              className={`heis-track-lane ${ghost?.mode === "move" && ghost.valid && ghost.targetTrackId === track.id ? "drop-target" : ""}`}
               data-track-id={track.id}
               style={{ width }}
               onClick={() => setSelection([])}
@@ -1858,11 +2069,33 @@ function Timeline({
                   );
               }}
             >
+              {ghost?.mode === "move" &&
+                ghost.valid &&
+                ghost.targetTrackId === track.id && (
+                  <div
+                    className="heis-drop-preview"
+                    style={{
+                      left: (ghost.starts[ghost.id] + ghost.delta) * px,
+                      width: Math.max(
+                        8,
+                        (sequence.clips.find((c) => c.id === ghost.id)
+                          ?.duration || 1) * px,
+                      ),
+                    }}
+                  />
+                )}
               {sequence.clips
                 .filter((c) => c.trackId === track.id)
                 .map((c) => {
-                  const g = ghost?.id === c.id ? ghost : null,
-                    start = c.start + (g && g.mode !== "right" ? g.delta : 0),
+                  const g =
+                      ghost &&
+                      (ghost.id === c.id ||
+                        (ghost.mode === "move" && ghost.ids.includes(c.id)))
+                        ? ghost
+                        : null,
+                    start =
+                      (g?.starts[c.id] ?? c.start) +
+                      (g && g.mode !== "right" ? g.delta : 0),
                     length =
                       c.duration +
                       (g && g.mode === "right"
@@ -1874,9 +2107,16 @@ function Timeline({
                   return (
                     <div
                       key={c.id}
-                      className={`heis-timeline-clip ${track.kind} ${selection.includes(c.id) ? "selected" : ""}`}
+                      className={`heis-timeline-clip ${track.kind} ${selection.includes(c.id) ? "selected" : ""} ${g?.mode === "move" ? "dragging" : ""} ${g && !g.valid ? "invalid-drop" : ""}`}
+                      data-clip-id={c.id}
                       style={{
                         left: start * px,
+                        transform:
+                          g?.mode === "move" &&
+                          g.id === c.id &&
+                          c.trackId === g.originTrackId
+                            ? `translateY(${g.dy}px)`
+                            : undefined,
                         width: Math.max(8, length * px),
                       }}
                       onClick={(e) => {

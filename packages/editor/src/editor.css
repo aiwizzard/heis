@@ -801,3 +801,14 @@
   width: 100%;
   margin-top: 8px;
 }
+
+.heis-timeline-clip.dragging { pointer-events:none; z-index:8; cursor:grabbing; opacity:.85; box-shadow:0 8px 20px #0008; }
+.heis-timeline-clip.invalid-drop { outline:2px solid #e57373; }
+.heis-track-lane.drop-target { background-color:#9dc47720; box-shadow:inset 0 0 0 1px #9dc47780; }
+.heis-track { position:relative; }
+.heis-track.reordering { z-index:10; box-shadow:0 6px 20px #0008; opacity:.9; }
+.reordering-tracks .heis-track:not(.reordering) { transition:transform 120ms ease; }
+.heis-track-grip { cursor:grab; touch-action:none; }
+.heis-track-grip:active { cursor:grabbing; }
+
+.heis-drop-preview { position:absolute;top:5px;height:55px;border:2px dashed #b4d990;background:#b4d99015;pointer-events:none;border-radius:4px; }

@@ -172,3 +172,34 @@ test("validation rejects unsafe paths and newer versions", () => {
   p.schemaVersion = 2;
   assert.throws(() => validateProject(p), /version/);
 });
+
+test("track reordering preserves clips and validates positions and locks", () => {
+  const p = fixture(),
+    s = p.sequences[0];
+  const moved = edit(p, [
+    { type: "track.move", sequenceId: s.id, id: s.tracks[0].id, index: 1 },
+  ]);
+  assert.deepEqual(
+    moved.sequences[0].tracks.map((t) => t.id),
+    ["seq-audio", "seq-video"],
+  );
+  assert.deepEqual(moved.sequences[0].clips, s.clips);
+  const restored = edit(moved, [
+    { type: "track.move", sequenceId: s.id, id: "seq-video", index: 0 },
+  ]);
+  assert.deepEqual(restored.sequences[0].tracks, s.tracks);
+  for (const index of [-1, 2, 0.5])
+    assert.throws(() =>
+      edit(p, [
+        { type: "track.move", sequenceId: s.id, id: "seq-video", index },
+      ]),
+    );
+  s.tracks[0].locked = true;
+  assert.throws(
+    () =>
+      edit(p, [
+        { type: "track.move", sequenceId: s.id, id: "seq-video", index: 1 },
+      ]),
+    /locked/,
+  );
+});

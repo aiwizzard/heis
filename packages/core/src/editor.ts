@@ -102,6 +102,7 @@ export type EditorEdit =
       patch: Partial<Pick<Sequence, "name" | "width" | "height" | "frameRate">>;
     }
   | { type: "track.add"; sequenceId: string; track: Track }
+  | { type: "track.move"; sequenceId: string; id: string; index: number }
   | {
       type: "track.update";
       sequenceId: string;
@@ -150,7 +151,14 @@ export interface ToolResult {
 export interface EditorJob {
   id: string;
   projectId: string;
-  kind: "export" | "transcribe" | "import" | "generation" | "source-transcript" | "clipping" | "workflow";
+  kind:
+    | "export"
+    | "transcribe"
+    | "import"
+    | "generation"
+    | "source-transcript"
+    | "clipping"
+    | "workflow";
   transcript?: { duration: number; cues: TranscriptCue[] };
   status: "running" | "succeeded" | "failed" | "cancelled";
   progress: number;
@@ -193,7 +201,10 @@ export interface EditorBridge extends DesignBridge, WorkflowBridge {
   status(): Promise<EditorRuntimeStatus>;
   chooseClippingSource(): Promise<{ url: string; name: string } | null>;
   transcribeSource(sourceUrl: string): Promise<EditorJob>;
-  extractHighlights(sourceUrl: string, ranges: RankedHighlight[]): Promise<EditorJob>;
+  extractHighlights(
+    sourceUrl: string,
+    ranges: RankedHighlight[],
+  ): Promise<EditorJob>;
   setContext(context: ToolContext): Promise<void>;
   list(): Promise<RecentEditorProject[]>;
   library(): Promise<{ projectId: string; assets: ProjectAsset[] }>;
@@ -485,6 +496,18 @@ export function applyEditorCommand(
     assert(s, "Sequence missing");
     if (edit.type === "track.add") {
       s.tracks.push(edit.track);
+      continue;
+    }
+    if (edit.type === "track.move") {
+      const index = s.tracks.findIndex((t) => t.id === edit.id);
+      assert(index >= 0, "Track missing");
+      assert(!s.tracks[index].locked, "Track is locked");
+      assert(
+        integer(edit.index) && edit.index < s.tracks.length,
+        "Invalid track position",
+      );
+      const [track] = s.tracks.splice(index, 1);
+      s.tracks.splice(edit.index, 0, track);
       continue;
     }
     if (edit.type === "track.update") {

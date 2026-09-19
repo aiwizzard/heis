@@ -179,6 +179,143 @@ try {
   await waitFrame(44);
   await page.keyboard.press("Home");
   await waitFrame(0);
+  await page
+    .locator(".heis-track-lane")
+    .first()
+    .click({ position: { x: 400, y: 60 } });
+  await page
+    .getByRole("button", { name: "＋ video track", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Move track Video 2" }).waitFor();
+  const sourceRow = page
+    .locator(".heis-track")
+    .filter({
+      has: page.getByRole("button", {
+        name: "Move track Video 1",
+        exact: true,
+      }),
+    });
+  const destinationRow = page
+    .locator(".heis-track")
+    .filter({
+      has: page.getByRole("button", {
+        name: "Move track Video 2",
+        exact: true,
+      }),
+    });
+  const destinationId = await destinationRow.getAttribute("data-track-row");
+  const originalClip = sourceRow.locator(".heis-timeline-clip");
+  const clipId = await originalClip.getAttribute("data-clip-id");
+  const dragClip = async () => {
+    const a = await sourceRow.locator(".heis-timeline-clip").boundingBox(),
+      b = await destinationRow.locator(".heis-track-lane").boundingBox();
+    const x = a.x + a.width / 2;
+    await page.mouse.move(x, a.y + 25);
+    await page.mouse.down();
+    await page.mouse.move(x, b.y + 30, { steps: 8 });
+    return { a, b };
+  };
+  const { a, b } = await dragClip();
+  const movingBox = await page
+    .locator(`[data-clip-id="${clipId}"]`)
+    .boundingBox();
+  assert.ok(
+    Math.abs(movingBox.y - (b.y + 5)) < 4,
+    "Clip follows the pointer into the destination before drop",
+  );
+  assert.equal(await destinationRow.locator(".heis-drop-preview").count(), 1);
+  assert.equal(
+    await sourceRow.locator(`[data-clip-id="${clipId}"]`).count(),
+    1,
+    "Project clip stays in its original track until committed",
+  );
+  await page.mouse.up();
+  await page.waitForFunction(
+    ({ clipId, destinationId }) =>
+      document.querySelector(`[data-clip-id="${clipId}"]`)?.parentElement
+        .dataset.trackId === destinationId,
+    { clipId, destinationId },
+  );
+  await page.getByRole("button", { name: "↶", exact: true }).click();
+  await sourceRow.locator(`[data-clip-id="${clipId}"]`).waitFor();
+  await dragClip();
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  assert.equal(await page.locator(".heis-timeline-clip.dragging").count(), 0);
+  assert.equal(
+    await sourceRow.locator(`[data-clip-id="${clipId}"]`).count(),
+    1,
+  );
+  await destinationRow
+    .getByRole("button", { name: "Lock track", exact: true })
+    .click();
+  await page.waitForFunction(
+    (id) =>
+      document
+        .querySelector(`[data-track-row="${id}"]`)
+        .classList.contains("locked"),
+    destinationId,
+  );
+  await dragClip();
+  assert.equal(
+    await page.locator(".heis-timeline-clip.invalid-drop").count(),
+    2,
+  );
+  await page.mouse.up();
+  assert.equal(
+    await sourceRow.locator(`[data-clip-id="${clipId}"]`).count(),
+    1,
+  );
+  await destinationRow
+    .getByRole("button", { name: "Lock track", exact: true })
+    .click();
+  await page.waitForFunction(
+    (id) =>
+      !document
+        .querySelector(`[data-track-row="${id}"]`)
+        .classList.contains("locked"),
+    destinationId,
+  );
+  const grip = await destinationRow
+      .getByRole("button", { name: "Move track Video 2" })
+      .boundingBox(),
+    bottom = await sourceRow.boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    grip.x + grip.width / 2,
+    grip.y +
+      grip.height / 2 +
+      bottom.y -
+      (await destinationRow.boundingBox()).y,
+    { steps: 8 },
+  );
+  assert.equal(await page.locator(".heis-track.reordering").count(), 1);
+  assert.notEqual(
+    await destinationRow.evaluate((el) => el.style.transform),
+    "translateY(0px)",
+  );
+  await page.mouse.up();
+  await page.waitForFunction(
+    (id) =>
+      document.querySelector(".heis-track:last-of-type")?.dataset.trackRow ===
+        id ||
+      Array.from(document.querySelectorAll("[data-track-row]")).at(-1)?.dataset
+        .trackRow === id,
+    destinationId,
+  );
+  assert.equal(
+    await page
+      .locator("[data-track-row]")
+      .last()
+      .getAttribute("data-track-row"),
+    destinationId,
+  );
+  await page.getByRole("button", { name: "↶", exact: true }).click();
+  await page.waitForFunction(
+    (id) => document.querySelector("[data-track-row]")?.dataset.trackRow === id,
+    destinationId,
+  );
   await page.getByRole("button", { name: "T Title", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Text", exact: true })
