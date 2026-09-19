@@ -568,6 +568,9 @@ export default function MarketingStudio({
                 {copy.empty.titleLine2}
               </span>
             </h1>
+            <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
+              {copy.empty.subtitle}
+            </p>
           </div>
         )}
       </div>

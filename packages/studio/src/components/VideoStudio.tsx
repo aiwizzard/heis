@@ -2631,6 +2631,13 @@ export default function VideoStudio({
                 {selectedTool || selectedVeoTool || selectedPickerEntry?.groupedVideo ? selectedPickerLabel : selectedFamily.name}
               </span>
             </h1>
+            {!selectedTool && !selectedVeoTool && (
+              <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
+                {groupedConfiguration
+                  ? getVideoModeDescription(selectedVariant.model, selectedWorkflowId, groupCopy)
+                  : copy.empty.subtitle}
+              </p>
+            )}
           </div>
         )}
       </div>

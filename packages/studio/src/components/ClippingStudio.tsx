@@ -594,6 +594,9 @@ export default function ClippingStudio({
                 {copy.headings.aiClippingStudio}
               </span>
             </h1>
+            <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
+              {copy.headings.emptyStateSubtitle}
+            </p>
           </div>
         )}
 

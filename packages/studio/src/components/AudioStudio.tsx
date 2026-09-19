@@ -1100,6 +1100,9 @@ export default function AudioStudio({
               <div className="flex flex-col items-center gap-6 max-w-md text-center p-8 bg-zinc-900/40 border border-zinc-800 rounded backdrop-blur-sm relative group animate-fade-in-up">
                 <div className="relative z-10">
                   <h3 className="text-white font-black text-xl mb-3 tracking-tight">{copy.result.emptyHeading}</h3>
+                  <p className="text-sm text-zinc-200 font-medium leading-relaxed px-4">
+                    {copy.result.emptyBody}
+                  </p>
                 </div>
               </div>
             )}

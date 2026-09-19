@@ -1009,6 +1009,9 @@ export default function MotionControlStudio({
                 {copy.empty.titleLine2}
               </span>
             </h1>
+            <p className="text-xs sm:text-sm text-white/50 text-center max-w-lg px-4 leading-relaxed font-normal">
+              {copy.empty.description}
+            </p>
           </div>
         )}
       </div>

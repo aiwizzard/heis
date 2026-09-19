@@ -654,6 +654,7 @@ export default function AiInfluencerStudio({
             ) : (
               <div className="flex flex-col items-center gap-3 text-center px-8 py-12">
                 <p className="text-sm text-gray-600 font-medium">{copy.preview.emptyTitle}</p>
+                <p className="text-xs text-gray-700">{copy.preview.emptySubtitleLine1}<br />{copy.preview.emptySubtitleLine2}</p>
               </div>
             )}
           </div>
