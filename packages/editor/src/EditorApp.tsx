@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  colorControls,
   neutralColor,
   type ColorCorrection,
   fps,
@@ -20,6 +19,7 @@ import type {
   Track,
   RecentEditorProject,
 } from "@heis/core";
+import { ColorPanel } from "./ColorPanel";
 import { Filmstrip } from "./Filmstrip";
 import { Preview, assetUrl } from "./Preview";
 import { editorTools } from "./tools";
@@ -77,6 +77,7 @@ export function EditorApp({
   const [snapshot, setSnapshot] = useState<EditorSnapshot | null>(null),
     [recent, setRecent] = useState<RecentEditorProject[]>([]),
     [name, setName] = useState("Untitled project");
+  const [colorDraft, setColorDraft] = useState<{ id: string; color: ColorCorrection }>();
   const [compareClip, setCompareClip] = useState<string>();
   const [copiedColor, setCopiedColor] = useState<ColorCorrection>();
   const [error, setError] = useState(""),
@@ -1042,7 +1043,7 @@ export function EditorApp({
               <div className="heis-preview-surface">
                 <Preview
                   project={project}
-                  sequence={sequence}
+                  sequence={colorDraft && colorDraft.id === clip?.id ? { ...sequence, clips: sequence.clips.map(c => c.id === colorDraft.id ? { ...c, color: colorDraft.color } : c) } : sequence}
                   frame={frame}
                   playing={playing}
                   onMeter={onMeter}
@@ -1261,10 +1262,9 @@ export function EditorApp({
                     )}
                     {project.assets.some(a => a.id === clip.assetId && a.kind !== "audio") && <>
                       <h4>Color</h4>
-                      {colorControls.map(control => <Field key={`${clip.id}-${control.key}`} label={control.label}
-                        value={(clip.color || neutralColor)[control.key as keyof ColorCorrection]}
-                        min={control.min} max={control.max} step={control.step}
-                        onChange={value => patch({ color: { ...neutralColor, ...clip.color, [control.key]: value } })} />)}
+                      <ColorPanel key={clip.id} value={clip.color} disabled={busy}
+                        onPreview={color => { setColorDraft(color ? { id: clip.id, color } : undefined); if (color) setCompareClip(undefined); }}
+                        onCommit={color => command("Adjust color", [{ type: "clip.update", sequenceId: sequence.id, id: clip.id, linked: false, patch: { color } }])} />
                       <button aria-pressed={compareClip === clip.id} onClick={() => setCompareClip(compareClip === clip.id ? undefined : clip.id)}>{compareClip === clip.id ? "Show corrected" : "Show original"}</button>
                       <button onClick={() => { setCompareClip(undefined); patch({ color: { ...neutralColor } }); }}>Reset color</button>
                       <button onClick={() => setCopiedColor({ ...neutralColor, ...clip.color })}>Copy color</button>

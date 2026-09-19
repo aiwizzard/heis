@@ -862,3 +862,20 @@
 .heis-timeline-clip.video strong { position:relative; z-index:1; background:#101113b8; border-radius:2px; padding:2px 4px; }
 .heis-timeline-clip.video small { z-index:1; background:#101113b8; }
 .heis-timeline-clip .heis-trim { z-index:2; }
+
+.heis-color-controls { margin-bottom:14px; }
+.heis-color-control { margin:0 0 14px; }
+.heis-color-group { margin:12px 0 10px; color:var(--subtle); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+.heis-color-label { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.heis-editor .heis-color-label label { display:block; margin:0; flex:1; }
+.heis-color-label output { font-size:11px; font-variant-numeric:tabular-nums; color:#ddd; }
+.heis-editor .heis-color-label button { padding:0; width:20px; height:20px; background:transparent; color:var(--subtle); }
+.heis-color-range { position:relative; height:20px; display:flex; align-items:center; --ramp:linear-gradient(to right,#36383e,#b5b8c2); }
+.heis-color-range.temperature { --ramp:linear-gradient(to right,#669ce3,#929298,#e3aa60); }
+.heis-color-range.tint { --ramp:linear-gradient(to right,#65b88d,#929298,#cd7dc4); }
+.heis-color-range.saturation { --ramp:linear-gradient(to right,#666,#ba667b,#ed4770); }
+.heis-editor .heis-color-range input { appearance:none; width:100%; max-width:none; min-width:0; height:6px; padding:0; margin:0; border:0; border-radius:4px; background:var(--ramp); cursor:ew-resize; touch-action:none; }
+.heis-color-range input::-webkit-slider-thumb { appearance:none; width:13px; height:13px; border-radius:50%; background:#f1eee9; border:2px solid #292a30; box-shadow:0 0 0 1px #c9c4bd; }
+.heis-color-range input:focus-visible { outline:2px solid var(--accent); outline-offset:5px; }
+.heis-color-neutral { position:absolute; left:50%; top:2px; height:16px; width:1px; background:#ffffff50; pointer-events:none; z-index:0; }
+.heis-color-hints { display:flex; justify-content:space-between; font-size:9px; color:var(--subtle); }
