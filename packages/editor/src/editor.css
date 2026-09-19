@@ -879,3 +879,14 @@
 .heis-color-range input:focus-visible { outline:2px solid var(--accent); outline-offset:5px; }
 .heis-color-neutral { position:absolute; left:50%; top:2px; height:16px; width:1px; background:#ffffff50; pointer-events:none; z-index:0; }
 .heis-color-hints { display:flex; justify-content:space-between; font-size:9px; color:var(--subtle); }
+
+.heis-transform-sizing { display:flex; gap:6px; margin:12px 0 16px; }
+.heis-editor .heis-transform-sizing button { flex:1; padding:9px 5px; border:1px solid var(--line); }
+.heis-transform-sizing button[aria-pressed="true"] { border-color:#c57882; background:#58313a; }
+.heis-transform-sizing span { display:block; font-size:10px; opacity:.65; margin-top:4px; }
+.heis-transform-actions { display:flex; align-items:center; justify-content:space-between; gap:6px; margin:10px 0; }
+.heis-transform-actions strong { font-size:11px; }
+.heis-transform-crop { border-top:1px solid var(--line); padding-top:12px; margin:12px 0; }
+.heis-transform-crop summary { cursor:pointer; }
+.heis-transform-crop p { color:var(--subtle); font-size:10px; }
+.heis-transform-reset { width:100%; }

@@ -398,6 +398,31 @@ try {
   await page.waitForFunction(before => document.querySelector('[aria-label="Video preview"]').toDataURL() !== before, correctedFrame);
   await page.getByRole("button", { name: "Show corrected", exact: true }).click();
   await page.waitForFunction(expected => document.querySelector('[aria-label="Video preview"]').toDataURL() === expected, correctedFrame);
+  const horizontal = page.getByRole("slider", { name: "Horizontal", exact: true });
+  await horizontal.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/editor/transform-controls.png" });
+  const transformBefore = await canvasFrame();
+  const positionBox = await horizontal.boundingBox();
+  await page.mouse.move(positionBox.x + positionBox.width / 2, positionBox.y + positionBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(positionBox.x + 6.5 + (positionBox.width - 13) * 0.65, positionBox.y + positionBox.height / 2, { steps: 5 });
+  await page.waitForFunction(before => document.querySelector('[aria-label="Video preview"]').toDataURL() !== before, transformBefore);
+  await page.mouse.up();
+  await page.getByRole("button", { name: "↶", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[id="transform-Horizontal"]').value === "0");
+  await page.getByRole("button", { name: "↷", exact: true }).click();
+  await page.waitForFunction(() => Number(document.querySelector('[id="transform-Horizontal"]').value) > 0);
+  await page.getByRole("button", { name: "Center", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[id="transform-Horizontal"]').value === "0");
+  await page.getByRole("button", { name: "↷ Rotate 90°", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[id="transform-Rotation"]').value === "90");
+  await page.getByRole("button", { name: "Reset rotation", exact: true }).click();
+  await page.getByText("Crop edges", { exact: true }).click();
+  await page.getByRole("slider", { name: "Crop left", exact: true }).press("End");
+  await page.waitForFunction(() => Number(document.querySelector('[id="transform-Crop right"]').max) === 0);
+  await page.getByRole("button", { name: "Reset crop", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[id="transform-Crop left"]').value === "0");
+  await page.getByRole("button", { name: "Reset transform", exact: true }).click();
   await page.getByRole("button", { name: "T Title", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Text", exact: true })

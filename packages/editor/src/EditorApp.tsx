@@ -19,6 +19,7 @@ import type {
   Track,
   RecentEditorProject,
 } from "@heis/core";
+import { TransformPanel, type Transform } from "./TransformPanel";
 import { ColorPanel } from "./ColorPanel";
 import { Filmstrip } from "./Filmstrip";
 import { Preview, assetUrl } from "./Preview";
@@ -77,6 +78,7 @@ export function EditorApp({
   const [snapshot, setSnapshot] = useState<EditorSnapshot | null>(null),
     [recent, setRecent] = useState<RecentEditorProject[]>([]),
     [name, setName] = useState("Untitled project");
+  const [transformDraft, setTransformDraft] = useState<{ id: string; value: Transform }>();
   const [colorDraft, setColorDraft] = useState<{ id: string; color: ColorCorrection }>();
   const [compareClip, setCompareClip] = useState<string>();
   const [copiedColor, setCopiedColor] = useState<ColorCorrection>();
@@ -1043,7 +1045,7 @@ export function EditorApp({
               <div className="heis-preview-surface">
                 <Preview
                   project={project}
-                  sequence={colorDraft && colorDraft.id === clip?.id ? { ...sequence, clips: sequence.clips.map(c => c.id === colorDraft.id ? { ...c, color: colorDraft.color } : c) } : sequence}
+                  sequence={colorDraft?.id === clip?.id || transformDraft?.id === clip?.id ? { ...sequence, clips: sequence.clips.map(c => c.id === clip?.id ? { ...c, ...(colorDraft?.id === c.id ? { color: colorDraft.color } : {}), ...(transformDraft?.id === c.id ? transformDraft.value : {}) } : c) } : sequence}
                   frame={frame}
                   playing={playing}
                   onMeter={onMeter}
@@ -1271,61 +1273,9 @@ export function EditorApp({
                       <button disabled={!copiedColor} onClick={() => { setCompareClip(undefined); void command("Paste color", sequence.clips.filter(c => selection.includes(c.id) && project.assets.some(a => a.id === c.assetId && a.kind !== "audio")).map(c => ({ type: "clip.update" as const, sequenceId: sequence.id, id: c.id, linked: false, patch: { color: { ...copiedColor! } } }))); }}>Paste color to selected</button>
                     </>}
                     <h4>Transform</h4>
-                    <Field
-                      label="X (%)"
-                      value={clip.x * 100}
-                      onChange={(v) => patch({ x: v / 100 })}
-                    />
-                    <Field
-                      label="Y (%)"
-                      value={clip.y * 100}
-                      onChange={(v) => patch({ y: v / 100 })}
-                    />
-                    <Field
-                      label="Scale (%)"
-                      value={clip.scale * 100}
-                      min={1}
-                      max={2000}
-                      onChange={(v) => patch({ scale: v / 100 })}
-                    />
-                    <Field
-                      label="Rotation"
-                      value={clip.rotation}
-                      onChange={(v) => patch({ rotation: v })}
-                    />
-                    <Field
-                      label="Opacity (%)"
-                      value={clip.opacity * 100}
-                      min={0}
-                      max={100}
-                      onChange={(v) => patch({ opacity: v / 100 })}
-                    />
-                    <label>
-                      Sizing
-                      <select
-                        value={clip.fit}
-                        onChange={(e) =>
-                          patch({ fit: e.target.value as "fit" | "fill" })
-                        }
-                      >
-                        <option value="fit">Fit</option>
-                        <option value="fill">Fill</option>
-                      </select>
-                    </label>
-                    {(["left", "right", "top", "bottom"] as const).map(
-                      (side) => (
-                        <Field
-                          key={side}
-                          label={`Crop ${side} (%)`}
-                          value={clip.crop[side] * 100}
-                          min={0}
-                          max={99}
-                          onChange={(v) =>
-                            patch({ crop: { ...clip.crop, [side]: v / 100 } })
-                          }
-                        />
-                      ),
-                    )}
+                    <TransformPanel key={clip.id} clip={clip} media={project.assets.some(a => a.id === clip.assetId && a.kind !== "audio")} disabled={busy}
+                      onPreview={value => setTransformDraft(value ? { id: clip.id, value } : undefined)}
+                      onCommit={value => command("Transform clip", [{ type: "clip.update", sequenceId: sequence.id, id: clip.id, linked: false, patch: value }])} />
                     <h4>Audio and fades</h4>
                     <Field
                       label="Volume (%)"
