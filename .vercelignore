@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+release
+dist-electron
+dist-desktop
+dist-codex
+dist-tests
+test-results
+*.tsbuildinfo
+**/*.tsbuildinfo

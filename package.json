@@ -6,6 +6,7 @@
   "version": "2.0.0",
   "license": "SEE LICENSE IN COMMERCIAL_LICENSE.md",
   "workspaces": [
+    "apps/landing",
     "apps/web",
     "packages/core",
     "packages/studio",
@@ -48,7 +49,9 @@
     "test:agent": "node scripts/test-codex.mjs",
     "typecheck:agent": "tsc -p electron/agent/tsconfig.json",
     "test:desktop": "node scripts/desktop-smoke.mjs",
-    "brand:export": "node scripts/export-brand.mjs"
+    "brand:export": "node scripts/export-brand.mjs",
+    "landing:dev": "npm run dev -w @heis/landing",
+    "landing:build": "npm run build -w @heis/landing"
   },
   "build": {
     "appId": "com.heis.desktop",

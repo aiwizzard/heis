@@ -44,3 +44,6 @@ out/
 dist-desktop/
 dist-codex/
 test-results/
+
+# Vercel project links
+.vercel/

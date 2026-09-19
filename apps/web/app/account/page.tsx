@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getServerClient } from "@/lib/supabase-server";
 import AccountClient from "./AccountClient";
 export default async function AccountPage() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) redirect("/login");
   const supabase = await getServerClient(); const { data } = await supabase.auth.getUser(); if (!data.user) redirect("/login");
   return <main className="shell account"><nav className="nav"><Link className="brand" href="/"><HeisBrand theme="dark" /></Link></nav><h1>Your account</h1><AccountClient /></main>;
 }
