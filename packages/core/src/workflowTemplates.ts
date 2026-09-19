@@ -239,10 +239,9 @@ export function migrateWorkflow(record: unknown): {
     return node(String(n.id), k, {
       name: String(n.data?.label || n.id).slice(0, 120),
       modelId,
-      prompt: String(form.prompt || form.text || n.data?.text || "").slice(
-        0,
-        16000,
-      ),
+      prompt: String(
+        form.prompt || form.positivePrompt || form.text || n.data?.text || "",
+      ).slice(0, 16000),
       x: 30 + (i % 4) * 310,
       y: 40 + Math.floor(i / 4) * 400,
     });

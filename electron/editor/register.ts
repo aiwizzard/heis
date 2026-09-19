@@ -75,6 +75,9 @@ export function registerEditor(): EditorService {
   );
   const handlers: Record<string, (...args: any[]) => unknown> = {
     workflowOpen: (projectId?:string,id?:string) => {const target=projectId||service.library().projectId;const selected=id||service.workflows.list(target)[0]?.id||service.workflows.create(target).definition.id;service.workflows.resumeProject(target);return service.workflows.snapshot(target,selected);},
+    workflowImport:(projectId:string,record:unknown)=>service.workflows.importGraph(projectId,record),
+    workflowTemplate:(projectId:string,id:string)=>service.workflows.template(projectId,id),
+    workflowHistory:(projectId:string,id:string,revision:number,redo:boolean)=>service.workflows.history(projectId,id,revision,redo),
     workflowList: (projectId:string) => service.workflows.list(projectId),
     workflowCreate: (projectId:string) => service.workflows.create(projectId),
     workflowSave: (projectId:string,id:string,revision:number,name:string,nodes:any) => service.workflows.save(projectId,id,revision,name,nodes),

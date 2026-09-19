@@ -1,40 +1,45 @@
-# Workflow Studio: first supported execution path
+# Workflow Studio
 
-Open a project, choose Tools, then Automation workflows. The standalone `/studio/workflows` route uses the local library.
+Open a project, choose Tools, then Automation workflows. The standalone `/studio/workflows` route uses the local library. Editing and local composition work without a Heis subscription. Managed generation uses existing entitlements, upload rules, pricing and native spending approval.
 
-## Supported workflow
+## Nodes and templates
 
-Project image → image edit → image-to-video → output.
+- Project image, video and audio inputs reference portable project media. Text inputs and concatenation produce persistent text results.
+- Managed nodes expose Heis image generation/editing/upscale/background removal/expansion/layers, video generation/transformation/marketing/motion control/recast/motion graphics, lip sync, speech, music and text generation. Capability-specific controls and typed input menus prevent invalid connections.
+- Text output can feed a generation prompt. Multiple media inputs have ordered ports. Output indices select individual layers or other provider results, starting at zero.
+- Local video combining normalizes clips to 1280 × 720 at 30 fps, fits without stretching, mixes source audio at 48 kHz stereo, supplies silence where absent, and joins clips in order. It produces a new H.264/AAC asset using packaged FFmpeg.
+- Output nodes expose assets or text. Text can be downloaded. Media remains in the project until explicitly added to the timeline or used to replace a clip. Audio insertion uses audio tracks. Replacement preserves placement and transforms, rejects incompatible media and requires an explicit trim choice for shorter results.
 
-Choose an imported image, write the image-edit and motion prompts, and choose a 5- or 10-second video. Review and run saves the graph, validates all connections, and asks for native approval before uploading references or submitting paid work. The approval shows the remaining credit reservation and prompts.
+Templates cover image edit/animation, prompt writing/image generation, speech, music, local video combining, layers and lip sync. Start from a template or assemble a graph with Add node. Drag headers to arrange nodes. Graphs must be acyclic, all ports must match, and every node must reach an output. Maximum 50 nodes, 20 ordered media inputs, 16,000 prompt characters (speech 5,000 and music 2,000).
 
-The canvas supports adding and removing these four node types, changing connections through input menus, and dragging nodes to arrange them. Graphs must be acyclic, connections must have compatible media types, and every node must lead to an output. Execution follows dependency order, one node at a time. Branches can share an upstream result. Processing nodes use the first output of their source; all returned outputs remain available in the project.
+Save before switching workflows. Saved graph edits, including assistant edits, have persistent undo/redo with monotonic revision checks. Up to 50 graph edits are retained. Runs always use immutable graph snapshots.
 
-Runs retain immutable graph snapshots. Editing the canvas cannot change an in-progress run. Intermediate images and final videos download into the originating project's media folder. Preview uses a local proxy when necessary. Results remain in the library until the user explicitly adds or replaces a timeline clip. Insertion is undoable. Replacement preserves visual properties, requires detached audio, and requires an explicit trim choice for shorter videos.
+## Migration
 
-## Recovery and spending
+Import modern graph JSON or review an earlier workflow from the preserved legacy store. Migration always creates a separate copy. The review lists model substitutions and allows explicit managed replacements, including legacy arbitrary API nodes. Credentials, remote input URLs, run history and spending approvals are never imported. Relink media to local project assets after importing.
 
-Each workflow is stored under `workflows/<id>.json` inside its project. It contains its definition, run history, per-node state, provider job IDs and exact submitted requests. The request and billing idempotency key are saved before submission. A lost submission response is retried with the same request and key. A confirmed provider failure gets a new request only after another approval. Completed upstream steps are reused.
+Old provider-specific settings are not silently replayed. Review the new model and its controls. Incompatible legacy wiring reports an error; choose a compatible replacement or adjust the original graph. Old records can still be inspected and downloaded unchanged. Arbitrary third-party endpoint execution is not supported; all remote workflow operations use the Heis managed catalog.
 
-Known pending provider jobs resume when their project is reopened. Downloads complete locally before a downstream node can run. A network, upload or download failure leaves an actionable failed run; Review and resume retries remaining work. Cancel stops downstream submissions and requests cancellation of an active provider job. Cancellation cannot guarantee a refund for already accepted work.
+## Assistant
 
-A separate local approval ledger verifies each saved run before automatic continuation. Moving a project on the same installation retains that approval. A transferred project or changed run without matching local approval cannot trigger spending automatically. Its results remain available; starting a new run requires approval. This ledger is not copied into the portable project.
+The optional Workflow assistant reuses the existing Codex conversation runtime and login. Conversations are scoped to the originating project and workflow. It can inspect current state/capabilities/assets, save complete validated graphs, run with native approval, and cancel runs. Graph edits reject stale revisions and are undoable. The assistant has read-only filesystem access, receives workflow-specific instructions, and cannot use general timeline edit/export/generation tools in this scope. Media insertion stays under the user's control.
 
-## Compatibility and remaining scope
+Assistant graph updates appear automatically when the local draft is clean. A dirty draft remains intact and reports a revision conflict; export the draft or discard it before reloading.
 
-Existing workflow records remain untouched in the earlier workflow store. The workspace lists them under Earlier workflows and lets users inspect and download the original graph. They are not automatically reinterpreted or executed.
+## Execution, recovery and spending
 
-Only the four supported node types are enabled. Legacy arbitrary API nodes, video-combining nodes, audio nodes, legacy template migration, and the workflow-building assistant remain future work. This release provides the first complete managed workflow, not support for every legacy node or model. Workflow outputs are assets, not automatic timeline edits or generated sequences.
+Each project stores `workflows/<id>.json`, containing its definition, graph history, immutable runs, node requests, provider IDs, local jobs, output asset IDs and text. Atomic writes protect saves. Downloaded media is durable before downstream processing. Run history is bounded by a 20 MB file limit; create a new workflow when reached.
 
-The runner reuses the existing managed image-edit and image-to-video capabilities. It adds no separate provider key or workflow server.
+Requests and billing idempotency keys persist before provider submission. Ambiguous responses reuse the original request and key; confirmed provider failures receive fresh requests only after approved retry. Successful upstream nodes are reused. Cancel stops downstream submissions and requests cancellation of active remote or local jobs. Accepted provider work may already be billable.
 
-## Verification
+Pending jobs recover when their project reopens. Local composition interrupted by restart reports failure and can be resumed without paid work. A local approval ledger verifies run snapshots before continuation. Transferred or altered runs cannot trigger spending automatically. Results never move to another project when the user switches workspaces.
 
-- `npm run typecheck:editor`
-- `npm test`
-- `npm run build:desktop-renderer && npm run build:electron`
-- `npm run test:workflow-desktop`
+Upload limits remain 20 MB per image and 500 MB per audio/video file. Workflow outputs are reusable assets, not generated timelines. Highlight analysis remains in the Clipping workspace because it requires transcription and source-range review.
 
-Unit tests cover connection validation, stale revisions, immutable graphs, ambiguous submissions, download retries, downstream failures, restart recovery, cancellation, local approval provenance and undoable insertion. The Electron smoke uses mocked paid services with real import, probing, proxy creation, downloads and MP4 export. It also verifies cancellation and resume without repeating a successful upstream generation.
+## Verification and deployment
 
-Live provider availability, quality and billing still require authenticated validation. The automated acceptance flow spends no credits.
+Run `npm run typecheck:editor`, `npm run typecheck:agent`, `npm run typecheck -w @heis/web`, `npm test`, `npm run test:agent`, `npm run test:workflow-hosted`, desktop builds, and `npm run test:workflow-desktop`. Existing editor, design and desktop smoke suites cover integration regressions.
+
+Tests cover every managed request mapping and template, typed graph validation, migration sanitization, stale graph revisions, persistent undo, text/speech output, ambiguous submissions, download failure, restart, cancellation, project switching and explicit timeline insertion. A real packaged FFmpeg test checks mixed frame rates, portrait fitting, source order, audio and silence, and duration within one frame. Electron smoke covers assistant tools, blocked timeline edits, stale assistant saves, templates and reviewed migration with mocked paid providers.
+
+Deploy the hosted API/webhook changes before enabling the new `heis-text-standard` capability in a distributed desktop build. Live provider availability, quality and final billing require authenticated acceptance. Automated tests spend no provider credits.

@@ -58,6 +58,7 @@
     "test:editor-desktop": "node scripts/editor-smoke.mjs",
     "build:media-runtime": "node scripts/build-media-runtime.mjs",
     "test:clipping-desktop": "node scripts/clipping-smoke.mjs",
+    "test:workflow-hosted": "node --test scripts/workflow-hosted.test.mjs",
     "test:workflow-desktop": "node scripts/workflow-smoke.mjs",
     "test:design-desktop": "node scripts/design-smoke.mjs",
     "test:layers-desktop": "node scripts/layers-smoke.mjs",

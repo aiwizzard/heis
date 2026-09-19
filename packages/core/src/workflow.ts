@@ -265,6 +265,8 @@ export function validateWorkflow(
     }
     if (n.sourceIndices && n.sourceIndices.length > media.length)
       throw new Error("Output indices exceed input connections.");
+    if (n.promptSource && !workflowModel(n))
+      throw new Error("Only generation nodes accept prompt connections.");
     if (n.promptSource) {
       const src = graph.nodes.find((s) => s.id === n.promptSource);
       if (!src || workflowOutput(src) !== "text")

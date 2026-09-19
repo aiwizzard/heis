@@ -28,7 +28,7 @@ const initial: Snapshot = {
   codex: { state: "connecting", message: "Connecting to Codex..." },
 };
 const api = typeof window === "undefined" ? undefined : window.heisAgent;
-export function App({ sidebarTarget, projectDirectory, design, compact = false }: { sidebarTarget?: HTMLElement | null; projectDirectory?: string; design?: {projectId:string;sessionId:string}; compact?: boolean }) {
+export function App({ sidebarTarget, projectDirectory, design, workflow, compact = false }: { sidebarTarget?: HTMLElement | null; projectDirectory?: string; design?: {projectId:string;sessionId:string}; workflow?:{projectId:string;workflowId:string}; compact?: boolean }) {
   const [workspace, setWorkspace] = useState(initial);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [project, setProject] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [sidebar, setSidebar] = useState(!compact);
-  useEffect(() => { if (projectDirectory) { setProject(projectDirectory); setActiveId(null); } }, [projectDirectory, design?.sessionId]);
+  useEffect(() => { if (projectDirectory) { setProject(projectDirectory); setActiveId(null); } }, [projectDirectory, design?.sessionId, workflow?.workflowId]);
   const [light, setLight] = useState(false);
   const [settings, setSettings] = useState(false);
   const [notice, setNotice] = useState("");
@@ -54,12 +54,14 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
   );
   const currentProject = active?.providerId ? active.project : project;
   const visibleThreads = workspace.threads.filter((t) =>
-    (!projectDirectory || t.project === projectDirectory) && (design ? t.design?.sessionId === design.sessionId : !t.design) && t.title.toLowerCase().includes(search.toLowerCase()),
+    (!projectDirectory || t.project === projectDirectory) && (workflow ? t.workflow?.workflowId===workflow.workflowId&&t.workflow?.projectId===workflow.projectId : !t.workflow) && (design ? t.design?.sessionId === design.sessionId : !t.design) && t.title.toLowerCase().includes(search.toLowerCase()),
   );
   const connected = workspace.codex.state === "ready";
+  const restoredWorkflow=useRef(false);
+  useEffect(()=>{if(!workflow||restoredWorkflow.current||workspace.revision<0)return;restoredWorkflow.current=true;const previous=workspace.threads.find(t=>t.workflow?.workflowId===workflow.workflowId&&t.workflow?.projectId===workflow.projectId);if(previous)setActiveId(previous.id);},[workflow?.workflowId,workspace.revision]);
   const restoredDesign = useRef(false);
   useEffect(() => {
-    if (!design || restoredDesign.current || !workspace.revision) return;
+    if (!design || restoredDesign.current || workspace.revision < 0) return;
     restoredDesign.current = true;
     const previous = workspace.threads.find(t => t.design?.sessionId === design.sessionId && t.design?.projectId === design.projectId);
     if (previous) setActiveId(previous.id);
@@ -125,7 +127,7 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
     }
   }
   async function openProject() {
-    if (design) return;
+    if (design||workflow) return;
     if (!api) {
       setNotice("Use the desktop app to choose a folder.");
       return;
@@ -156,6 +158,7 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
         project: currentProject,
         text: message,
         ...(design ? {design} : {}),
+        ...(workflow ? {workflow} : {}),
         ...(model ? { model } : {}),
       });
       setDrafts((state) => ({ ...state, [draftKey]: "", [id]: "" }));
@@ -200,7 +203,7 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
         <button
           type="button"
           className="project-picker"
-          disabled={Boolean(design)}
+          disabled={Boolean(design||workflow)}
           onClick={() => void openProject()}
           title={currentProject ?? "Choose a project"}
         >
@@ -509,24 +512,24 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
               <div className="eyebrow">
                 A LITTLE SPACE FOR YOUR NEXT BIG IDEA
               </div>
-              <h1>{design ? "What would you like to design?" : "What would you like to build?"}</h1>
+              <h1>{workflow ? "What workflow would you like to build?" : design ? "What would you like to design?" : "What would you like to build?"}</h1>
               <p className="subtitle">
-                {design ? "Create visual directions and refine them with your references." : "Your project. Your Codex. One workspace."}
+                {workflow ? "Build a graph with your project media. Review spending before running." : design ? "Create visual directions and refine them with your references." : "Your project. Your Codex. One workspace."}
               </p>
               {composer}
               <div className="quick-actions">
                 <button
                   onClick={() => {
-                    setDraft(design ? "Create a thumbnail using my references. " : "Build a new app that ");
+                    setDraft(workflow ? "Build a workflow using my project media. " : design ? "Create a thumbnail using my references. " : "Build a new app that ");
                     input.current?.focus();
                   }}
                 >
                   <Plus size={14} />
-                  {design ? "Create a thumbnail" : "Build something new"}
+                  {workflow ? "Build a workflow" : design ? "Create a thumbnail" : "Build something new"}
                 </button>
-                <button onClick={() => design ? setDraft("Suggest three visual directions for this design brief.") : void openProject()}>
+                <button onClick={() => workflow ? setDraft("Inspect this workflow and suggest improvements.") : design ? setDraft("Suggest three visual directions for this design brief.") : void openProject()}>
                   <FolderOpen size={14} />
-                  {design ? "Explore directions" : "Open a project"}
+                  {workflow ? "Review workflow" : design ? "Explore directions" : "Open a project"}
                 </button>
               </div>
               <p className="local-note">
@@ -551,7 +554,7 @@ export function App({ sidebarTarget, projectDirectory, design, compact = false }
           </span>
           <span>
             {currentProject ? basename(currentProject) : "No project selected"}
-            <span className="status-separator">·</span>{design ? "Design tools" : "Workspace access"}
+            <span className="status-separator">·</span>{workflow ? "Workflow tools" : design ? "Design tools" : "Workspace access"}
           </span>
         </footer>
       </main>

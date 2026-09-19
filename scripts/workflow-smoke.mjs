@@ -310,11 +310,124 @@ try {
   await page.getByText("Earlier workflows (1)", { exact: true }).click();
   await page.getByText("Earlier workflow", { exact: true }).click();
   await page.getByRole("button", { name: "Download original graph" }).waitFor();
+  await app.evaluate(({ app }) => {
+    const req = process.mainModule.require.bind(process.mainModule);
+    req(
+      app.getAppPath() + "/dist-electron/lib/entitlementStore.js",
+    ).EntitlementStore.prototype.get = () => undefined;
+  });
+  const oldWorkflow = await page
+    .getByLabel("Workflow", { exact: true })
+    .inputValue();
+  await page.getByRole("button", { name: "New workflow", exact: true }).click();
+  await page.waitForFunction(
+    (old) =>
+      document.querySelector('select[aria-label="Workflow"]').value !== old,
+    oldWorkflow,
+  );
+  await page
+    .getByRole("button", { name: "Workflow assistant", exact: true })
+    .click();
+  await page
+    .getByLabel("Codex model")
+    .locator('option[value="test-model"]')
+    .waitFor({ state: "attached" });
+  await page.getByLabel("Message Codex").fill("workflow-tool");
+  await page
+    .getByRole("button", { name: "Send to Codex", exact: true })
+    .click();
+  await page
+    .getByText("Hello from Codex.", { exact: true })
+    .waitFor({ timeout: 30000 });
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Run succeeded" })
+    .waitFor({ timeout: 30000 });
+  await page.getByLabel("Workflow name").waitFor();
+  assert.equal(
+    await page.getByLabel("Workflow name").inputValue(),
+    "Assistant text workflow",
+  );
+  await page
+    .getByRole("button", { name: "Close assistant", exact: true })
+    .click();
+  await page.getByRole('button',{name:'Workflow assistant',exact:true}).click();
+  await page.getByText('Hello from Codex.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Close assistant',exact:true}).click();
+  await page.getByRole("button", { name: "Undo graph", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".workflow-node").length === 4,
+  );
+  await page.getByRole("button", { name: "Redo graph", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".workflow-node").length === 2,
+  );
+  await page.getByLabel("Workflow template").selectOption("speech");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".workflow-node").length === 3,
+  );
+  await page.getByLabel("Workflow template").selectOption("combine");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".workflow-node").length === 4,
+  );
+  // Imported arbitrary APIs require an explicit supported replacement.
+  await page.getByLabel("Import workflow JSON").setInputFiles({
+    name: "legacy.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        name: "API migration",
+        nodes: [
+          {
+            id: "api",
+            type: "apiNode",
+            data: {
+              selectedModel: { id: "old-provider" },
+              formValues: {
+                prompt: "A coastal landscape",
+                api_key: "secret",
+              },
+            },
+          },
+        ],
+        edges: [],
+      }),
+    ),
+  });
+  await page
+    .getByRole("dialog", { name: "Review workflow migration" })
+    .waitFor();
+  await page
+    .getByLabel("Replacement for api")
+    .selectOption("heis-image-standard");
+  await page
+    .getByRole("button", { name: "Create reviewed copy", exact: true })
+    .click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".workflow-node").length === 2,
+  );
+  assert.equal(
+    await page.getByLabel("Workflow name").inputValue(),
+    "API migration",
+  );
   assert.deepEqual(errors, []);
   console.log(
-    "Workflow desktop smoke passed: approved chain, real local media, explicit timeline insertion/export, cancellation, resume without repeated upstream charges, and workspace reopening.",
+    "Workflow desktop smoke passed: approved chain, real local media, explicit timeline insertion/export, cancellation, resume without repeated upstream charges, workspace reopening, free local assistant execution, undo/redo, templates and reviewed API migration.",
   );
 } catch (error) {
+  console.log(
+    await (
+      await app.firstWindow()
+    ).evaluate(async () => {
+      const state = await window.heisAgent.snapshot();
+      return state.threads.map((t) => ({
+        scope: t.workflow,
+        status: t.status,
+        error: t.error,
+        items: t.items,
+      }));
+    }),
+  );
   console.log(
     await (await app.firstWindow()).locator('[role="alert"]').allTextContents(),
   );

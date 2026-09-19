@@ -306,7 +306,7 @@ export class CodexService {
     this.changed();
   }
   async send(input: SendInput, designContext?: { instructions: string; images: string[] }) {
-    if (Boolean(input.design) !== Boolean(designContext)) throw new Error("Design context must be prepared by Heis.");
+    if (Boolean(input.design || input.workflow) !== Boolean(designContext)) throw new Error("Studio context must be prepared by Heis.");
     if (
       !input ||
       typeof input.text !== "string" ||
@@ -333,10 +333,13 @@ export class CodexService {
       throw new Error(
         "A conversation stays in its original project. Start a new thread to change projects.",
       );
+    if(input.design&&input.workflow)throw new Error("Choose one studio context.");
+    if(thread&&JSON.stringify(thread.workflow)!==JSON.stringify(input.workflow))throw new Error("Start a new conversation for this workflow.");
     if (thread && JSON.stringify(thread.design) !== JSON.stringify(input.design)) throw new Error("Start a new conversation for this design.");
     if (!thread) {
       thread = {
         design: input.design,
+        workflow: input.workflow,
         id: randomUUID(),
         title: input.text.trim().split("\n")[0].slice(0, 70),
         project: input.project,

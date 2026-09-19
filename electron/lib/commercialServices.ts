@@ -75,11 +75,11 @@ function register(localMediaService?: any, projectService?: any, editorService?:
     if(workflowApprovals.has(key))throw new Error('This workflow is already awaiting approval.');
     workflowApprovals.add(key);
     try {
-      providerFor('managed');
       const plan=runId?editorService.workflows.retryPlan(projectId,id,runId):editorService.workflows.plan(projectId,id,revision);
+      if(plan.credits>0)providerFor('managed');
       const graph=runId?plan.run.graph:plan.graph;
       const {dialog}=require('electron');
-      const decision=await dialog.showMessageBox({type:'question',title:'Approve workflow',message:`${runId?'Resume':'Run'} ${graph.name}? Reserve up to ${plan.credits} credits for remaining steps.`,detail:'Input images and generated intermediate images will be uploaded to the managed provider. Completed steps are reused on retry. An interrupted submission is retried with its original billing key.\n\n'+graph.nodes.filter((n:any)=>n.prompt).map((n:any)=>n.name+': '+n.prompt).join('\n'),buttons:['Cancel','Run workflow'],defaultId:0,cancelId:0});
+      const decision=await dialog.showMessageBox({type:'question',title:'Approve workflow',message:`${runId?'Resume':'Run'} ${graph.name}? Reserve up to ${plan.credits} credits for remaining steps.`,detail:(plan.credits?'Input media and generated intermediate media will be uploaded to the managed provider. Completed steps are reused on retry. An interrupted submission is retried with its original billing key.\n\n'+graph.nodes.filter((n:any)=>n.prompt).map((n:any)=>n.name+': '+n.prompt).join('\n'):'This workflow runs locally with no provider uploads or generation charges.'),buttons:['Cancel','Run workflow'],defaultId:0,cancelId:0});
       if(decision.response!==1)throw new Error('Workflow run cancelled before submission.');
       return runId?await editorService.workflows.retry(projectId,id,runId):editorService.workflows.start(projectId,id,revision);
     } finally {workflowApprovals.delete(key);}
@@ -124,18 +124,24 @@ function register(localMediaService?: any, projectService?: any, editorService?:
   };
   handleTrusted('editor:designGenerate',(_event:any,request:any)=>designGenerate(request));
   const designScope = () => { const scope=agent.activeDesign();if(!scope)throw new Error('Open a Design Agent conversation first.');return scope; };
-  const rejectDesignMutation = () => { if(agent.activeDesign())throw new Error('Use design tools. Timeline insertion is controlled by the user.'); };
+  const workflowScope=()=>{const s=agent.activeWorkflow();if(!s)throw new Error('Open a workflow assistant conversation first.');return s;};
+  const rejectDesignMutation = () => { if(agent.activeDesign()||agent.activeWorkflow())throw new Error('Use the tools for this studio. Timeline insertion is controlled by the user.'); };
   const bridge = new McpBridge({
+    heis_workflow_info:async()=>{const s=workflowScope();return {...editorService.workflows.snapshot(s.projectId,s.workflowId),capabilities:require('@heis/core').workflowCapabilities.map((c:any)=>({...c,optionKeys:require('@heis/core').workflowOptionKeys({kind:'managed',modelId:c.id})})),nodeKinds:['text-input','image-input','video-input','audio-input','text-concat','video-combine','managed','output']};},
+    heis_workflow_save:async(args:any)=>{const s=workflowScope();return editorService.workflows.save(s.projectId,s.workflowId,args.revision,args.name,args.nodes);},
+    heis_workflow_run:async(args:any)=>{const s=workflowScope();return approveWorkflow(s.projectId,s.workflowId,args.revision);},
+    heis_workflow_cancel:async(args:any)=>{const s=workflowScope();return editorService.workflows.cancel(s.projectId,s.workflowId,args.runId);},
+
     heis_design_info: async () => {const s=designScope();return editorService.designs.snapshot(s.projectId,s.sessionId);},
     heis_design_generate: async (args:any) => {const s=designScope();return designGenerate({...args,...s});},
     heis_list_capabilities: async () => ({ managed: entitlementStore.get()?.canUseManagedGeneration ? await managedProvider.listCapabilities().catch(() => []) : [] }),
-    heis_project_info: async () => agent.activeDesign() ? editorService.designs.snapshot(agent.activeDesign().projectId,agent.activeDesign().sessionId) : editorService?.activeProjectId ? { ...editorService.snapshot(editorService.activeProjectId), context: editorService.activeContext } : ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
+    heis_project_info: async () => agent.activeWorkflow() ? editorService.workflows.snapshot(agent.activeWorkflow().projectId,agent.activeWorkflow().workflowId) : agent.activeDesign() ? editorService.designs.snapshot(agent.activeDesign().projectId,agent.activeDesign().sessionId) : editorService?.activeProjectId ? { ...editorService.snapshot(editorService.activeProjectId), context: editorService.activeContext } : ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
     heis_edit: async (args: any) => {
       rejectDesignMutation();
       if (!editorService?.activeProjectId || args.projectId !== editorService.activeProjectId) throw new Error("Open the target project first.");
       return editorService.command(args);
     },
-    heis_jobs: async () => agent.activeDesign() ? editorService.jobs(agent.activeDesign().projectId) : editorService?.activeProjectId ? editorService.jobs(editorService.activeProjectId) : [],
+    heis_jobs: async () => agent.activeWorkflow() ? editorService.jobs(agent.activeWorkflow().projectId) : agent.activeDesign() ? editorService.jobs(agent.activeDesign().projectId) : editorService?.activeProjectId ? editorService.jobs(editorService.activeProjectId) : [],
     heis_generate: async (args: any) => {
       rejectDesignMutation();
       providerFor("managed");
@@ -145,7 +151,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
       const provider = providerFor(mode);
       const projectId = editorService?.destinationProjectId();
       const job = await provider.submit({ operation: args.operation, modelId: args.modelId, inputs: args.inputs, billing: { mode, accountId: authSession.getUserId() ?? "local", idempotencyKey: require("node:crypto").randomUUID() } });
-      if (projectId && args.operation !== "rank-highlights") editorService.watchGeneration(projectId, job.id);
+      if (projectId && !["rank-highlights","generate-text"].includes(args.operation)) editorService.watchGeneration(projectId, job.id);
       return job;
     },
     heis_export: async (args: any) => {
@@ -192,7 +198,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
   handle(IPC_CHANNELS.generationSubmit, async (request: any) => {
     const projectId = editorService?.destinationProjectId();
     const job = await providerFor(request?.billing?.mode).submit(request);
-    if (projectId && request.operation !== "rank-highlights") editorService.watchGeneration(projectId, job.id);
+    if (projectId && !["rank-highlights","generate-text"].includes(request.operation)) editorService.watchGeneration(projectId, job.id);
     return job;
   });
   handle(IPC_CHANNELS.generationGetJob, (mode: string, jobId: string) => providerFor(mode).getJob(jobId));

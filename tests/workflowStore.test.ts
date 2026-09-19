@@ -826,3 +826,24 @@ test("cancelled local composition restarts its local job on approved resume", as
     x.cleanup();
   }
 });
+
+test("prompt connections cannot attach paid work to local nodes that ignore it", () => {
+  const t = workflowTemplates.find((t) => t.id === "speech")!;
+  assert.throws(
+    () =>
+      validateWorkflow(
+        {
+          version: 1,
+          id: "test",
+          projectId: "p",
+          revision: 0,
+          name: t.name,
+          nodes: t.nodes.map((n) =>
+            n.kind === "output" ? { ...n, promptSource: "script" } : n,
+          ),
+        },
+        false,
+      ),
+    /Only generation nodes/,
+  );
+});

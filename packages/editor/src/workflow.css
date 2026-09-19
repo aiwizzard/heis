@@ -150,3 +150,37 @@
   border-top: 1px solid #38383e;
   padding-top: 10px;
 }
+
+.workflow-assistant {
+  width: 420px;
+  min-width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid #393b40;
+  overflow: auto;
+}
+.workflow-node {
+  max-height: 650px;
+  overflow: auto;
+}
+.workflow-toolbar {
+  flex-wrap: wrap;
+}
+.workflow-results audio {
+  width: 100%;
+}
+.workflow-toolbar input[type="file"] {
+  max-width: 180px;
+}
+
+.workflow-migration {
+  padding: 16px;
+  background: #24262b;
+  border: 1px solid #677f51;
+  max-height: 45vh;
+  overflow: auto;
+}
+.workflow-migration label {
+  display: inline-flex;
+  flex-direction: column;
+  margin: 8px;
+}

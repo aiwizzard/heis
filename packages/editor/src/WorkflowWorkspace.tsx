@@ -5,6 +5,13 @@ import type {
   WorkflowNode,
   WorkflowNodeKind,
 } from "@heis/core";
+import {
+  workflowCapabilities,
+  workflowDependencies,
+  workflowTemplates,
+  migrateWorkflow,
+} from "@heis/core";
+import { WorkflowNodeControls } from "./WorkflowNodeControls";
 import { assetUrl } from "./Preview";
 import "./workflow.css";
 export interface LegacyWorkflow {
@@ -16,11 +23,23 @@ export function WorkflowWorkspace({
   bridge,
   projectId,
   legacy = [],
+  assistant,
 }: {
   bridge: EditorBridge;
   projectId?: string;
   legacy?: LegacyWorkflow[];
+  assistant?: (
+    projectId: string,
+    workflowId: string,
+    directory: string,
+  ) => React.ReactNode;
 }) {
+  const [migration, setMigration] = useState<{
+    record: unknown;
+    models: Record<string, string>;
+  } | null>(null);
+  const [showAssistant, setShowAssistant] = useState(false),
+    [notice, setNotice] = useState("");
   const [data, setData] = useState<WorkflowSnapshot>(),
     [list, setList] = useState<{ id: string; name: string }[]>([]),
     [nodes, setNodes] = useState<WorkflowNode[]>([]),
@@ -108,15 +127,18 @@ export function WorkflowWorkspace({
           if (
             mounted.current &&
             current.current?.definition.id === next.definition.id
-          )
+          ) {
             setData(next);
+            if (!dirty && next.definition.revision !== draftRevision.current)
+              apply(next, true);
+          }
         })
         .catch((e) => {
           if (mounted.current) setError(String(e));
         });
     }, 1200);
     return () => clearInterval(timer);
-  }, [bridge, busy]);
+  }, [bridge, busy, dirty]);
   if (!data)
     return (
       <div className="heis-workflow">{error || "Opening workflows..."}</div>
@@ -151,36 +173,43 @@ export function WorkflowWorkspace({
       nodes,
     );
   }
-  function add(kind: WorkflowNodeKind) {
-    const source = [...nodes]
-      .reverse()
-      .find((n) =>
-        kind === "output"
-          ? n.kind !== "output"
-          : n.kind === "image-input" || n.kind === "image-edit",
-      );
+  function add(value: string) {
+    const capability = workflowCapabilities.find((c) => c.id === value),
+      kind = capability ? "managed" : (value as WorkflowNodeKind);
     setNodes([
       ...nodes,
       {
         id: crypto.randomUUID(),
         kind,
-        name:
-          kind === "image-edit"
-            ? "Edit image"
-            : kind === "image-to-video"
-              ? "Animate image"
-              : kind === "output"
-                ? "Result"
-                : "Project image",
-        source: kind === "image-input" ? undefined : source?.id,
+        name: capability?.name || kind.replaceAll("-", " "),
+        modelId: capability?.id,
         prompt: "",
         duration: 5,
         x: 30 + (nodes.length % 4) * 310,
-        y: 40 + Math.floor(nodes.length / 4) * 300,
+        y: 40 + Math.floor(nodes.length / 4) * 500,
       },
     ]);
     setDirty(true);
   }
+  async function importGraph(record: unknown) {
+    setMigration({ record, models: {} });
+    setError("");
+  }
+  function migrationPreview() {
+    if (!migration) return;
+    try {
+      return migrateWorkflow({ migration });
+    } catch (e) {
+      return { error: String(e) };
+    }
+  }
+  const migrationResult = migrationPreview();
+  const legacyNodes = migration
+    ? (migration.record as any)?.data?.nodes ||
+      (migration.record as any)?.nodes ||
+      []
+    : [];
+
   return (
     <div className="heis-workflow">
       <header>
@@ -241,6 +270,94 @@ export function WorkflowWorkspace({
         </button>
       </header>
       <div className="workflow-toolbar">
+        <button
+          disabled={busy || dirty || !data.history?.undo.length}
+          onClick={() =>
+            void work(
+              () => bridge.workflowHistory(p.id, g.id, g.revision, false),
+              true,
+            )
+          }
+        >
+          Undo graph
+        </button>
+        <button
+          disabled={busy || dirty || !data.history?.redo.length}
+          onClick={() =>
+            void work(
+              () => bridge.workflowHistory(p.id, g.id, g.revision, true),
+              true,
+            )
+          }
+        >
+          Redo graph
+        </button>
+        <select
+          aria-label="Workflow template"
+          value=""
+          disabled={busy || dirty}
+          onChange={(e) => {
+            if (e.target.value)
+              void work(
+                () => bridge.workflowTemplate(p.id, e.target.value),
+                true,
+              );
+          }}
+        >
+          <option value="">New from template</option>
+          {workflowTemplates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <label>
+          Import graph
+          <input
+            aria-label="Import workflow JSON"
+            type="file"
+            accept=".json,application/json"
+            disabled={busy || dirty}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                if (f.size > 2_000_000)
+                  setError("Workflow JSON must be under 2 MB.");
+                else
+                  void f
+                    .text()
+                    .then((t) => importGraph(JSON.parse(t)))
+                    .catch((e) => setError(String(e)));
+              }
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <button
+          onClick={() => {
+            const url = URL.createObjectURL(
+                new Blob([JSON.stringify({ ...g, nodes, name }, null, 2)], {
+                  type: "application/json",
+                }),
+              ),
+              a = document.createElement("a");
+            a.href = url;
+            a.download = "workflow.json";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }}
+        >
+          Export graph
+        </button>
+        {assistant && (
+          <button
+            disabled={busy || dirty}
+            onClick={() => setShowAssistant(!showAssistant)}
+          >
+            {showAssistant ? "Close assistant" : "Workflow assistant"}
+          </button>
+        )}
+
         <span>
           {dirty ? "Unsaved graph changes" : "Saved locally"} · {p.name}
         </span>
@@ -264,6 +381,16 @@ export function WorkflowWorkspace({
           }}
         >
           <option value="">Add node</option>
+          <option value="text-input">Text</option>
+          <option value="video-input">Project video</option>
+          <option value="audio-input">Project audio</option>
+          <option value="text-concat">Concatenate text</option>
+          <option value="video-combine">Combine videos locally</option>
+          {workflowCapabilities.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
           <option value="image-input">Project image</option>
           <option value="image-edit">Image edit</option>
           <option value="image-to-video">Image to video</option>
@@ -274,6 +401,86 @@ export function WorkflowWorkspace({
         </span>
       </div>
       {error && <p role="alert">{error}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {dirty && g.revision !== draftRevision.current && (
+        <p role="alert">
+          The saved graph changed. Export or discard your draft before reloading
+          the assistant's changes.
+        </p>
+      )}
+      {migration && (
+        <section
+          className="workflow-migration"
+          role="dialog"
+          aria-label="Review workflow migration"
+        >
+          <h3>Review imported graph</h3>
+          <p>
+            Original records are preserved. Choose managed replacements for
+            legacy provider nodes. Media must be relinked to this project.
+          </p>
+          {legacyNodes
+            .filter(
+              (n: any) =>
+                [
+                  "textNode",
+                  "imageNode",
+                  "videoNode",
+                  "audioNode",
+                  "apiNode",
+                ].includes(n.type) &&
+                !String(n.data?.selectedModel?.id || "").includes(
+                  "passthrough",
+                ),
+            )
+            .map((n: any) => (
+              <label key={n.id}>
+                {n.id}: {n.data?.selectedModel?.name || n.type}
+                <select
+                  aria-label={"Replacement for " + n.id}
+                  value={migration.models[n.id] || ""}
+                  onChange={(e) =>
+                    setMigration({
+                      ...migration,
+                      models: { ...migration.models, [n.id]: e.target.value },
+                    })
+                  }
+                >
+                  <option value="">Suggested compatible model</option>
+                  {workflowCapabilities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          {migrationResult &&
+            ("error" in migrationResult ? (
+              <p role="alert">{migrationResult.error}</p>
+            ) : (
+              <ul>
+                {migrationResult.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            ))}
+          <button
+            disabled={busy || !migrationResult || "error" in migrationResult}
+            onClick={() =>
+              void work(async () => {
+                const result = await bridge.workflowImport(p.id, { migration });
+                setNotice(result.warnings.join(" "));
+                setMigration(null);
+                return result.snapshot;
+              }, true)
+            }
+          >
+            Create reviewed copy
+          </button>
+          <button onClick={() => setMigration(null)}>Cancel import</button>
+        </section>
+      )}
       <div className="workflow-body">
         <main
           className="workflow-canvas"
@@ -314,12 +521,14 @@ export function WorkflowWorkspace({
               aria-hidden="true"
             >
               {nodes
-                .filter((n) => n.source)
+                .flatMap((n) =>
+                  workflowDependencies(n).map((source) => ({ ...n, source })),
+                )
                 .map((n) => {
                   const src = nodes.find((s) => s.id === n.source);
                   return src ? (
                     <path
-                      key={n.id}
+                      key={n.id + ":" + n.source}
                       d={`M ${src.x + 270} ${src.y + 40} C ${src.x + 300} ${src.y + 40}, ${n.x - 40} ${n.y + 40}, ${n.x} ${n.y + 40}`}
                       stroke="#9dc477"
                       strokeWidth="2"
@@ -359,111 +568,22 @@ export function WorkflowWorkspace({
                     {n.kind.replaceAll("-", " ")}
                     {state ? " · " + state.status : ""}
                   </span>
-                  {n.kind === "image-input" ? (
-                    <>
-                      <label>
-                        Project image
-                        <select
-                          aria-label={"Project image " + n.id}
-                          value={n.assetId || ""}
-                          onChange={(e) =>
-                            change(n.id, { assetId: e.target.value })
-                          }
-                        >
-                          <option value="">Choose an image</option>
-                          {p.assets
-                            .filter((a) => a.kind === "image")
-                            .map((a) => (
-                              <option
-                                key={a.id}
-                                value={a.id}
-                                disabled={a.missing}
-                              >
-                                {a.name}
-                                {a.missing ? " (missing)" : ""}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                      {image && !image.missing && (
-                        <img
-                          src={assetUrl(p.id, image.path)}
-                          alt={image.name}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <label>
-                      Input
-                      <select
-                        aria-label={"Input for " + n.name}
-                        value={n.source || ""}
-                        onChange={(e) =>
-                          change(n.id, { source: e.target.value })
-                        }
-                      >
-                        <option value="">Connect a node</option>
-                        {nodes
-                          .filter(
-                            (src) =>
-                              src.id !== n.id &&
-                              src.kind !== "output" &&
-                              (n.kind === "output" ||
-                                src.kind !== "image-to-video"),
-                          )
-                          .map((src) => (
-                            <option key={src.id} value={src.id}>
-                              {src.name} ({src.id.slice(0, 8)})
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
-                  {(n.kind === "image-edit" || n.kind === "image-to-video") && (
-                    <label>
-                      Prompt
-                      <textarea
-                        aria-label={n.name + " prompt"}
-                        value={n.prompt}
-                        onChange={(e) =>
-                          change(n.id, { prompt: e.target.value })
-                        }
-                        placeholder={
-                          n.kind === "image-edit"
-                            ? "Describe the image edit"
-                            : "Describe the motion"
-                        }
-                      />
-                    </label>
-                  )}
-                  {n.kind === "image-to-video" && (
-                    <label>
-                      Duration
-                      <select
-                        aria-label="Video duration"
-                        value={n.duration}
-                        onChange={(e) =>
-                          change(n.id, {
-                            duration: Number(e.target.value) as 5 | 10,
-                          })
-                        }
-                      >
-                        <option value={5}>5 seconds</option>
-                        <option value={10}>10 seconds</option>
-                      </select>
-                    </label>
-                  )}
-                  {n.kind === "output" && (
-                    <p>
-                      Keep the result in your project library, then choose
-                      whether to insert it.
-                    </p>
-                  )}
+                  <WorkflowNodeControls
+                    node={n}
+                    nodes={nodes}
+                    project={p}
+                    change={change}
+                  />
                 </article>
               );
             })}
           </div>
         </main>
+        {showAssistant && assistant && (
+          <aside className="workflow-assistant">
+            {assistant(p.id, g.id, project.directory)}
+          </aside>
+        )}
         <aside className="workflow-results">
           <h3>Runs and results</h3>
           <select
@@ -527,6 +647,30 @@ export function WorkflowWorkspace({
               )}
             </>
           )}
+          {run?.steps
+            .filter((s) => s.status === "succeeded" && s.text !== undefined)
+            .map((s) => (
+              <details key={s.nodeId}>
+                <summary>
+                  {run.graph.nodes.find((n) => n.id === s.nodeId)?.name} text
+                </summary>
+                <pre style={{ whiteSpace: "pre-wrap" }}>{s.text}</pre>
+                <button
+                  onClick={() => {
+                    const url = URL.createObjectURL(
+                        new Blob([s.text || ""], { type: "text/plain" }),
+                      ),
+                      a = document.createElement("a");
+                    a.href = url;
+                    a.download = "workflow-text.txt";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  }}
+                >
+                  Save text
+                </button>
+              </details>
+            ))}
           {!!resultIds.length && (
             <>
               <label>
@@ -553,6 +697,8 @@ export function WorkflowWorkspace({
                     src={assetUrl(p.id, result.path)}
                     alt="Workflow result"
                   />
+                ) : result.kind === "audio" ? (
+                  <audio controls src={assetUrl(p.id, result.path)} />
                 ) : (
                   <video
                     controls
@@ -606,7 +752,8 @@ export function WorkflowWorkspace({
                       (c) =>
                         c.assetId &&
                         sequence.tracks.find((t) => t.id === c.trackId)
-                          ?.kind === "video",
+                          ?.kind ===
+                          (result?.kind === "audio" ? "audio" : "video"),
                     )
                     .map((c) => (
                       <option key={c.id} value={c.id}>
@@ -664,21 +811,28 @@ export function WorkflowWorkspace({
           <details>
             <summary>Supported nodes</summary>
             <p>
-              Project images, image editing, image-to-video and outputs. Other
-              node types and the workflow-building assistant are not yet
-              enabled.
+              Text, image, video and audio inputs; managed generation and media
+              tools; text concatenation; local video combining; project outputs.
+              Managed runs require approval. Local-only runs are free.
             </p>
           </details>
           {!!legacy.length && (
             <details>
               <summary>Earlier workflows ({legacy.length})</summary>
               <p>
-                These records are preserved. Legacy nodes cannot run through the
-                new provider yet.
+                Create a reviewed copy using supported managed models. Original
+                records remain preserved. Arbitrary API nodes must be replaced
+                before import.
               </p>
               {legacy.map((w) => (
                 <details key={w.id}>
                   <summary>{w.name}</summary>
+                  <button
+                    disabled={busy || dirty}
+                    onClick={() => void importGraph(w.record)}
+                  >
+                    Review migration
+                  </button>
                   <button
                     onClick={() => {
                       const url = URL.createObjectURL(

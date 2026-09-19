@@ -56,7 +56,7 @@ contextBridge.exposeInMainWorld('heis', {
     },
 });
 
-const editorMethods = ['workflowOpen','workflowList','workflowCreate','workflowSave','workflowRun','workflowRetry','workflowCancel','workflowInsert','designOpen','designList','designCreate','designUpdate','designImport','designFrame','designGenerate','designInsert','chooseClippingSource','transcribeSource','extractHighlights','status','setContext','library','importLibrary','list','create','open','close','command','undo','redo','importMedia','relink','export','transcribe','importCaptions','exportCaptions','cancel','retry','jobs','reveal','capture'];
+const editorMethods = ['workflowImport','workflowTemplate','workflowHistory','workflowOpen','workflowList','workflowCreate','workflowSave','workflowRun','workflowRetry','workflowCancel','workflowInsert','designOpen','designList','designCreate','designUpdate','designImport','designFrame','designGenerate','designInsert','chooseClippingSource','transcribeSource','extractHighlights','status','setContext','library','importLibrary','list','create','open','close','command','undo','redo','importMedia','relink','export','transcribe','importCaptions','exportCaptions','cancel','retry','jobs','reveal','capture'];
 contextBridge.exposeInMainWorld('heisEditor', {
   ...Object.fromEntries(editorMethods.map(name => [name, (...args) => invoke('editor:' + name, ...args)])),
   onEvent: callback => { const listener = (_, event) => callback(event); ipcRenderer.on('editor:event', listener); return () => ipcRenderer.removeListener('editor:event', listener); },

@@ -89,7 +89,7 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       const job = found.data;
       const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_provider_output" });
       if (released.error) throw released.error;
-      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof InvalidTextOutputError ? "INVALID_TEXT_OUTPUT" : error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Retry with another source or different analysis settings.` }).eq("id", job.id);
+      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof InvalidTextOutputError ? "INVALID_TEXT_OUTPUT" : error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Retry with another source or different settings.` }).eq("id", job.id);
       if (updated.error) throw updated.error;
       await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
       await admin.from("processed_webhooks").update({ status: "processed", last_error: message, processed_at: new Date().toISOString() }).eq("provider", "runware").eq("event_id", eventId);

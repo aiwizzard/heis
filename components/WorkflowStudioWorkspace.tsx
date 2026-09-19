@@ -1,3 +1,4 @@
+import CodexStudio from "./CodexStudio";
 import { useEffect, useState } from "react";
 import {
   WorkflowWorkspace,
@@ -26,6 +27,14 @@ export default function WorkflowStudioWorkspace({
       bridge={window.heisEditor}
       projectId={projectId}
       legacy={legacy}
+      assistant={(projectId, workflowId, directory) => (
+        <CodexStudio
+          key={workflowId}
+          projectDirectory={directory}
+          workflow={{ projectId, workflowId }}
+          compact
+        />
+      )}
     />
   );
 }
