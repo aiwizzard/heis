@@ -5,3 +5,5 @@ export * from "./generationValidation";
 export * from "./ipc";
 export * from "./types";
 export * from "./plans";
+export * from "./editor";
+export * from "./editorDrawing";

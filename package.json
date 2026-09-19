@@ -12,7 +12,8 @@
     "packages/studio",
     "packages/heis-workflow/packages/workflow-builder",
     "packages/heis-agents/packages/agents",
-    "packages/heis-agent/packages/design-agent"
+    "packages/heis-agent/packages/design-agent",
+    "packages/editor"
   ],
   "scripts": {
     "dev": "next dev",
@@ -51,7 +52,13 @@
     "test:desktop": "node scripts/desktop-smoke.mjs",
     "brand:export": "node scripts/export-brand.mjs",
     "landing:dev": "npm run dev -w @heis/landing",
-    "landing:build": "npm run build -w @heis/landing"
+    "landing:build": "npm run build -w @heis/landing",
+    "typecheck:editor": "tsc -p packages/editor/tsconfig.json && tsc -p electron/editor/tsconfig.json",
+    "test:editor": "npm run build:core && npm run build:tests && node --test dist-tests/tests/editor*.test.js",
+    "test:editor-desktop": "node scripts/editor-smoke.mjs",
+    "build:media-runtime": "node scripts/build-media-runtime.mjs",
+    "test:editor-captions": "node scripts/editor-caption-smoke.mjs",
+    "desktop:editor": "HEIS_EDITOR=1 node scripts/desktop-dev.mjs"
   },
   "build": {
     "appId": "com.heis.desktop",
@@ -89,6 +96,13 @@
       {
         "from": "dist-codex",
         "to": "codex-runtime"
+      },
+      {
+        "from": "build/media-runtime/${arch}",
+        "to": "media-runtime",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
@@ -100,6 +114,11 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "target": [
         "dmg"
+      ],
+      "binaries": [
+        "Contents/Resources/media-runtime/ffmpeg",
+        "Contents/Resources/media-runtime/ffprobe",
+        "Contents/Resources/media-runtime/whisper-cli"
       ]
     },
     "win": {

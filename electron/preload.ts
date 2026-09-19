@@ -56,6 +56,12 @@ contextBridge.exposeInMainWorld('heis', {
     },
 });
 
+const editorMethods = ['status','setContext','library','importLibrary','list','create','open','close','command','undo','redo','importMedia','relink','export','transcribe','importCaptions','exportCaptions','cancel','retry','jobs','reveal','capture'];
+contextBridge.exposeInMainWorld('heisEditor', {
+  ...Object.fromEntries(editorMethods.map(name => [name, (...args) => invoke('editor:' + name, ...args)])),
+  onEvent: callback => { const listener = (_, event) => callback(event); ipcRenderer.on('editor:event', listener); return () => ipcRenderer.removeListener('editor:event', listener); },
+});
+
 contextBridge.exposeInMainWorld('localAI', {
     isElectron: true,
 

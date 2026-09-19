@@ -2,6 +2,7 @@ import type { AgentStatus, AgentThread, AgentThreadInput, AgentTurnInput, Entitl
 
 declare global {
   interface Window {
+    heisEditor?: import("@heis/core").EditorBridge;
     heis?: {
       auth: {
         getSession(): Promise<ResultEnvelope<{ accessToken: string; userId: string | null; expiresAt: number; hasRefreshToken: boolean } | null>>;

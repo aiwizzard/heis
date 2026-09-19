@@ -28,7 +28,7 @@ const initial: Snapshot = {
   codex: { state: "connecting", message: "Connecting to Codex..." },
 };
 const api = typeof window === "undefined" ? undefined : window.heisAgent;
-export function App({ sidebarTarget }: { sidebarTarget?: HTMLElement | null }) {
+export function App({ sidebarTarget, projectDirectory, compact = false }: { sidebarTarget?: HTMLElement | null; projectDirectory?: string; compact?: boolean }) {
   const [workspace, setWorkspace] = useState(initial);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [project, setProject] = useState<string | null>(null);
@@ -36,7 +36,8 @@ export function App({ sidebarTarget }: { sidebarTarget?: HTMLElement | null }) {
   const [model, setModel] = useState("");
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
-  const [sidebar, setSidebar] = useState(true);
+  const [sidebar, setSidebar] = useState(!compact);
+  useEffect(() => { if (projectDirectory) { setProject(projectDirectory); setActiveId(null); } }, [projectDirectory]);
   const [light, setLight] = useState(false);
   const [settings, setSettings] = useState(false);
   const [notice, setNotice] = useState("");
@@ -53,7 +54,7 @@ export function App({ sidebarTarget }: { sidebarTarget?: HTMLElement | null }) {
   );
   const currentProject = active?.providerId ? active.project : project;
   const visibleThreads = workspace.threads.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase()),
+    (!projectDirectory || t.project === projectDirectory) && t.title.toLowerCase().includes(search.toLowerCase()),
   );
   const connected = workspace.codex.state === "ready";
   useEffect(() => {

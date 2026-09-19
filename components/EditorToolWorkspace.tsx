@@ -1,0 +1,55 @@
+import { useEffect, useState } from "react";
+import StandaloneShell from "./StandaloneShell";
+
+export default function EditorToolWorkspace({
+  id,
+  locale,
+  input,
+  onResult,
+}: {
+  id: string;
+  locale: string;
+  input?: { url: string; name: string };
+  onResult: (urls: string[], jobId: string) => void;
+}) {
+  const [files, setFiles] = useState<File[] | undefined>(),
+    [error, setError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    setFiles(undefined);
+    if (input)
+      void fetch(input.url)
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Could not load selected media");
+          const blob = await response.blob();
+          if (!cancelled)
+            setFiles([new File([blob], input.name, { type: blob.type })]);
+        })
+        .catch((e) => setError(String(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [input?.url]);
+  return (
+    <>
+      {error && <p role="alert">{error}</p>}
+      <StandaloneShell
+        locale={locale}
+        routeParams={{ slug: [id] }}
+        initialDroppedFiles={files}
+        onProjectResult={(data) => {
+          const raw = data?.outputs || data?.clips || [data];
+          const urls = (Array.isArray(raw) ? raw : [raw])
+            .map((item) =>
+              typeof item === "string"
+                ? item
+                : item?.url || item?.video || item?.image,
+            )
+            .filter(Boolean);
+          if (urls.length)
+            onResult(urls, data?.jobId || data?.id || urls.join("|"));
+        }}
+      />
+    </>
+  );
+}

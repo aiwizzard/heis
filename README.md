@@ -594,3 +594,10 @@ Built with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_c
 
 ---
 *Looking for a free, open-source AI Video Platform? heis is an open-source AI image and video generation studio — with no content filters that you can self-host, customize, and extend.*
+
+
+## Editor Studio preview
+
+The project-based video editor is available behind a feature flag. It includes a multitrack timeline, local projects, titles, captions, audio mixing, integrated creation tools, and MP4 export.
+
+With Node 22.12 or newer, run `npm run build:media-runtime` once on your Mac, then `npm run desktop:editor`. Existing standalone studio routes remain available. See [Editor Studio setup, architecture, and release gates](docs/editor-studio.md).

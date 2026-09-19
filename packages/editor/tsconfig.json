@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noCheck": false,
+    "noEmit": true,
+    "incremental": false,
+    "types": ["node", "react"],
+    "paths": { "@heis/core": ["./packages/core/src/index.ts"] }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules"]
+}

@@ -23,7 +23,7 @@ function handle(channel: string, handler: (...args: any[]) => any): void {
   });
 }
 
-function register(localMediaService?: any, projectService?: any): { dispose: () => void; handleAuthCallback: (url: string) => Promise<void> } {
+function register(localMediaService?: any, projectService?: any, editorService?: any): { dispose: () => void; handleAuthCallback: (url: string) => Promise<void> } {
   const secureStore = new SecureStore();
   const authSession = new AuthSession(secureStore);
   const entitlementStore = new EntitlementStore();
@@ -55,6 +55,7 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
     }
   });
   const managedProvider = new ManagedMediaProvider(authSession);
+  editorService?.setGenerationProvider(managedProvider);
   const providerFor = (mode: string) => {
     const entitlement = entitlementStore.get();
     if (!entitlement) throw new Error("VALID_ENTITLEMENT_REQUIRED");
@@ -71,19 +72,32 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
   });
   const bridge = new McpBridge({
     heis_list_capabilities: async () => ({ managed: entitlementStore.get()?.canUseManagedGeneration ? await managedProvider.listCapabilities().catch(() => []) : [] }),
-    heis_project_info: async () => ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
+    heis_project_info: async () => editorService?.activeProjectId ? { ...editorService.snapshot(editorService.activeProjectId), context: editorService.activeContext } : ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
+    heis_edit: async (args: any) => {
+      if (!editorService?.activeProjectId || args.projectId !== editorService.activeProjectId) throw new Error("Open the target project first.");
+      return editorService.command(args);
+    },
+    heis_jobs: async () => editorService?.activeProjectId ? editorService.jobs(editorService.activeProjectId) : [],
     heis_generate: async (args: any) => {
       providerFor("managed");
       const approval = await requestApproval("heis_generate", args);
       if (!approval?.approved) throw new Error("Generation was declined by the user.");
       const mode = "managed";
       const provider = providerFor(mode);
-      return provider.submit({ operation: args.operation, modelId: args.modelId, inputs: args.inputs, billing: { mode, accountId: authSession.getUserId() ?? "local", idempotencyKey: require("node:crypto").randomUUID() } });
+      const projectId = editorService?.destinationProjectId();
+      const job = await provider.submit({ operation: args.operation, modelId: args.modelId, inputs: args.inputs, billing: { mode, accountId: authSession.getUserId() ?? "local", idempotencyKey: require("node:crypto").randomUUID() } });
+      if (projectId) editorService.watchGeneration(projectId, job.id);
+      return job;
     },
     heis_export: async (args: any) => {
       const approval = await requestApproval("heis_export", args);
       if (!approval?.approved) throw new Error("Export was declined by the user.");
-      throw new Error("Project export is not connected to the agent yet.");
+      if (!editorService?.activeProjectId) throw new Error("Open a video project first.");
+      const snapshot = editorService.snapshot(editorService.activeProjectId);
+      const { dialog } = require("electron");
+      const result = await dialog.showSaveDialog({ title: "Export video", defaultPath: `${snapshot.project.name}.mp4`, filters: [{ name: "MP4", extensions: ["mp4"] }] });
+      if (result.canceled || !result.filePath) throw new Error("Export cancelled.");
+      return editorService.exportProject(snapshot.project.id, snapshot.project.activeSequenceId, result.filePath);
     },
   });
   const agent = registerAgent(bridge, secureStore);
@@ -115,7 +129,12 @@ function register(localMediaService?: any, projectService?: any): { dispose: () 
     if (!entitlement?.canUseManagedGeneration) return { balance: null };
     return managedProvider.getBalance();
   });
-  handle(IPC_CHANNELS.generationSubmit, (request: any) => providerFor(request?.billing?.mode).submit(request));
+  handle(IPC_CHANNELS.generationSubmit, async (request: any) => {
+    const projectId = editorService?.destinationProjectId();
+    const job = await providerFor(request?.billing?.mode).submit(request);
+    if (projectId) editorService.watchGeneration(projectId, job.id);
+    return job;
+  });
   handle(IPC_CHANNELS.generationGetJob, (mode: string, jobId: string) => providerFor(mode).getJob(jobId));
   handle(IPC_CHANNELS.generationCancel, (mode: string, jobId: string) => providerFor(mode).cancel(jobId));
   handle(IPC_CHANNELS.exportImportMedia, (file: any) => {

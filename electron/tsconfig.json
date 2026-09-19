@@ -10,7 +10,16 @@
     "declaration": false,
     "sourceMap": true,
     "isolatedModules": false,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@heis/core": [
+        "./packages/core/dist/index.d.ts"
+      ]
+    }
   },
-  "include": ["./**/*.ts"]
+  "include": [
+    "./**/*.ts"
+  ]
 }

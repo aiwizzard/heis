@@ -314,7 +314,7 @@ const persistNotifications = (notifications) => {
   }
 };
 
-export default function StandaloneShell({ locale = 'en', routeParams = {} as Record<string, any> }) {
+export default function StandaloneShell({ locale = 'en', routeParams = {} as Record<string, any>, onProjectResult = undefined as undefined | ((data: any) => void), initialDroppedFiles = undefined as File[] | undefined }) {
   const params = routeParams;
   const slug = useMemo(() => params?.slug || [], [params?.slug]);
   const idFromParams = params?.id;
@@ -414,6 +414,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState(null);
+  useEffect(() => { if (initialDroppedFiles?.length) setDroppedFiles(initialDroppedFiles); }, [initialDroppedFiles]);
 
   // Global generation notifications remain mounted while users switch studios.
   const [notifications, setNotifications] = useState([]);
@@ -489,6 +490,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
   }, []);
 
   const makeSuccessCallback = useCallback((tabId) => (data) => {
+    onProjectResult?.(data);
     const tab = TABS.find(t => t.id === tabId);
     pushNotification({
       type: 'success',
@@ -496,7 +498,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
       label: tab?.label || tabId,
       resultUrl: data?.url || null,
     });
-  }, [pushNotification]);
+  }, [pushNotification, onProjectResult]);
 
   const makeErrorCallback = useCallback((tabId) => (errorOrMessage) => {
     const tab = TABS.find(t => t.id === tabId);
