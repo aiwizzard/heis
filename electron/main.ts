@@ -51,7 +51,8 @@ function createWindow(rendererUrl) {
             sandbox: true,
             preload: path.join(__dirname, 'preload.js'),
         },
-        ...(isMac ? { titleBarStyle: 'hiddenInset' } : {}),
+        // Center the native 14px controls in the shared 48px app header.
+        ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 17 } } : {}),
         backgroundColor: '#101113',
         show: false,
         title: 'Heis',
