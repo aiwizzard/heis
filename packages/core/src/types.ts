@@ -15,6 +15,7 @@ export const GENERATION_OPERATIONS = [
   "expand-image",
   "decompose-layers",
   "rank-highlights",
+  "generate-text",
 ] as const;
 
 export type GenerationOperation = (typeof GENERATION_OPERATIONS)[number];

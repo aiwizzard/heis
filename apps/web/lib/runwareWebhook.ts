@@ -3,6 +3,8 @@ import { copyRemoteAsset, storeLayerAsset, storeAnalysisAsset } from "./r2";
 import { fetchLayeredImage, InvalidLayeredImageError } from "./layeredImage";
 import { createAdminClient } from "./supabase";
 
+class InvalidTextOutputError extends Error {}
+
 function output(data: Record<string, any>): { url?: string; kind: string } {
   if (data.imageURL) return { url: data.imageURL, kind: "image" };
   if (data.videoURL) return { url: data.videoURL, kind: "video" };
@@ -35,7 +37,13 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       if (!Number.isFinite(providerCost) || providerCost < 0) throw new Error("Runware returned an invalid cost.");
       const settledCredits = creditsForProviderCost(providerCost);
       const asset = output(data);
-      if (job.operation === "rank-highlights") {
+      if (job.operation === "generate-text") {
+        if(typeof data.text!=="string"||!data.text.trim()||data.text.length>64000)throw new InvalidTextOutputError("Provider returned invalid text.");
+        const source=`runware:${eventId}`;
+        const existing=await admin.from("media_assets").select("id").eq("job_id",job.id).eq("source_url",source).maybeSingle();if(existing.error)throw existing.error;
+        if(!existing.data){const objectKey=await storeAnalysisAsset({userId:job.user_id,jobId:job.id,value:{text:data.text}});const stored=await admin.rpc("finalize_cloud_output",{p_user_id:job.user_id,p_job_id:job.id,p_kind:"other",p_object_key:objectKey,p_source_url:source});if(stored.error)throw stored.error;}
+        await admin.from("upload_assets").delete().eq("user_id",job.user_id).eq("object_key",`users/${job.user_id}/jobs/${job.id}/reservation`);
+      } else if (job.operation === "rank-highlights") {
         const highlights = parseRankedHighlights(String(data.text ?? ""), job.request_payload);
         const source = `runware:${eventId}`;
         const existing = await admin.from("media_assets").select("id").eq("job_id", job.id).eq("source_url", source).maybeSingle();
@@ -75,13 +83,13 @@ export async function processRunwareWebhook(data: Record<string, any>) {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Webhook processing failed.";
-    if (error instanceof InvalidLayeredImageError || error instanceof HighlightValidationError) {
+    if (error instanceof InvalidTextOutputError || error instanceof InvalidLayeredImageError || error instanceof HighlightValidationError) {
       const found = await admin.from("generation_jobs").select("id,user_id").eq("provider_job_id", eventId).single();
       if (found.error) throw found.error;
       const job = found.data;
       const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_provider_output" });
       if (released.error) throw released.error;
-      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Retry with another source or different analysis settings.` }).eq("id", job.id);
+      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof InvalidTextOutputError ? "INVALID_TEXT_OUTPUT" : error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Retry with another source or different analysis settings.` }).eq("id", job.id);
       if (updated.error) throw updated.error;
       await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
       await admin.from("processed_webhooks").update({ status: "processed", last_error: message, processed_at: new Date().toISOString() }).eq("provider", "runware").eq("event_id", eventId);

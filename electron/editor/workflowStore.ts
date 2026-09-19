@@ -1,8 +1,13 @@
+import { migrateWorkflow, workflowTemplates } from "@heis/core";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import {
-  WORKFLOW_MODELS,
+  workflowModel,
+  workflowInputs,
+  workflowOutput,
+  workflowMediaSources,
+  workflowDependencies,
   validateWorkflow,
   validateGenerationRequest,
   getCapability,
@@ -240,7 +245,57 @@ export class WorkflowStore {
       revision: revision + 1,
     };
     validateWorkflow(graph, false);
+    d.history ||= { undo: [], redo: [] };
+    d.history.undo.push(d.definition);
+    d.history.undo = d.history.undo.slice(-50);
+    d.history.redo = [];
     d.definition = graph;
+    this.write(d);
+    return this.snapshot(projectId, id);
+  }
+  importGraph(projectId: string, record: unknown) {
+    const migrated = migrateWorkflow(record);
+    const definition = {
+      version: 1 as const,
+      id: randomUUID(),
+      projectId,
+      revision: 0,
+      name: migrated.name,
+      nodes: migrated.nodes,
+    };
+    validateWorkflow(definition, false);
+    this.write({ definition, runs: [] });
+    return {
+      snapshot: this.snapshot(projectId, definition.id),
+      warnings: migrated.warnings,
+    };
+  }
+  template(projectId: string, templateId: string) {
+    const t = workflowTemplates.find((t) => t.id === templateId);
+    if (!t) throw new Error("Unknown workflow template.");
+    const definition = {
+      version: 1 as const,
+      id: randomUUID(),
+      projectId,
+      revision: 0,
+      name: t.name,
+      nodes: structuredClone(t.nodes),
+    };
+    this.write({ definition, runs: [] });
+    return this.snapshot(projectId, definition.id);
+  }
+  history(projectId: string, id: string, revision: number, redo: boolean) {
+    const d = this.read(projectId, id);
+    if (d.definition.revision !== revision)
+      throw new Error("Workflow changed. Reload before undo.");
+    d.history ||= { undo: [], redo: [] };
+    const from = redo ? d.history.redo : d.history.undo,
+      to = redo ? d.history.undo : d.history.redo;
+    const graph = from.pop();
+    if (!graph) throw new Error("No workflow changes to undo or redo.");
+    validateWorkflow(graph, false);
+    to.push(d.definition);
+    d.definition = { ...graph, id, projectId, revision: revision + 1 };
     this.write(d);
     return this.snapshot(projectId, id);
   }
@@ -250,7 +305,8 @@ export class WorkflowStore {
       throw new Error("Workflow changed. Review the latest graph.");
     validateWorkflow(d.definition);
     for (const n of d.definition.nodes)
-      if (n.kind === "image-input") this.image(projectId, n.assetId!);
+      if (n.kind.endsWith("-input") && n.kind !== "text-input")
+        this.media(projectId, n.assetId!, n.kind.replace("-input", ""));
     if (d.runs.some((r) => r.status === "running" && this.authorized(r)))
       throw new Error("This workflow already has a running job.");
     return {
@@ -262,11 +318,9 @@ export class WorkflowStore {
     return nodes.reduce(
       (sum, n) =>
         sum +
-        (n.kind in WORKFLOW_MODELS
+        (workflowModel(n)
           ? reserveCredits(
-              getCapability(
-                WORKFLOW_MODELS[n.kind as keyof typeof WORKFLOW_MODELS],
-              )!.maximumEstimatedCostUsd,
+              getCapability(workflowModel(n)!)!.maximumEstimatedCostUsd,
             )
           : 0),
       0,
@@ -292,10 +346,12 @@ export class WorkflowStore {
     this.schedule(projectId, id, run.id, 0);
     return this.snapshot(projectId, id);
   }
-  private image(projectId: string, id: string) {
+  private media(projectId: string, id: string, kind?: string) {
     const p = this.editor.snapshot(projectId).project,
-      a = p.assets.find((a) => a.id === id && a.kind === "image" && !a.missing);
-    if (!a) throw new Error("Relink or choose an available project image.");
+      a = p.assets.find(
+        (a) => a.id === id && (!kind || a.kind === kind) && !a.missing,
+      );
+    if (!a) throw new Error("Relink or choose available project media.");
     const file = this.editor.resolveMedia(
       `heis-project://${projectId}/${a.path.split("/").map(encodeURIComponent).join("/")}`,
     );
@@ -356,64 +412,139 @@ export class WorkflowStore {
       }
       nodeId = step.nodeId;
       const node = run.graph.nodes.find((n) => n.id === nodeId)!;
-      if (node.kind === "image-input") {
-        const { asset } = this.image(projectId, node.assetId!);
+      const done = (assetIds: string[], text?: string) => {
         this.update(projectId, id, runId, (r) => {
-          const s = r.steps.find((s) => s.nodeId === nodeId)!;
-          s.status = "succeeded";
-          s.assetIds = [asset.id];
+          if (r.status === "running") {
+            const s = r.steps.find((s) => s.nodeId === nodeId)!;
+            s.status = "succeeded";
+            s.assetIds = assetIds;
+            s.text = text;
+            s.message = undefined;
+          }
         });
         this.schedule(projectId, id, runId, 0);
+      };
+      if (node.kind.endsWith("-input")) {
+        if (node.kind === "text-input") {
+          done([], node.prompt);
+          return;
+        }
+        const { asset } = this.media(
+          projectId,
+          node.assetId!,
+          node.kind.replace("-input", ""),
+        );
+        done([asset.id]);
         return;
       }
-      const source = run.steps.find((s) => s.nodeId === node.source);
-      if (source?.status !== "succeeded" || !source.assetIds.length)
-        throw new Error("An upstream result is unavailable.");
+      const sourceIds = workflowMediaSources(node),
+        sources = sourceIds.map(
+          (id) => run.steps.find((s) => s.nodeId === id)!,
+        );
+      for (const id of workflowDependencies(node))
+        if (run.steps.find((s) => s.nodeId === id)?.status !== "succeeded")
+          throw new Error("An upstream result is unavailable.");
+      const sourceAssets = sources.map(
+        (s, i) => s.assetIds[node.sourceIndices?.[i] || 0],
+      );
+      const prompt = [
+        node.prompt,
+        node.promptSource
+          ? run.steps.find((s) => s.nodeId === node.promptSource)?.text
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      if (prompt.length > 16000)
+        throw new Error("Combined prompt exceeds 16,000 characters.");
+      if (node.kind === "text-concat") {
+        const value = [node.prompt, ...sources.map((s) => s.text || "")]
+          .filter(Boolean)
+          .join("\n");
+        if (value.length > 16000)
+          throw new Error("Combined text exceeds 16,000 characters.");
+        done([], value);
+        return;
+      }
       if (node.kind === "output") {
-        this.update(projectId, id, runId, (r) => {
-          const s = r.steps.find((s) => s.nodeId === nodeId)!;
-          s.status = "succeeded";
-          s.assetIds = [...source.assetIds];
-        });
-        this.schedule(projectId, id, runId, 0);
+        done([...sources[0].assetIds], sources[0].text);
+        return;
+      }
+      if (node.kind === "video-combine") {
+        const marker = "workflow:" + runId + ":" + nodeId;
+        const result = this.editor
+          .snapshot(projectId)
+          .project.assets.find((a) => a.sourceJobId === marker);
+        if (result) {
+          done([result.id]);
+          return;
+        }
+        let job = step.localJobId
+          ? this.editor.jobs(projectId).find((j) => j.id === step.localJobId)
+          : undefined;
+        if (job?.status === "failed" || job?.status === "cancelled")
+          throw new Error(
+            job.message || "Local composition interrupted. Resume to retry.",
+          );
+        if (job?.status === "succeeded")
+          throw new Error(
+            "Local composition has no available output. Resume to retry.",
+          );
+        if (!job) {
+          job = this.editor.workflowCombine(projectId, sourceAssets, marker);
+          this.update(projectId, id, runId, (r) => {
+            const s = r.steps.find((s) => s.nodeId === nodeId)!;
+            s.localJobId = job!.id;
+            s.status = "running";
+          });
+        }
+        this.schedule(projectId, id, runId);
         return;
       }
       if (!step.request) {
-        const { asset, file } = this.image(projectId, source.assetIds[0]);
-        if (fs.statSync(file).size > 20 * 1024 * 1024)
-          throw new Error("Input image exceeds the 20 MB upload limit.");
-        const types: Record<string, string> = {
+        const urls: string[] = [];
+        for (const assetId of sourceAssets) {
+          const { asset, file } = this.media(projectId, assetId);
+          const max = asset.kind === "image" ? 20 : 500;
+          if (fs.statSync(file).size > max * 1024 * 1024)
+            throw new Error(`Input exceeds the ${max} MB upload limit.`);
+          const types: Record<string, string> = {
             ".png": "image/png",
             ".jpg": "image/jpeg",
             ".jpeg": "image/jpeg",
             ".webp": "image/webp",
-          },
-          type = types[path.extname(file).toLowerCase()];
-        if (!type) throw new Error("Use a PNG, JPEG or WebP input image.");
-        const uploaded = await this.provider.upload({
-          name: asset.name,
-          type,
-          bytes: fs.readFileSync(file),
-        });
-        if (this.disposed) return;
-        const capability = getCapability(WORKFLOW_MODELS[node.kind])!;
+            ".mp4": "video/mp4",
+            ".mov": "video/quicktime",
+            ".webm": "video/webm",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".m4a": "audio/mp4",
+            ".aac": "audio/aac",
+            ".ogg": "audio/ogg",
+          };
+          const type = types[path.extname(file).toLowerCase()];
+          if (!type)
+            throw new Error(
+              "Convert this input to a supported image, video or audio format.",
+            );
+          const uploaded = await this.provider.upload({
+            name: asset.name,
+            type,
+            bytes: await fs.promises.readFile(file),
+          });
+          urls.push(uploaded.url);
+          if (
+            this.disposed ||
+            this.read(projectId, id).runs.find((r) => r.id === runId)
+              ?.status !== "running"
+          )
+            return;
+        }
+        const capability = getCapability(workflowModel(node)!)!;
         const request: GenerationRequest = {
           modelId: capability.id,
           operation: capability.operation,
-          inputs:
-            node.kind === "image-edit"
-              ? {
-                  positivePrompt: node.prompt,
-                  seedImage: uploaded.url,
-                  strength: 0.8,
-                  width: 1024,
-                  height: 1024,
-                }
-              : {
-                  positivePrompt: node.prompt,
-                  inputs: uploaded.url,
-                  duration: node.duration,
-                },
+          inputs: workflowInputs(node, urls, prompt),
           billing: {
             mode: "managed",
             accountId: "desktop",
@@ -464,6 +595,40 @@ export class WorkflowStore {
         const urls = result.outputs.flatMap((o) => (o.url ? [o.url] : []));
         if (!urls.length)
           throw new Error("Provider completed without a downloadable result.");
+        if (workflowOutput(node) === "text") {
+          const url = new URL(urls[0]);
+          if (url.protocol !== "https:")
+            throw new Error("Text output must use HTTPS.");
+          const response = await fetch(url, {
+            signal: AbortSignal.timeout(30000),
+          });
+          if (!response.ok || !response.body)
+            throw new Error("Could not download generated text.");
+          const reader = response.body.getReader();
+          let bytes = 0;
+          const chunks: Uint8Array[] = [];
+          try {
+            for (;;) {
+              const part = await reader.read();
+              if (part.done) break;
+              bytes += part.value.length;
+              if (bytes > 100000)
+                throw new Error("Generated text is too large.");
+              chunks.push(part.value);
+            }
+          } finally {
+            await reader.cancel();
+          }
+          const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          if (
+            typeof parsed.text !== "string" ||
+            !parsed.text.trim() ||
+            parsed.text.length > 64000
+          )
+            throw new Error("Provider returned invalid text.");
+          done([], parsed.text);
+          return;
+        }
         await this.editor.capture(projectId, urls, active.providerJobId!);
         if (this.disposed) return;
         const assets = this.editor
@@ -471,7 +636,7 @@ export class WorkflowStore {
           .project.assets.filter((a) =>
             a.sourceJobId?.startsWith(active.providerJobId + ":"),
           );
-        const expected = node.kind === "image-edit" ? "image" : "video";
+        const expected = workflowOutput(node);
         if (!assets.length || assets.some((a) => a.kind !== expected))
           throw new Error(
             "Provider returned the wrong media type for this node.",
@@ -556,6 +721,7 @@ export class WorkflowStore {
           if (s.status !== "succeeded") {
             s.status = "pending";
             s.message = undefined;
+            s.localJobId = undefined;
             if (s.terminalFailure) {
               s.request = undefined;
               s.providerJobId = undefined;
@@ -580,6 +746,9 @@ export class WorkflowStore {
     });
     clearTimeout(this.timers.get(runId));
     this.timers.delete(runId);
+    for (const step of r.steps)
+      if (step.localJobId && step.status !== "succeeded")
+        this.editor.cancel(step.localJobId);
     for (const s of r.steps)
       if (s.providerJobId && s.status !== "succeeded") {
         try {
@@ -628,7 +797,8 @@ export class WorkflowStore {
       const c = seq.clips.find((c) => c.id === replaceClipId);
       if (
         !c?.assetId ||
-        seq.tracks.find((t) => t.id === c.trackId)?.kind !== "video"
+        seq.tracks.find((t) => t.id === c.trackId)?.kind !==
+          (a.kind === "audio" ? "audio" : "video")
       )
         throw new Error("Choose a video or image clip.");
       if (c.linkId)
@@ -650,14 +820,18 @@ export class WorkflowStore {
         },
       });
     } else {
-      const track = newTrack(randomUUID(), "video", "Workflow result"),
+      const track = newTrack(
+          randomUUID(),
+          a.kind === "audio" ? "audio" : "video",
+          "Workflow result",
+        ),
         clip = newClip(randomUUID(), track.id, frame, length, a.name);
       clip.assetId = assetId;
       edits.push(
         { type: "track.add", sequenceId, track },
         { type: "clip.add", sequenceId, clip },
       );
-      if (a.hasAudio) {
+      if (a.hasAudio && a.kind !== "audio") {
         const audio = newTrack(randomUUID(), "audio", "Workflow audio"),
           ac = newClip(randomUUID(), audio.id, frame, length, a.name);
         ac.assetId = assetId;

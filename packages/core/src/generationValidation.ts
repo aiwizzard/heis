@@ -51,6 +51,7 @@ export function validateGenerationRequest(request: GenerationRequest): ModelCapa
     if (Object.keys(settings).some((key) => key !== "layers") || !Number.isInteger(settings.layers) || Number(settings.layers) < 2 || Number(settings.layers) > 10) throw new Error("LAYERS_COUNT_MUST_BE_2_TO_10");
     if (String(request.inputs.positivePrompt).length > 32000) throw new Error("LAYER_PROMPT_TOO_LONG");
   }
+  if (request.operation === "generate-text" && (Object.keys(request.inputs).some(k=>k!=="prompt") || String(request.inputs.prompt).length>16000)) throw new Error("INVALID_TEXT_REQUEST");
   if (request.operation === "rank-highlights") validateHighlightRequest(request.inputs);
   return capability;
 }

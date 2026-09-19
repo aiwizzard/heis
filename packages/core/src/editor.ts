@@ -150,7 +150,7 @@ export interface ToolResult {
 export interface EditorJob {
   id: string;
   projectId: string;
-  kind: "export" | "transcribe" | "import" | "generation" | "source-transcript" | "clipping";
+  kind: "export" | "transcribe" | "import" | "generation" | "source-transcript" | "clipping" | "workflow";
   transcript?: { duration: number; cues: TranscriptCue[] };
   status: "running" | "succeeded" | "failed" | "cancelled";
   progress: number;

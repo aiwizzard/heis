@@ -7,7 +7,7 @@ import { apiError, requireIdempotencyKey } from "@/lib/http";
 import { createAdminClient, requireUser } from "@/lib/supabase";
 
 function taskType(operation: string, outputKind: string) {
-  if (operation === "rank-highlights") return "textInference";
+  if (operation === "rank-highlights" || operation === "generate-text") return "textInference";
   if (operation === "upscale") return "upscale";
   if (operation === "remove-background") return "removeBackground";
   if (outputKind === "image") return "imageInference";
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const providerResponse = await fetch("https://api.runware.ai/v1", {
       method: "POST",
       headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify([{ ...(capability.operation === "rank-highlights" ? { ...highlightProviderInput(body.inputs as HighlightRequest), deliveryMethod: "async" } : body.inputs), taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
+      body: JSON.stringify([{ ...(capability.operation === "rank-highlights" ? { ...highlightProviderInput(body.inputs as HighlightRequest), deliveryMethod: "async" } : capability.operation === "generate-text" ? {messages:[{role:"user",content:body.inputs.prompt}],settings:{maxTokens:4096},deliveryMethod:"async"} : body.inputs), taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
     });
     const providerBody = await providerResponse.json().catch(() => ({}));
     if (!providerResponse.ok || providerBody.errors?.length) {

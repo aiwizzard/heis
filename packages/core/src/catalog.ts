@@ -1,6 +1,7 @@
 import type { ModelCapability } from "./types";
 
 export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
+ {id:"heis-text-standard",provider:"runware",providerModelId:"openai:gpt@5.4-mini",displayName:"Heis Text Standard",operation:"generate-text",outputKind:"other",maximumEstimatedCostUsd:.5,enabled:true,parameters:[{name:"prompt",type:"string",required:true}]},
   {
     id: "heis-highlight-analysis", provider: "runware", providerModelId: "openai:gpt@5.4-mini",
     displayName: "AI highlight analysis", operation: "rank-highlights", outputKind: "other",

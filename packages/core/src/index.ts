@@ -11,3 +11,7 @@ export * from "./highlights";
 export * from "./design";
 
 export * from "./workflow";
+
+export * from "./workflowCapabilities";
+
+export * from './workflowTemplates';

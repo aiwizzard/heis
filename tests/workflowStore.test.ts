@@ -4,7 +4,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { EditorService } from "../electron/editor/service";
-import { validateWorkflow } from "@heis/core";
+import {
+  validateWorkflow,
+  workflowCapabilities,
+  workflowInputs,
+  workflowTemplates,
+  migrateWorkflow,
+  getCapability,
+  validateGenerationRequest,
+} from "@heis/core";
 import type {
   GenerationRequest,
   GenerationJob,
@@ -69,8 +77,7 @@ function setup() {
             outputs: [
               {
                 id: "out",
-                kind:
-                  request.operation === "image-to-video" ? "video" : "image",
+                kind: getCapability(request.modelId)!.outputKind,
                 url: "https://example.test/" + id,
               },
             ],
@@ -121,16 +128,18 @@ function setup() {
       )
         return;
       const entry = [...accepted.values()].find((e) => e.job.id === jobId)!;
-      const kind =
-          entry.request.operation === "image-to-video" ? "video" : "image",
-        relative = "media/" + jobId + (kind === "video" ? ".mp4" : ".png");
+      const kind = getCapability(entry.request.modelId)!.outputKind,
+        relative =
+          "media/" +
+          jobId +
+          (kind === "video" ? ".mp4" : kind === "audio" ? ".wav" : ".png");
       fs.writeFileSync(path.join(directory, relative), "fixture");
       session.project.assets.push({
         id: jobId,
         kind,
         name: jobId,
         path: relative,
-        durationSeconds: kind === "video" ? 5 : 0,
+        durationSeconds: kind === "image" ? 0 : 5,
         width: 256,
         height: 256,
         hasAudio: false,
@@ -491,6 +500,328 @@ test("newer workflow versions are rejected without modifying the record", () => 
       /Unsupported/,
     );
     assert.equal(fs.readFileSync(file, "utf8"), text);
+  } finally {
+    x.cleanup();
+  }
+});
+
+test("all managed workflow capabilities build valid provider requests and all templates validate", () => {
+  for (const c of workflowCapabilities) {
+    const n = {
+      id: "tool",
+      kind: "managed" as const,
+      modelId: c.id,
+      name: c.name,
+      prompt: "A cinematic example",
+      duration: 5 as const,
+      x: 0,
+      y: 0,
+    };
+    const capability = getCapability(c.id)!;
+    assert.doesNotThrow(
+      () =>
+        validateGenerationRequest({
+          modelId: c.id,
+          operation: capability.operation,
+          inputs: workflowInputs(
+            n,
+            c.ports.map((p, i) => "https://example.test/" + i),
+            "A cinematic example",
+          ),
+          billing: {
+            mode: "managed",
+            accountId: "test",
+            idempotencyKey: "test",
+          },
+        }),
+      c.id,
+    );
+  }
+  for (const t of workflowTemplates)
+    assert.doesNotThrow(
+      () =>
+        validateWorkflow(
+          {
+            version: 1,
+            id: "t",
+            projectId: "p",
+            revision: 0,
+            name: t.name,
+            nodes: t.nodes,
+          },
+          false,
+        ),
+      t.id,
+    );
+});
+test("graph history persists, rejects stale revisions and never changes existing run snapshots", () => {
+  const x = setup();
+  try {
+    const before = x.doc.definition;
+    x.start();
+    x.editor.workflows.save(
+      x.projectId,
+      before.id,
+      before.revision,
+      "Renamed",
+      before.nodes,
+    );
+    const undone = x.editor.workflows.history(
+      x.projectId,
+      before.id,
+      before.revision + 1,
+      false,
+    );
+    assert.equal(undone.definition.name, before.name);
+    assert.equal(undone.runs[0].graph.name, before.name);
+    assert.throws(
+      () =>
+        x.editor.workflows.history(
+          x.projectId,
+          before.id,
+          before.revision,
+          false,
+        ),
+      /changed/,
+    );
+    x.reopen();
+    const redone = x.editor.workflows.history(
+      x.projectId,
+      before.id,
+      undone.definition.revision,
+      true,
+    );
+    assert.equal(redone.definition.name, "Renamed");
+  } finally {
+    x.cleanup();
+  }
+});
+test("legacy migration strips credentials, warns about model replacements and preserves originals", () => {
+  const old = {
+    name: "Legacy",
+    data: {
+      nodes: [
+        {
+          id: "a",
+          type: "textNode",
+          data: {
+            selectedModel: { id: "text-passthrough" },
+            formValues: { text: "Hello", api_key: "secret" },
+          },
+        },
+        {
+          id: "b",
+          type: "audioNode",
+          data: {
+            selectedModel: { id: "old-voice" },
+            formValues: { api_key: "secret" },
+          },
+        },
+      ],
+    },
+    edges: [{ source: "a", target: "b" }],
+  };
+  const before = JSON.stringify(old),
+    m = migrateWorkflow(old);
+  assert.equal(JSON.stringify(old), before);
+  assert.ok(!JSON.stringify(m).includes("secret"));
+  assert.ok(m.warnings.some((w) => w.includes("heis-speech-standard")));
+  assert.equal(m.nodes[1].promptSource, "a");
+  assert.throws(
+    () =>
+      migrateWorkflow({
+        nodes: [
+          {
+            id: "api",
+            type: "apiNode",
+            data: { formValues: { api_key: "secret" } },
+          },
+        ],
+        edges: [],
+      }),
+    /arbitrary API/,
+  );
+});
+test("text concatenation runs free, is persisted, and validates connections", async () => {
+  const x = setup();
+  try {
+    const base = { prompt: "", duration: 5 as const, x: 0, y: 0 };
+    const nodes = [
+      {
+        ...base,
+        id: "a",
+        name: "a",
+        kind: "text-input" as const,
+        prompt: "Hello",
+      },
+      {
+        ...base,
+        id: "b",
+        name: "b",
+        kind: "text-input" as const,
+        prompt: "world",
+      },
+      {
+        ...base,
+        id: "join",
+        name: "join",
+        kind: "text-concat" as const,
+        sources: ["a", "b"],
+      },
+      {
+        ...base,
+        id: "out",
+        name: "out",
+        kind: "output" as const,
+        source: "join",
+      },
+    ];
+    x.editor.workflows.save(
+      x.projectId,
+      x.doc.definition.id,
+      x.doc.definition.revision,
+      "Text",
+      nodes,
+    );
+    assert.equal(
+      x.editor.workflows.plan(
+        x.projectId,
+        x.doc.definition.id,
+        x.doc.definition.revision,
+      ).credits,
+      0,
+    );
+    const run = x.start().runs.at(-1)!;
+    const d = await x.drain(run.id);
+    assert.equal(d.runs.at(-1)!.status, "succeeded");
+    assert.equal(d.runs.at(-1)!.steps.at(-1)!.text, "Hello\nworld");
+    assert.equal(x.submissions, 0);
+    x.reopen();
+    assert.equal(x.doc.runs.at(-1)!.steps.at(-1)!.text, "Hello\nworld");
+  } finally {
+    x.cleanup();
+  }
+});
+test("generated text feeds speech, audio inserts undoably and no text JSON is imported as media", async () => {
+  const x = setup(),
+    original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ text: "Spoken text" }));
+  try {
+    const base = { prompt: "", duration: 5 as const, x: 0, y: 0 };
+    x.editor.workflows.save(
+      x.projectId,
+      x.doc.definition.id,
+      x.doc.definition.revision,
+      "Narration",
+      [
+        {
+          ...base,
+          id: "writer",
+          name: "Writer",
+          kind: "managed",
+          modelId: "heis-text-standard",
+          prompt: "Write a script",
+        },
+        {
+          ...base,
+          id: "voice",
+          name: "Voice",
+          kind: "managed",
+          modelId: "heis-speech-standard",
+          promptSource: "writer",
+        },
+        { ...base, id: "out", name: "Output", kind: "output", source: "voice" },
+      ],
+    );
+    const run = x.start().runs.at(-1)!;
+    const d = await x.drain(run.id);
+    assert.equal(d.runs.at(-1)!.status, "succeeded", d.runs.at(-1)!.message);
+    assert.equal(x.submissions, 2);
+    assert.equal(
+      [...x.accepted.values()][1].request.inputs.speech.text,
+      "Spoken text",
+    );
+    assert.equal(d.project.project.assets.length, 2);
+    const asset = d.project.project.assets.find((a) => a.kind === "audio")!,
+      p = d.project.project;
+    const inserted = x.editor.workflows.insert(
+      x.projectId,
+      d.definition.id,
+      run.id,
+      asset.id,
+      p.activeSequenceId,
+      0,
+      p.revision,
+    );
+    assert.equal(
+      inserted.project.project.sequences[0].tracks.find(
+        (t) => t.id === inserted.project.project.sequences[0].clips[0].trackId,
+      )!.kind,
+      "audio",
+    );
+    x.editor.history(x.projectId, inserted.project.project.revision, false);
+    assert.equal(
+      x.editor.snapshot(x.projectId).project.sequences[0].clips.length,
+      0,
+    );
+  } finally {
+    globalThis.fetch = original;
+    x.cleanup();
+  }
+});
+
+test("cancelled local composition restarts its local job on approved resume", async () => {
+  const x = setup();
+  try {
+    const p = (x.editor as any).session(x.projectId).project;
+    p.assets[0].kind = "video";
+    p.assets[0].durationSeconds = 2;
+    const d = x.doc;
+    const nodes = [
+      { ...d.definition.nodes[0], kind: "video-input" as const },
+      {
+        ...d.definition.nodes[1],
+        id: "combine",
+        kind: "video-combine" as const,
+        source: "input",
+      },
+      { ...d.definition.nodes[3], source: "combine" },
+    ];
+    x.editor.workflows.save(
+      x.projectId,
+      d.definition.id,
+      d.definition.revision,
+      "Local",
+      nodes,
+    );
+    let attempts = 0;
+    const jobs: any[] = [];
+    x.editor.jobs = () => jobs;
+    x.editor.cancel = (id: string) => {
+      jobs.find((j) => j.id === id).status = "cancelled";
+    };
+    x.editor.workflowCombine = (_id, _assets, marker) => {
+      attempts++;
+      const job: any = { id: "local-" + attempts, status: "running" };
+      jobs.push(job);
+      if (attempts === 2) {
+        p.assets.push({ ...p.assets[0], id: "combined", sourceJobId: marker });
+        job.status = "succeeded";
+      }
+      return job;
+    };
+    const run = x.start().runs.at(-1)!;
+    for (let i = 0; i < 5 && !attempts; i++)
+      await x.editor.workflows.tick(x.projectId, d.definition.id, run.id);
+    assert.equal(attempts, 1);
+    await x.editor.workflows.cancel(x.projectId, d.definition.id, run.id);
+    assert.equal(jobs[0].status, "cancelled");
+    await x.editor.workflows.retry(x.projectId, d.definition.id, run.id);
+    const done = await x.drain(run.id);
+    assert.equal(done.runs.at(-1)!.status, "succeeded");
+    assert.equal(attempts, 2);
+    assert.equal(x.submissions, 0);
   } finally {
     x.cleanup();
   }

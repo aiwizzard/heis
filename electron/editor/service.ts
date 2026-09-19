@@ -757,6 +757,25 @@ export class EditorService {
       }
     }
   }
+  workflowCombine(projectId:string,assetIds:string[],marker:string):EditorJob {
+    const session=this.session(projectId),assets=assetIds.map(id=>session.project.assets.find(a=>a.id===id&&!a.missing));
+    if(!assets.length||assets.length>20||assets.some(a=>!a||a.kind!=="video"||a.durationSeconds<=0))throw new Error("Choose 1 to 20 available video clips.");
+    return this.start(projectId,"workflow",async job=>{
+      const existing=session.project.assets.find(a=>a.sourceJobId===marker);
+      if(existing){job.output=this.safePath(session.directory,existing.path);return;}
+      const args=["-v","error","-y"],filters:string[]=[];
+      for(const a of assets)args.push("-i",this.safePath(session.directory,a!.path));
+      assets.forEach((a,i)=>{
+        filters.push(`[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,trim=duration=${a!.durationSeconds},setpts=PTS-STARTPTS[v${i}]`);
+        filters.push(a!.hasAudio?`[${i}:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=duration=${a!.durationSeconds},asetpts=PTS-STARTPTS[a${i}]`:`anullsrc=r=48000:cl=stereo,atrim=duration=${a!.durationSeconds},asetpts=PTS-STARTPTS[a${i}]`);
+      });
+      filters.push(assets.map((_,i)=>`[v${i}][a${i}]`).join('')+`concat=n=${assets.length}:v=1:a=1[v][a]`);
+      const temporary=path.join(session.directory,'cache',job.id+'.mp4');
+      try{await this.run(this.ffmpeg,[...args,'-filter_complex',filters.join(';'),'-map','[v]','-map','[a]',...this.videoEncoding(),'-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart',temporary],job.id);
+      const [asset]=await this.importFiles(projectId,[temporary],job.id);const stored=session.project.assets.find(a=>a.id===asset.id)!;stored.sourceJobId=marker;stored.name='Combined video';this.changed(session);this.flush(projectId);job.output=this.safePath(session.directory,stored.path);
+      }finally{await fsp.unlink(temporary).catch(()=>{});}
+    });
+  }
   addCaptions(
     id: string,
     sequenceId: string,
