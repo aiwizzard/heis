@@ -533,6 +533,7 @@ export function EditorApp({
         <header className="heis-editor-bar">
           <img className="heis-wordmark" src="/brand/heis-wordmark-dark.svg" alt="Heis" height={26} draggable={false} />
           <span>Video editing studio</span>
+          <div className="heis-bar-spacer" />
           <button onClick={onLegacy}>Standalone tools ↗</button>
         </header>
         <section className="heis-home-content">
