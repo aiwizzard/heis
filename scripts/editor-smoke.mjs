@@ -79,6 +79,20 @@ try {
     },
     { source, output, project },
   );
+  await page.getByRole("button", { name: "Standalone tools ↗", exact: true }).click();
+  const promptPanel = page.locator(".heis-prompt-panel:visible").first();
+  await promptPanel.waitFor();
+  await page.waitForTimeout(700);
+  const promptSpacing = await promptPanel.evaluate(panel => {
+    const box=panel.getBoundingClientRect();
+    const action=panel.querySelector(".heis-prompt-action").getBoundingClientRect();
+    return { bottomGap:window.innerHeight-box.bottom, innerGap:box.bottom-action.bottom };
+  });
+  assert.ok(promptSpacing.bottomGap >= 20, "Studio prompt remains above the window bottom");
+  assert.ok(promptSpacing.innerGap >= 12, "Generate button retains bottom padding inside the prompt");
+  await mkdir("test-results/editor", {recursive:true});
+  await page.screenshot({path:"test-results/editor/studio-prompt-spacing.png"});
+  await page.getByRole("button", { name: "← Projects", exact: true }).click();
   await page
     .getByRole("textbox", { name: "New project name" })
     .fill("Palmier edit");
