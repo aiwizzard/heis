@@ -32,6 +32,7 @@ import type {
   RankedHighlight,
 } from "@heis/core";
 
+import { WorkflowStore } from "./workflowStore";
 import { DesignStore } from "./designStore";
 
 type Session = {
@@ -76,6 +77,7 @@ export class EditorService {
   private captures = new Map<string, Promise<void>>();
   private disposed = false;
   readonly designs = new DesignStore(this);
+  readonly workflows: WorkflowStore;
   activeProjectId: string | null = null;
   activeContext: ToolContext | null = null;
   setContext(context: ToolContext) {
@@ -94,6 +96,7 @@ export class EditorService {
   readonly whisper: string;
   readonly model: string;
   constructor(private options: EditorOptions) {
+    this.workflows = new WorkflowStore(this,options.userData);
     this.indexPath = path.join(options.userData, "editor-projects.json");
     this.ffmpeg =
       options.ffmpeg || path.join(options.resources, "media-runtime", "ffmpeg");
@@ -275,6 +278,7 @@ export class EditorService {
     for (const job of this.jobs(project.id))
       if (job.kind === "generation" && job.status === "running")
         void this.pollGeneration(job.id);
+    this.workflows.resumeProject(project.id);
     return this.snapshot(project.id);
   }
   flush(id: string) {
@@ -305,6 +309,7 @@ export class EditorService {
     this.activeProjectId = null;
   }
   dispose() {
+    this.workflows.dispose();
     this.disposed = true;
     this.close();
     for (const id of this.children.keys()) this.cancel(id);

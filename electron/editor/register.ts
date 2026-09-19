@@ -74,6 +74,12 @@ export function registerEditor(): EditorService {
     net.fetch(pathToFileURL(service.resolveMedia(request.url)).toString()),
   );
   const handlers: Record<string, (...args: any[]) => unknown> = {
+    workflowOpen: (projectId?:string,id?:string) => {const target=projectId||service.library().projectId;const selected=id||service.workflows.list(target)[0]?.id||service.workflows.create(target).definition.id;service.workflows.resumeProject(target);return service.workflows.snapshot(target,selected);},
+    workflowList: (projectId:string) => service.workflows.list(projectId),
+    workflowCreate: (projectId:string) => service.workflows.create(projectId),
+    workflowSave: (projectId:string,id:string,revision:number,name:string,nodes:any) => service.workflows.save(projectId,id,revision,name,nodes),
+    workflowCancel: (projectId:string,id:string,runId:string) => service.workflows.cancel(projectId,id,runId),
+    workflowInsert: (projectId:string,id:string,runId:string,assetId:string,sequenceId:string,frame:number,revision:number,clipId?:string,fit?:'preserve'|'trim') => service.workflows.insert(projectId,id,runId,assetId,sequenceId,frame,revision,clipId,fit),
     designOpen: (projectId?: string, sessionId?: string, sourceUrl?: string) => {
       const id = projectId || service.destinationProjectId();
       const selected = sessionId || service.designs.list(id)[0]?.id || service.designs.create(id).session.id;

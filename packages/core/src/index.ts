@@ -9,3 +9,5 @@ export * from "./editor";
 export * from "./editorDrawing";
 export * from "./highlights";
 export * from "./design";
+
+export * from "./workflow";
