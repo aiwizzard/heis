@@ -902,3 +902,11 @@
 .heis-crop-grid { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to right,transparent 33%,#fff5 33%,#fff5 33.3%,transparent 33.3%,transparent 66.6%,#fff5 66.6%,#fff5 67%,transparent 67%),linear-gradient(to bottom,transparent 33%,#fff5 33%,#fff5 33.3%,transparent 33.3%,transparent 66.6%,#fff5 66.6%,#fff5 67%,transparent 67%); }
 .heis-editor .heis-crop-handle { position:absolute; width:12px; height:12px; padding:0; min-height:0; background:white; border:1px solid #444; border-radius:2px; transform:translate(-50%,-50%); touch-action:none; }
 .heis-crop-handle.nw { left:0; top:0; cursor:nwse-resize; }.heis-crop-handle.n { left:50%; top:0; cursor:ns-resize; }.heis-crop-handle.ne { left:100%; top:0; cursor:nesw-resize; }.heis-crop-handle.e { left:100%; top:50%; cursor:ew-resize; }.heis-crop-handle.se { left:100%; top:100%; cursor:nwse-resize; }.heis-crop-handle.s { left:50%; top:100%; cursor:ns-resize; }.heis-crop-handle.sw { left:0; top:100%; cursor:nesw-resize; }.heis-crop-handle.w { left:0; top:50%; cursor:ew-resize; }
+
+.heis-crop-actions { display:flex; gap:6px; }
+.heis-crop-actions > button:first-child { flex:1; }
+.heis-crop-layout-popover { position:fixed; margin:0; width:200px; padding:6px; border:1px solid #44464e; border-radius:8px; background:#25262c; color:#dedee3; box-shadow:0 8px 28px #0008; }
+.heis-crop-layout-popover::backdrop { background:transparent; }
+.heis-editor .heis-crop-layout-popover button { display:flex; width:100%; align-items:center; justify-content:space-between; padding:10px; margin:2px 0; background:transparent; }
+.heis-editor .heis-crop-layout-popover button[aria-pressed="true"] { background:#58313a; }
+.heis-crop-layout-popover small { color:#a5a5ae; font-size:10px; }

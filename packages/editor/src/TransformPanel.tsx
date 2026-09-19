@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { CropLayoutPicker } from "./CropLayoutPicker";
 import type { TimelineClip } from "@heis/core";
 export type Transform = Pick<
   TimelineClip,
@@ -20,8 +21,12 @@ export function TransformPanel({
   onPreview,
   onCommit,
   onCrop,
+  cropLayout,
+  onCropLayout,
 }: {
   onCrop: () => void;
+  cropLayout: string;
+  onCropLayout: (layout: string) => void;
   clip: TimelineClip;
   media: boolean;
   disabled: boolean;
@@ -264,7 +269,7 @@ export function TransformPanel({
         { opacity: 1 },
         100,
       )}
-      {media && <button className="heis-transform-reset" disabled={disabled} onClick={onCrop}>Crop on preview</button>}
+      {media && <div className="heis-crop-actions"><button disabled={disabled} onClick={onCrop}>Crop</button><CropLayoutPicker value={cropLayout} disabled={disabled} onSelect={onCropLayout} /></div>}
       {media && (
         <details className="heis-transform-crop">
           <summary>Advanced crop</summary>

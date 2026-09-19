@@ -22,9 +22,13 @@ export function CropOverlay({
   asset,
   initial,
   sourceTime,
+  layout,
+  onLayoutChange,
   onApply,
   onCancel,
 }: {
+  layout: string;
+  onLayoutChange: (layout: string) => void;
   projectId: string;
   asset: ProjectAsset;
   initial: Crop;
@@ -33,7 +37,6 @@ export function CropOverlay({
   onCancel: () => void;
 }) {
   const [crop, setCrop] = useState(initial),
-    [preset, setPreset] = useState("Free"),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
   const host = useRef<HTMLDivElement>(null),
@@ -53,11 +56,19 @@ export function CropOverlay({
   >(undefined);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) { event.preventDefault(); onCancel(); }
+      if (
+        event.key === "Escape" &&
+        !saving &&
+        !document.querySelector(":popover-open")
+      ) {
+        event.preventDefault();
+        onCancel();
+      }
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
   }, [saving, onCancel]);
+  const preset = layout;
   const aspect = asset.width / asset.height;
   const ratio =
     preset === "Free"
@@ -69,6 +80,10 @@ export function CropOverlay({
             : preset === "9:16"
               ? 9 / 16
               : 1) / aspect;
+  useEffect(() => {
+    if (ratio > 0)
+      setCrop(cropRatio({ left: 0, right: 0, top: 0, bottom: 0 }, ratio));
+  }, [ratio]);
   useEffect(() => {
     dialog.current?.focus();
     const observer = new ResizeObserver(([entry]) => {
@@ -137,37 +152,11 @@ export function CropOverlay({
       }}
     >
       <div className="heis-crop-toolbar">
-        <strong>Crop source</strong>
-        <select
-          aria-label="Crop aspect ratio"
-          value={preset}
-          disabled={saving}
-          onChange={(event) => {
-            const next = event.target.value;
-            setPreset(next);
-            if (next !== "Free")
-              setCrop((c) =>
-                cropRatio(
-                  c,
-                  (next === "Original"
-                    ? aspect
-                    : next === "16:9"
-                      ? 16 / 9
-                      : next === "9:16"
-                        ? 9 / 16
-                        : 1) / aspect,
-                ),
-              );
-          }}
-        >
-          {["Free", "Original", "16:9", "9:16", "1:1"].map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
+        <strong>Crop</strong>
         <button
           disabled={saving}
           onClick={() => {
-            setPreset("Free");
+            onLayoutChange("Free");
             setCrop({ left: 0, right: 0, top: 0, bottom: 0 });
           }}
         >
