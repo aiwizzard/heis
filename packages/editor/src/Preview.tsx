@@ -32,10 +32,13 @@ export function Preview({
     () => () => {
       nodes.current.forEach((n) => {
         if (n.element instanceof HTMLVideoElement) {
+          n.element.onseeked = null;
+          n.element.onloadeddata = null;
           n.element.pause();
           n.element.removeAttribute("src");
           n.element.load();
         }
+        if (n.element instanceof HTMLImageElement) n.element.onload = null;
         n.source?.disconnect();
       });
       nodes.current.clear();
@@ -73,6 +76,11 @@ export function Preview({
         element.crossOrigin = "anonymous";
         element.src = url;
         element.dataset.assetUrl = url;
+        const repaint = () => setTick((value) => value + 1);
+        if (element instanceof HTMLVideoElement) {
+          element.onseeked = repaint;
+          element.onloadeddata = repaint;
+        } else element.onload = repaint;
         node = { element };
         nodes.current.set(clip.id, node);
         if (element instanceof HTMLVideoElement) {
@@ -144,6 +152,8 @@ export function Preview({
     nodes.current.forEach((node, id) => {
       if (!active.has(id)) {
         if (node.element instanceof HTMLVideoElement) {
+          node.element.onseeked = null;
+          node.element.onloadeddata = null;
           node.element.pause();
           node.element.removeAttribute("src");
           node.element.load();

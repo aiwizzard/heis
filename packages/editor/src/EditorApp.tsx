@@ -1638,6 +1638,44 @@ function Timeline({
       delta: number;
       mode: string;
     } | null>(null);
+  const timeline = useRef<HTMLDivElement>(null);
+  const scrubPointer = useRef<number | null>(null);
+  const lastFrame = Math.max(0, sequenceDuration(sequence) - 1);
+  const scrubTo = (clientX: number) => {
+    const rect = timeline.current?.getBoundingClientRect();
+    if (rect)
+      seek(
+        Math.min(
+          lastFrame,
+          Math.max(0, Math.round((clientX - rect.left - 150) / px)),
+        ),
+      );
+  };
+  const scrubEvents = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 || !e.isPrimary) return;
+      e.preventDefault();
+      e.stopPropagation();
+      scrubPointer.current = e.pointerId;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      scrubTo(e.clientX);
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (scrubPointer.current === e.pointerId) scrubTo(e.clientX);
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (scrubPointer.current !== e.pointerId) return;
+      scrubTo(e.clientX);
+      scrubPointer.current = null;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    },
+    onPointerCancel: () => {
+      scrubPointer.current = null;
+    },
+    onLostPointerCapture: () => {
+      scrubPointer.current = null;
+    },
+  };
   const drag = (
     event: React.PointerEvent,
     clip: TimelineClip,
@@ -1721,16 +1759,14 @@ function Timeline({
   };
   return (
     <div className="heis-timeline-scroll">
-      <div className="heis-timeline-inner" style={{ width: width + 150 }}>
+      <div
+        ref={timeline}
+        className="heis-timeline-inner"
+        style={{ width: width + 150 }}
+      >
         <div className="heis-ruler">
           <div className="heis-track-label">TRACKS</div>
-          <div
-            style={{ width }}
-            onPointerDown={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              seek(Math.max(0, Math.round((e.clientX - rect.left) / px)));
-            }}
-          >
+          <div style={{ width }} className="heis-scrub-ruler" {...scrubEvents}>
             {Array.from({ length: Math.ceil(width / zoom / 2) }, (_, i) => (
               <span key={i} style={{ left: i * zoom * 2 }}>
                 {timecode(Math.round(i * 2 * rate), rate)}
@@ -1894,7 +1930,37 @@ function Timeline({
             </div>
           </div>
         ))}
-        <div className="heis-playhead" style={{ left: 150 + frame * px }}>
+        <div
+          className="heis-playhead"
+          style={{ left: 150 + frame * px }}
+          role="slider"
+          aria-label="Timeline playhead"
+          aria-valuemin={0}
+          aria-valuemax={lastFrame}
+          aria-valuenow={frame}
+          aria-valuetext={timecode(frame, rate)}
+          tabIndex={0}
+          {...scrubEvents}
+          onKeyDown={(e) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+              return;
+            e.preventDefault();
+            e.stopPropagation();
+            seek(
+              e.key === "Home"
+                ? 0
+                : e.key === "End"
+                  ? lastFrame
+                  : Math.max(
+                      0,
+                      Math.min(
+                        lastFrame,
+                        frame + (e.key === "ArrowRight" ? 1 : -1),
+                      ),
+                    ),
+            );
+          }}
+        >
           <span />
         </div>
       </div>

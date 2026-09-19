@@ -64,6 +64,7 @@ try {
   const page = await app.firstWindow();
   page.on("pageerror", (e) => errors.push(e.message));
   await page.getByText("Make the next cut.").waitFor();
+
   await app.evaluate(
     ({ dialog }, paths) => {
       dialog.showSaveDialog = async (options) => ({
@@ -91,6 +92,93 @@ try {
   await page.getByRole("button", { name: "＋ Add", exact: true }).click();
   await page.locator(".heis-timeline-clip").first().waitFor();
   assert.equal(await page.locator(".heis-timeline-clip").count(), 2);
+  const mediaUrl = await app.evaluate(({}, directory) => {
+    const fs = process.mainModule.require("node:fs");
+    const id = JSON.parse(
+      fs.readFileSync(directory + "/project.heis.json", "utf8"),
+    ).id;
+    const file = fs
+      .readdirSync(directory + "/cache")
+      .find((n) => n.endsWith(".mp4"));
+    return "heis-project://" + id + "/cache/" + file;
+  }, project);
+  const range = await page.evaluate(async (url) => {
+    const r = await fetch(url, { headers: { Range: "bytes=0-31" } });
+    return { status: r.status, size: (await r.arrayBuffer()).byteLength };
+  }, mediaUrl);
+  assert.deepEqual(range, { status: 206, size: 32 });
+  const playhead = page.getByRole("slider", { name: "Timeline playhead" });
+  const coordinates = () =>
+    page.locator(".heis-scrub-ruler").evaluate((el) => ({
+      left: el.getBoundingClientRect().left,
+      top: el.getBoundingClientRect().top,
+      px: parseFloat(el.children[1].style.left) / 60,
+    }));
+  const waitFrame = async (frame) => {
+    await page.waitForFunction(
+      (f) =>
+        document
+          .querySelector('[aria-label="Timeline playhead"]')
+          .getAttribute("aria-valuenow") === String(f),
+      frame,
+    );
+    assert.equal(await playhead.getAttribute("aria-valuenow"), String(frame));
+  };
+  const canvasFrame = () =>
+    page.getByLabel("Video preview").evaluate((el) => el.toDataURL());
+  let ruler = await coordinates();
+  await page.mouse.move(ruler.left + 15 * ruler.px, ruler.top + 12);
+  await page.mouse.down();
+  await waitFrame(15);
+  await page.waitForTimeout(250);
+  const earlyFrame = await canvasFrame();
+  await page.mouse.move(ruler.left + 60 * ruler.px, ruler.top + 70, {
+    steps: 12,
+  });
+  await waitFrame(60);
+  await page.waitForFunction(
+    (before) =>
+      document.querySelector('[aria-label="Video preview"]').toDataURL() !==
+      before,
+    earlyFrame,
+  );
+  assert.notEqual(
+    await canvasFrame(),
+    earlyFrame,
+    "Video preview changes before releasing the scrub",
+  );
+  await page.mouse.up();
+  const handle = await playhead.boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(ruler.left + 30 * ruler.px, ruler.top + 60, {
+    steps: 8,
+  });
+  await waitFrame(30);
+  await page.mouse.move(ruler.left - 20, ruler.top + 60);
+  await waitFrame(0);
+  await page.mouse.move(ruler.left + 200 * ruler.px, ruler.top + 60);
+  await waitFrame(89);
+  await page.mouse.up();
+  await page
+    .locator(".heis-timeline-scroll")
+    .evaluate((el) => (el.scrollLeft = 30));
+  ruler = await coordinates();
+  await page.mouse.move(ruler.left + 30 * ruler.px, ruler.top + 12);
+  await page.mouse.down();
+  await page.mouse.move(ruler.left + 45 * ruler.px, ruler.top + 65, {
+    steps: 5,
+  });
+  await waitFrame(45);
+  await page.mouse.up();
+  await page
+    .locator(".heis-timeline-scroll")
+    .evaluate((el) => (el.scrollLeft = 0));
+  await playhead.focus();
+  await page.keyboard.press("ArrowLeft");
+  await waitFrame(44);
+  await page.keyboard.press("Home");
+  await waitFrame(0);
   await page.getByRole("button", { name: "T Title", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Text", exact: true })

@@ -570,19 +570,28 @@
 .heis-trim.right {
   right: 0;
 }
+.heis-ruler > div.heis-scrub-ruler {
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
 .heis-playhead {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: #d36c70;
+  width: 12px;
+  transform: translateX(-6px);
+  background: linear-gradient(to right, transparent 5px, #d36c70 5px, #d36c70 6px, transparent 6px);
   z-index: 5;
-  pointer-events: none;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
 }
+.heis-playhead:focus-visible { outline: 1px solid #eaa0a3; }
 .heis-playhead span {
   position: absolute;
   top: 0;
-  left: -5px;
+  left: 1px;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-top: 8px solid #d36c70;

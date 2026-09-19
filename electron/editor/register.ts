@@ -3,11 +3,10 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
-  net,
   protocol,
   shell,
 } from "electron";
-import { pathToFileURL } from "node:url";
+import { projectMediaResponse } from "./mediaResponse";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { EditorService } from "./service";
@@ -71,7 +70,7 @@ export function registerEditor(): EditorService {
     },
   });
   protocol.handle("heis-project", (request) =>
-    net.fetch(pathToFileURL(service.resolveMedia(request.url)).toString()),
+    projectMediaResponse(service.resolveMedia(request.url), request),
   );
   const handlers: Record<string, (...args: any[]) => unknown> = {
     workflowOpen: (projectId?:string,id?:string) => {const target=projectId||service.library().projectId;const selected=id||service.workflows.list(target)[0]?.id||service.workflows.create(target).definition.id;service.workflows.resumeProject(target);return service.workflows.snapshot(target,selected);},
