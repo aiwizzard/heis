@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
     const { jobId } = await params;
     const result = await client.from("generation_jobs").select("*, media_assets(*)").eq("id", jobId).single();
     if (result.error) return NextResponse.json({ error: { code: "JOB_NOT_FOUND", message: "Generation job not found." } }, { status: 404 });
-    const mediaAssets = await Promise.all((result.data.media_assets ?? []).map(async (asset: any) => ({
+    const mediaAssets = await Promise.all((result.data.media_assets ?? []).sort((a: any, b: any) => a.object_key.localeCompare(b.object_key)).map(async (asset: any) => ({
       id: asset.id,
       kind: asset.kind,
       url: await createDownloadUrl(asset.object_key),

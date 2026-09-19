@@ -1,5 +1,6 @@
 import { creditsForProviderCost } from "@heis/core";
-import { copyRemoteAsset } from "./r2";
+import { copyRemoteAsset, storeLayerAsset } from "./r2";
+import { fetchLayeredImage } from "./layeredImage";
 import { createAdminClient } from "./supabase";
 
 function output(data: Record<string, any>): { url?: string; kind: string } {
@@ -35,7 +36,19 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       const settledCredits = creditsForProviderCost(providerCost);
       const asset = output(data);
       if (!asset.url) throw new Error("Provider returned no output");
-      if (asset.url) {
+      if (job.operation === "decompose-layers") {
+        const layers = await fetchLayeredImage(asset.url);
+        for (let index = 0; index < layers.length; index++) {
+          const source = `${asset.url}#layer=${index}`;
+          const existing = await admin.from("media_assets").select("id").eq("job_id", job.id).eq("source_url", source).maybeSingle();
+          if (existing.error) throw existing.error;
+          if (existing.data) continue;
+          const objectKey = await storeLayerAsset({ userId: job.user_id, jobId: job.id, index, body: layers[index] });
+          const stored = await admin.rpc("finalize_cloud_output", { p_user_id: job.user_id, p_job_id: job.id, p_kind: "image", p_object_key: objectKey, p_source_url: source });
+          if (stored.error) throw stored.error;
+        }
+        await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
+      } else if (asset.url) {
         const existingAsset = await admin.from("media_assets").select("id").eq("job_id", job.id).eq("source_url", asset.url).maybeSingle();
         if (!existingAsset.data) {
           const copied = await copyRemoteAsset({ userId: job.user_id, jobId: job.id, sourceUrl: asset.url, kind: asset.kind });

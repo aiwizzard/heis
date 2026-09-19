@@ -40,5 +40,15 @@ export function validateGenerationRequest(request: GenerationRequest): ModelCapa
   if (request.operation !== capability.operation) throw new Error("MODEL_OPERATION_MISMATCH");
   if (!request.billing?.idempotencyKey || !request.billing.accountId) throw new Error("INVALID_BILLING_CONTEXT");
   for (const parameter of capability.parameters) validateParameter(parameter, request.inputs[parameter.name]);
+  if (request.operation === "decompose-layers") {
+    const allowed = new Set(["positivePrompt", "inputs", "settings", "outputFormat"]);
+    if (Object.keys(request.inputs).some((key) => !allowed.has(key))) throw new Error("UNSUPPORTED_LAYER_PARAMETER");
+    const inputs = request.inputs.inputs as Record<string, unknown>;
+    const settings = request.inputs.settings as Record<string, unknown>;
+    const images = inputs.referenceImages;
+    if (Object.keys(inputs).some((key) => key !== "referenceImages") || !Array.isArray(images) || images.length !== 1 || typeof images[0] !== "string" || !/^https:\/\//.test(images[0])) throw new Error("LAYERS_REQUIRE_ONE_HTTPS_IMAGE");
+    if (Object.keys(settings).some((key) => key !== "layers") || !Number.isInteger(settings.layers) || Number(settings.layers) < 2 || Number(settings.layers) > 10) throw new Error("LAYERS_COUNT_MUST_BE_2_TO_10");
+    if (String(request.inputs.positivePrompt).length > 32000) throw new Error("LAYER_PROMPT_TOO_LONG");
+  }
   return capability;
 }

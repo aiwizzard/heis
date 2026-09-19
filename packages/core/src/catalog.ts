@@ -2,6 +2,22 @@ import type { ModelCapability } from "./types";
 
 export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
   {
+    id: "heis-image-layers",
+    provider: "runware",
+    providerModelId: "alibaba:qwen-image@layered",
+    displayName: "Qwen Image Layers",
+    operation: "decompose-layers",
+    outputKind: "image",
+    maximumEstimatedCostUsd: 0.30,
+    enabled: true,
+    parameters: [
+      { name: "positivePrompt", type: "string", required: true },
+      { name: "inputs", type: "object", required: true },
+      { name: "settings", type: "object", required: true },
+      { name: "outputFormat", type: "enum", options: ["TIFF"], required: true },
+    ],
+  },
+  {
     id: "heis-image-standard",
     provider: "runware",
     providerModelId: "runware:101@1",

@@ -35,6 +35,13 @@ export async function copyRemoteAsset(input: { userId: string; jobId: string; so
   await client().send(new PutObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey, Body: body, ContentType: contentType, Metadata: { owner: input.userId, job: input.jobId } }));
   return { objectKey, contentType, sizeBytes: body.byteLength };
 }
+export async function storeLayerAsset(input: { userId: string; jobId: string; index: number; body: Buffer }) {
+  const objectKey = `users/${input.userId}/jobs/${input.jobId}/layer-${String(input.index).padStart(2, "0")}.png`;
+  const reservation = await createAdminClient().rpc("reserve_cloud_storage", { p_user_id: input.userId, p_object_key: objectKey, p_mime_type: "image/png", p_size_bytes: input.body.length });
+  if (reservation.error) throw new Error(reservation.error.message);
+  await client().send(new PutObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey, Body: input.body, ContentType: "image/png", Metadata: { owner: input.userId, job: input.jobId } }));
+  return objectKey;
+}
 export async function createDownloadUrl(objectKey: string) {
   return getSignedUrl(client(), new GetObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey }), { expiresIn: 900 });
 }
