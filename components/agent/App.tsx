@@ -9,7 +9,6 @@ import {
   PanelLeft,
   Plus,
   Search,
-  Sparkles,
   Sun,
   Moon,
   X,
@@ -506,16 +505,7 @@ export function App({ sidebarTarget, projectDirectory, design, workflow, compact
         ) : (
           <div className="content">
             <section className="welcome">
-              <div className="welcome-mark">
-                <Sparkles size={27} strokeWidth={1.4} />
-              </div>
-              <div className="eyebrow">
-                A LITTLE SPACE FOR YOUR NEXT BIG IDEA
-              </div>
               <h1>{workflow ? "What workflow would you like to build?" : design ? "What would you like to design?" : "What would you like to build?"}</h1>
-              <p className="subtitle">
-                {workflow ? "Build a graph with your project media. Review spending before running." : design ? "Create visual directions and refine them with your references." : "Your project. Your Codex. One workspace."}
-              </p>
               {composer}
               <div className="quick-actions">
                 <button
