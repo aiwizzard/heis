@@ -85,6 +85,43 @@ try {
   await page
     .getByRole("button", { name: "＋ New project", exact: true })
     .click();
+  const assistantPanel = page.getByRole("complementary", {
+    name: "Editing assistant",
+  });
+  await assistantPanel.waitFor();
+  const assistantBounds = await assistantPanel.boundingBox();
+  const timelineBounds = await page.locator(".heis-timeline").boundingBox();
+  assert.ok(
+    assistantBounds.x < timelineBounds.x,
+    "Assistant is left of timeline",
+  );
+  assert.ok(
+    Math.abs(
+      assistantBounds.y +
+        assistantBounds.height -
+        timelineBounds.y -
+        timelineBounds.height,
+    ) < 2,
+    "Assistant spans the full editor height",
+  );
+  const divider = await page.getByLabel("Resize assistant").boundingBox();
+  await page.mouse.move(divider.x + 2, divider.y + 60);
+  await page.mouse.down();
+  await page.mouse.move(divider.x + 42, divider.y + 60);
+  await page.mouse.up();
+  assert.ok(
+    (await assistantPanel.boundingBox()).width > assistantBounds.width + 30,
+  );
+  await page
+    .getByRole("button", { name: "Collapse assistant", exact: true })
+    .click();
+  assert.equal(await assistantPanel.isVisible(), false);
+  await page.getByRole("button", { name: "Assistant", exact: true }).click();
+  assert.equal(await assistantPanel.isVisible(), true);
+  assert.equal(await page.locator(".heis-inspector").isVisible(), true);
+  await page
+    .getByRole("button", { name: "Collapse assistant", exact: true })
+    .click();
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page
     .getByText("footage.mp4", { exact: true })
@@ -187,22 +224,18 @@ try {
     .getByRole("button", { name: "＋ video track", exact: true })
     .click();
   await page.getByRole("button", { name: "Move track Video 2" }).waitFor();
-  const sourceRow = page
-    .locator(".heis-track")
-    .filter({
-      has: page.getByRole("button", {
-        name: "Move track Video 1",
-        exact: true,
-      }),
-    });
-  const destinationRow = page
-    .locator(".heis-track")
-    .filter({
-      has: page.getByRole("button", {
-        name: "Move track Video 2",
-        exact: true,
-      }),
-    });
+  const sourceRow = page.locator(".heis-track").filter({
+    has: page.getByRole("button", {
+      name: "Move track Video 1",
+      exact: true,
+    }),
+  });
+  const destinationRow = page.locator(".heis-track").filter({
+    has: page.getByRole("button", {
+      name: "Move track Video 2",
+      exact: true,
+    }),
+  });
   const destinationId = await destinationRow.getAttribute("data-track-row");
   const originalClip = sourceRow.locator(".heis-timeline-clip");
   const clipId = await originalClip.getAttribute("data-clip-id");
@@ -216,6 +249,15 @@ try {
     return { a, b };
   };
   const { a, b } = await dragClip();
+  await page.waitForFunction(
+    ({ id, y }) => {
+      const box = document
+        .querySelector(`[data-clip-id="${id}"]`)
+        ?.getBoundingClientRect();
+      return box && Math.abs(box.y - y) < 4;
+    },
+    { id: clipId, y: b.y + 5 },
+  );
   const movingBox = await page
     .locator(`[data-clip-id="${clipId}"]`)
     .boundingBox();
@@ -334,7 +376,11 @@ try {
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "Play or pause" }).click();
   await mkdir("test-results/editor", { recursive: true });
+  await page.getByRole("button", { name: "Assistant", exact: true }).click();
   await page.screenshot({ path: "test-results/editor/editor.png" });
+  await page
+    .getByRole("button", { name: "Collapse assistant", exact: true })
+    .click();
   await page.getByRole("button", { name: "Export ↗", exact: true }).click();
   await page
     .getByRole("button", { name: "Show in Finder", exact: true })

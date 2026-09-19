@@ -43,11 +43,23 @@ function timecode(frame: number, rate: number) {
 function savedLayout() {
   try {
     return {
-      ...{ left: 280, right: 270, bottom: 300 },
+      ...{
+        left: 280,
+        right: 270,
+        bottom: 300,
+        assistant: 340,
+        assistantOpen: true,
+      },
       ...JSON.parse(localStorage.getItem("heis.editor.layout") || "{}"),
     };
   } catch {
-    return { left: 280, right: 270, bottom: 300 };
+    return {
+      left: 280,
+      right: 270,
+      bottom: 300,
+      assistant: 340,
+      assistantOpen: true,
+    };
   }
 }
 
@@ -64,7 +76,7 @@ export function EditorApp({
   const [error, setError] = useState(""),
     [tab, setTab] = useState("Media"),
     [tool, setTool] = useState<string | null>(null),
-    [assistant, setAssistant] = useState(false);
+    [assistant, setAssistant] = useState<boolean>(() => savedLayout().assistantOpen);
   const [frame, setFrame] = useState(0),
     [playing, setPlaying] = useState(false),
     [selection, setSelection] = useState<string[]>([]),
@@ -146,8 +158,11 @@ export function EditorApp({
     });
   }, [bridge, task, report]);
   useEffect(() => {
-    localStorage.setItem("heis.editor.layout", JSON.stringify(layout));
-  }, [layout]);
+    localStorage.setItem(
+      "heis.editor.layout",
+      JSON.stringify({ ...layout, assistantOpen: assistant }),
+    );
+  }, [layout, assistant]);
   useEffect(() => {
     if (!playing || !sequence) return;
     const started = performance.now(),
@@ -277,7 +292,10 @@ export function EditorApp({
       setSelection([]);
     }
   };
-  const resize = (side: "left" | "right" | "bottom", e: React.PointerEvent) => {
+  const resize = (
+    side: "left" | "right" | "bottom" | "assistant",
+    e: React.PointerEvent,
+  ) => {
     const initial = { ...layout },
       x = e.clientX,
       y = e.clientY;
@@ -285,11 +303,11 @@ export function EditorApp({
       setLayout({
         ...initial,
         [side]: Math.max(
-          side === "bottom" ? 180 : 200,
+          side === "bottom" ? 180 : side === "assistant" ? 280 : 200,
           Math.min(
             side === "bottom" ? 600 : 500,
             initial[side] +
-              (side === "left"
+              (side === "left" || side === "assistant"
                 ? event.clientX - x
                 : side === "right"
                   ? x - event.clientX
@@ -592,6 +610,7 @@ export function EditorApp({
       className="heis-editor"
       style={
         {
+          "--assistant": `${layout.assistant}px`,
           "--left": `${leftOpen ? layout.left : 0}px`,
           "--right": `${rightOpen ? layout.right : 0}px`,
           "--timeline": `${layout.bottom}px`,
@@ -658,10 +677,8 @@ export function EditorApp({
         </button>
         <button
           className={assistant ? "active" : ""}
-          onClick={() => {
-            setAssistant((v) => !v);
-            setRightOpen(true);
-          }}
+          aria-expanded={assistant}
+          onClick={() => setAssistant((v) => !v)}
         >
           Assistant
         </button>
@@ -678,860 +695,898 @@ export function EditorApp({
           Export ↗
         </button>
       </header>
-      <section className="heis-workspace">
-        <aside className="heis-media-panel" hidden={!leftOpen}>
-          <nav className="heis-panel-tabs">
-            {["Media", "Captions", "Audio", "Tools"].map((t) => (
-              <button
-                key={t}
-                className={tab === t ? "active" : ""}
-                onClick={() => setTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </nav>
-          {tab === "Media" || tab === "Audio" ? (
-            <>
-              <div className="heis-panel-toolbar">
-                <button
-                  onClick={() =>
-                    void task(() => bridge.importMedia(project.id))
-                  }
-                >
-                  Import
-                </button>
-                <button
-                  className={generation ? "active" : ""}
-                  onClick={() => setGeneration((v) => !v)}
-                >
-                  Generate
-                </button>
-                <button
-                  className={library ? "active" : ""}
-                  onClick={() => {
-                    if (library) setLibrary(null);
-                    else
-                      void task(async () => setLibrary(await bridge.library()));
-                  }}
-                >
-                  Library
-                </button>
-                <span>
-                  {
-                    project.assets.filter(
-                      (a) => tab === "Media" || a.kind === "audio",
-                    ).length
-                  }{" "}
-                  assets
-                </span>
-              </div>
-              {library ? (
-                <div className="heis-asset-grid">
-                  {library.assets.map((asset) => (
-                    <div className="heis-asset" key={asset.id}>
-                      {asset.thumbnailPath && (
-                        <img
-                          src={assetUrl(library.projectId, asset.thumbnailPath)}
-                          alt=""
-                        />
-                      )}
-                      <strong>{asset.name}</strong>
-                      <button
-                        onClick={() =>
-                          void task(async () => {
-                            await bridge.importLibrary(project.id, asset.id);
-                            setLibrary(null);
-                          })
-                        }
-                      >
-                        Use in project
-                      </button>
-                    </div>
-                  ))}
-                  {!library.assets.length && (
-                    <div className="heis-empty">
-                      Standalone creations appear here.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="heis-asset-grid">
-                  {project.assets
-                    .filter((a) => tab === "Media" || a.kind === "audio")
-                    .map((asset) => (
-                      <div
-                        className="heis-asset"
-                        key={asset.id}
-                        draggable={!asset.missing}
-                        onDragStart={(e) =>
-                          e.dataTransfer.setData(
-                            "application/heis-asset",
-                            asset.id,
-                          )
-                        }
-                      >
-                        <button
-                          aria-label="Add to timeline"
-                          title="Add to timeline"
-                          onDoubleClick={() => addAsset(asset)}
-                          onClick={() => setSelection([])}
-                        >
-                          {asset.thumbnailPath ? (
-                            <img
-                              src={assetUrl(project.id, asset.thumbnailPath)}
-                              alt=""
-                            />
-                          ) : (
-                            <div className="heis-audio-art">♫</div>
-                          )}
-                          <strong>{asset.name}</strong>
-                          <small>
-                            {asset.kind} · {asset.durationSeconds.toFixed(1)}s
-                          </small>
-                        </button>
-                        <div className="heis-asset-actions">
-                          <button
-                            disabled={asset.missing}
-                            onClick={() => addAsset(asset)}
-                          >
-                            ＋ Add
-                          </button>
-                          {asset.missing ? (
-                            <button
-                              onClick={() =>
-                                void task(() =>
-                                  bridge.relink(project.id, asset.id),
-                                )
-                              }
-                            >
-                              Relink
-                            </button>
-                          ) : (
-                            clip && (
-                              <button
-                                onClick={() => {
-                                  const shorter =
-                                    asset.kind !== "image" &&
-                                    Math.floor(asset.durationSeconds * rate) <
-                                      clip.duration;
-                                  if (
-                                    shorter &&
-                                    !window.confirm(
-                                      "This asset is shorter. Trim the selected clip to fit the new source?",
-                                    )
-                                  )
-                                    return;
-                                  if (clip.linkId) {
-                                    setError(
-                                      "Detach linked audio before replacing this clip.",
-                                    );
-                                    return;
-                                  }
-                                  patch({
-                                    assetId: asset.id,
-                                    name: asset.name,
-                                    sourceIn: 0,
-                                    duration: shorter
-                                      ? Math.max(
-                                          1,
-                                          Math.floor(
-                                            asset.durationSeconds * rate,
-                                          ),
-                                        )
-                                      : clip.duration,
-                                    fadeIn: 0,
-                                    fadeOut: 0,
-                                  });
-                                }}
-                              >
-                                Replace
-                              </button>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  {!project.assets.length && (
-                    <div className="heis-empty">
-                      Import footage to start your edit.
-                      <br />
-                      Or generate something new.
-                    </div>
-                  )}
-                </div>
-              )}
-              {generation && generationApi ? (
-                <GeneratePanel api={generationApi} onAdvanced={setTool} />
-              ) : (
-                generation && (
-                  <div className="heis-generate">
-                    <strong>Create for this project</strong>
-                    <div>
-                      {["image", "video", "audio", "cinema"].map((id) => (
-                        <button key={id} onClick={() => setTool(id)}>
-                          {id === "cinema"
-                            ? "Cinema"
-                            : id[0].toUpperCase() + id.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                    <p>
-                      Results are saved to your media library. Add them to the
-                      timeline when ready.
-                    </p>
-                  </div>
-                )
-              )}
-            </>
-          ) : null}
-          {tab === "Captions" && (
-            <div className="heis-panel-content">
-              <h3>Tell the whole story.</h3>
-              <button
-                className="primary"
-                onClick={() =>
-                  void task(() =>
-                    bridge.transcribe(project.id, sequence.id, selection),
-                  )
-                }
-              >
-                Transcribe {selection.length ? "selection" : "dialogue"}
-              </button>
-              {(!runtime.whisper || !runtime.model) && (
-                <small>
-                  Requires the local Whisper runtime and base model.
-                </small>
-              )}
-              <button onClick={() => addText(true)}>＋ Manual caption</button>
-              <button
-                onClick={() =>
-                  void task(() =>
-                    bridge.importCaptions(project.id, sequence.id),
-                  )
-                }
-              >
-                Import SRT / VTT
-              </button>
-              <button
-                onClick={() =>
-                  void task(() =>
-                    bridge.exportCaptions(project.id, sequence.id),
-                  )
-                }
-              >
-                Export subtitles
-              </button>
-              {sequence.clips
-                .filter((c) =>
-                  sequence.tracks.some(
-                    (t) => t.id === c.trackId && t.kind === "caption",
-                  ),
-                )
-                .map((c) => (
-                  <button
-                    key={c.id}
-                    className="heis-caption-row"
-                    onClick={() => {
-                      setSelection([c.id]);
-                      setFrame(c.start);
-                    }}
-                  >
-                    <small>
-                      {timecode(c.start, rate)}{" "}
-                      {c.needsReview ? " · Review timing" : ""}
-                    </small>
-                    {c.text?.text}
-                  </button>
-                ))}
-            </div>
-          )}
-          {tab === "Tools" && (
-            <div className="heis-panel-content">
-              {editorTools.map((t) => (
-                <button
-                  key={t.id}
-                  disabled={!t.available}
-                  title={t.note || t.name}
-                  onClick={() => setTool(t.id)}
-                >
-                  <span>{t.name}</span>
-                  <small>{t.available ? t.group : t.note}</small>
-                </button>
-              ))}
-            </div>
-          )}
-          {jobsView}
-        </aside>
-        <div
-          className="heis-resize vertical"
-          onPointerDown={(e) => resize("left", e)}
-        />
-        <div className="heis-preview">
-          <div className="heis-preview-heading">
-            <span>{sequence.name}</span>
-            <small>
-              {sequence.width} × {sequence.height} ·{" "}
-              {rate.toFixed(rate % 1 ? 2 : 0)} fps
-            </small>
-          </div>
-          <div className="heis-preview-surface">
-            <Preview
-              project={project}
-              sequence={sequence}
-              frame={frame}
-              playing={playing}
-              onMeter={onMeter}
-            />
-            {!sequence.clips.length && (
-              <div className="heis-preview-empty">
-                <span>▤</span>
-                <h2>Your story starts here.</h2>
-                <p>Drag media onto the timeline to begin.</p>
-                <button
-                  onClick={() =>
-                    void task(() => bridge.importMedia(project.id))
-                  }
-                >
-                  Import footage
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="heis-transport">
-            <code>
-              {timecode(frame, rate)} <span>/ {timecode(duration, rate)}</span>
-            </code>
-            <div>
-              <button
-                aria-label="Start"
-                title="Start"
-                onClick={() => {
-                  setPlaying(false);
-                  setFrame(0);
-                }}
-              >
-                ⏮
-              </button>
-              <button
-                aria-label="Previous frame"
-                title="Previous frame"
-                onClick={() => {
-                  setPlaying(false);
-                  setFrame((v) => Math.max(0, v - 1));
-                }}
-              >
-                ◂
-              </button>
-              <button
-                aria-label="Play or pause"
-                title="Play or pause"
-                className="heis-play"
-                onClick={() => {
-                  if (frame >= duration - 1) setFrame(0);
-                  setPlaying((v) => !v);
-                }}
-              >
-                {playing ? "Ⅱ" : "▶"}
-              </button>
-              <button
-                aria-label="Next frame"
-                title="Next frame"
-                onClick={() => {
-                  setPlaying(false);
-                  setFrame((v) => Math.min(duration - 1, v + 1));
-                }}
-              >
-                ▸
-              </button>
-            </div>
-            <meter title="Audio output" min={0} max={1} value={meter} />
+      <div className="heis-editor-body">
+        <aside
+          className="heis-assistant-panel"
+          aria-label="Editing assistant"
+          hidden={!assistant}
+        >
+          <header className="heis-assistant-heading">
+            <strong>Assistant</strong>
             <button
-              onClick={() => {
-                const canvas = document.querySelector(".heis-preview canvas");
-                void canvas?.requestFullscreen();
-              }}
-            >
-              Fit ⛶
-            </button>
-          </div>
-        </div>
-        <div
-          className="heis-resize vertical"
-          onPointerDown={(e) => resize("right", e)}
-        />
-        <aside className="heis-inspector" hidden={!rightOpen}>
-          <nav className="heis-panel-tabs">
-            <button
-              className={!assistant ? "active" : ""}
+              aria-label="Collapse assistant"
               onClick={() => setAssistant(false)}
             >
-              Inspector
+              ‹
             </button>
-            <button
-              className={assistant ? "active" : ""}
-              onClick={() => setAssistant(true)}
-            >
-              Assistant
-            </button>
-          </nav>
-          {assistant ? (
-            <div className="heis-assistant">
-              {renderAssistant(snapshot.directory)}
-            </div>
-          ) : (
-            <div className="heis-panel-content">
-              {clip ? (
+          </header>
+          <div className="heis-assistant">
+            {renderAssistant(snapshot.directory)}
+          </div>
+        </aside>
+        {assistant && (
+          <div
+            className="heis-resize vertical"
+            aria-label="Resize assistant"
+            onPointerDown={(e) => resize("assistant", e)}
+          />
+        )}
+        <div className="heis-editing-area">
+          <section className="heis-workspace">
+            <aside className="heis-media-panel" hidden={!leftOpen}>
+              <nav className="heis-panel-tabs">
+                {["Media", "Captions", "Audio", "Tools"].map((t) => (
+                  <button
+                    key={t}
+                    className={tab === t ? "active" : ""}
+                    onClick={() => setTab(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </nav>
+              {tab === "Media" || tab === "Audio" ? (
                 <>
-                  <h3>{clip.name}</h3>
-                  <small>
-                    {selection.length > 1
-                      ? `${selection.length} selected · inspecting first clip`
-                      : "Clip properties"}
-                  </small>
-                  <Field
-                    label="Start (frames)"
-                    value={clip.start}
-                    min={0}
-                    onChange={(v) => patch({ start: Math.round(v) })}
-                  />
-                  <Field
-                    label="Duration (frames)"
-                    value={clip.duration}
-                    min={1}
-                    onChange={(v) => patch({ duration: Math.round(v) })}
-                  />
-                  {clip.assetId && (
-                    <Field
-                      label="Source in (frames)"
-                      value={clip.sourceIn}
-                      min={0}
-                      onChange={(v) => patch({ sourceIn: Math.round(v) })}
-                    />
-                  )}
-                  {clip.text && (
-                    <>
-                      <textarea
-                        aria-label="Text"
-                        key={`${clip.id}-text`}
-                        defaultValue={clip.text.text}
-                        onBlur={(e) =>
-                          patch({
-                            text: { ...clip.text!, text: e.target.value },
-                          })
-                        }
-                      />
-                      <Field
-                        label="Font size"
-                        value={clip.text.fontSize}
-                        min={8}
-                        max={500}
-                        onChange={(v) =>
-                          patch({ text: { ...clip.text!, fontSize: v } })
-                        }
-                      />
-                      <label>
-                        Font
-                        <select
-                          value={clip.text.fontFamily}
-                          onChange={(e) =>
-                            patch({
-                              text: {
-                                ...clip.text!,
-                                fontFamily: e.target.value,
-                              },
-                            })
-                          }
-                        >
-                          {[
-                            "Heis Sans",
-                            "Arial",
-                            "Georgia",
-                            "Times New Roman",
-                            "monospace",
-                          ].map((font) => (
-                            <option key={font} value={font}>
-                              {font}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Color
-                        <input
-                          type="color"
-                          value={clip.text.color}
-                          onChange={(e) =>
-                            patch({
-                              text: { ...clip.text!, color: e.target.value },
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Background
-                        <input
-                          aria-label="Text background"
-                          defaultValue={clip.text.background}
-                          key={`${clip.id}-bg`}
-                          onBlur={(e) =>
-                            patch({
-                              text: {
-                                ...clip.text!,
-                                background: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Alignment
-                        <select
-                          value={clip.text.align}
-                          onChange={(e) =>
-                            patch({
-                              text: {
-                                ...clip.text!,
-                                align: e.target.value as
-                                  | "left"
-                                  | "center"
-                                  | "right",
-                              },
-                            })
-                          }
-                        >
-                          {["left", "center", "right"].map((v) => (
-                            <option key={v}>{v}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </>
-                  )}
-                  <h4>Transform</h4>
-                  <Field
-                    label="X (%)"
-                    value={clip.x * 100}
-                    onChange={(v) => patch({ x: v / 100 })}
-                  />
-                  <Field
-                    label="Y (%)"
-                    value={clip.y * 100}
-                    onChange={(v) => patch({ y: v / 100 })}
-                  />
-                  <Field
-                    label="Scale (%)"
-                    value={clip.scale * 100}
-                    min={1}
-                    max={2000}
-                    onChange={(v) => patch({ scale: v / 100 })}
-                  />
-                  <Field
-                    label="Rotation"
-                    value={clip.rotation}
-                    onChange={(v) => patch({ rotation: v })}
-                  />
-                  <Field
-                    label="Opacity (%)"
-                    value={clip.opacity * 100}
-                    min={0}
-                    max={100}
-                    onChange={(v) => patch({ opacity: v / 100 })}
-                  />
-                  <label>
-                    Sizing
-                    <select
-                      value={clip.fit}
-                      onChange={(e) =>
-                        patch({ fit: e.target.value as "fit" | "fill" })
+                  <div className="heis-panel-toolbar">
+                    <button
+                      onClick={() =>
+                        void task(() => bridge.importMedia(project.id))
                       }
                     >
-                      <option value="fit">Fit</option>
-                      <option value="fill">Fill</option>
-                    </select>
-                  </label>
-                  {(["left", "right", "top", "bottom"] as const).map((side) => (
-                    <Field
-                      key={side}
-                      label={`Crop ${side} (%)`}
-                      value={clip.crop[side] * 100}
-                      min={0}
-                      max={99}
-                      onChange={(v) =>
-                        patch({ crop: { ...clip.crop, [side]: v / 100 } })
-                      }
-                    />
-                  ))}
-                  <h4>Audio and fades</h4>
-                  <Field
-                    label="Volume (%)"
-                    value={clip.volume * 100}
-                    min={0}
-                    max={400}
-                    onChange={(v) => patch({ volume: v / 100 })}
-                  />
-                  <label>
-                    Mute
-                    <input
-                      type="checkbox"
-                      checked={clip.muted}
-                      onChange={(e) => patch({ muted: e.target.checked })}
-                    />
-                  </label>
-                  <Field
-                    label="Fade in (frames)"
-                    value={clip.fadeIn}
-                    min={0}
-                    onChange={(v) => patch({ fadeIn: Math.round(v) })}
-                  />
-                  <Field
-                    label="Fade out (frames)"
-                    value={clip.fadeOut}
-                    min={0}
-                    onChange={(v) => patch({ fadeOut: Math.round(v) })}
-                  />
-                  <button onClick={transition}>
-                    Cross dissolve with previous
-                  </button>
-                  {clip.linkId && (
-                    <button onClick={() => patch({ linkId: "" })}>
-                      Detach linked audio
+                      Import
                     </button>
-                  )}
-                  <h4>Clip tools</h4>
-                  {editorTools
-                    .filter((t) => t.group === "Clip" && t.available)
-                    .map((t) => (
-                      <button key={t.id} onClick={() => setTool(t.id)}>
-                        {t.name} ↗
-                      </button>
-                    ))}
-                </>
-              ) : (
-                <>
-                  <h3>Project settings</h3>
-                  <label>
-                    Canvas
-                    <select
-                      value={`${sequence.width}x${sequence.height}`}
-                      onChange={(e) => {
-                        const [width, height] = e.target.value
-                          .split("x")
-                          .map(Number);
-                        void command("Canvas preset", [
-                          {
-                            type: "sequence.update",
-                            id: sequence.id,
-                            patch: { width, height },
-                          },
-                        ]);
+                    <button
+                      className={generation ? "active" : ""}
+                      onClick={() => setGeneration((v) => !v)}
+                    >
+                      Generate
+                    </button>
+                    <button
+                      className={library ? "active" : ""}
+                      onClick={() => {
+                        if (library) setLibrary(null);
+                        else
+                          void task(async () =>
+                            setLibrary(await bridge.library()),
+                          );
                       }}
                     >
-                      <option value="1920x1080">Landscape · 1920 × 1080</option>
-                      <option value="1080x1920">Portrait · 1080 × 1920</option>
-                      <option value="1080x1080">Square · 1080 × 1080</option>
-                      {!["1920x1080", "1080x1920", "1080x1080"].includes(
-                        `${sequence.width}x${sequence.height}`,
-                      ) && (
-                        <option value={`${sequence.width}x${sequence.height}`}>
-                          Custom
-                        </option>
+                      Library
+                    </button>
+                    <span>
+                      {
+                        project.assets.filter(
+                          (a) => tab === "Media" || a.kind === "audio",
+                        ).length
+                      }{" "}
+                      assets
+                    </span>
+                  </div>
+                  {library ? (
+                    <div className="heis-asset-grid">
+                      {library.assets.map((asset) => (
+                        <div className="heis-asset" key={asset.id}>
+                          {asset.thumbnailPath && (
+                            <img
+                              src={assetUrl(
+                                library.projectId,
+                                asset.thumbnailPath,
+                              )}
+                              alt=""
+                            />
+                          )}
+                          <strong>{asset.name}</strong>
+                          <button
+                            onClick={() =>
+                              void task(async () => {
+                                await bridge.importLibrary(
+                                  project.id,
+                                  asset.id,
+                                );
+                                setLibrary(null);
+                              })
+                            }
+                          >
+                            Use in project
+                          </button>
+                        </div>
+                      ))}
+                      {!library.assets.length && (
+                        <div className="heis-empty">
+                          Standalone creations appear here.
+                        </div>
                       )}
-                    </select>
-                  </label>
-                  <Field
-                    label="Width"
-                    value={sequence.width}
-                    min={2}
-                    max={7680}
-                    step={2}
-                    onChange={(v) =>
-                      void command("Canvas width", [
-                        {
-                          type: "sequence.update",
-                          id: sequence.id,
-                          patch: { width: v },
-                        },
-                      ])
+                    </div>
+                  ) : (
+                    <div className="heis-asset-grid">
+                      {project.assets
+                        .filter((a) => tab === "Media" || a.kind === "audio")
+                        .map((asset) => (
+                          <div
+                            className="heis-asset"
+                            key={asset.id}
+                            draggable={!asset.missing}
+                            onDragStart={(e) =>
+                              e.dataTransfer.setData(
+                                "application/heis-asset",
+                                asset.id,
+                              )
+                            }
+                          >
+                            <button
+                              aria-label="Add to timeline"
+                              title="Add to timeline"
+                              onDoubleClick={() => addAsset(asset)}
+                              onClick={() => setSelection([])}
+                            >
+                              {asset.thumbnailPath ? (
+                                <img
+                                  src={assetUrl(
+                                    project.id,
+                                    asset.thumbnailPath,
+                                  )}
+                                  alt=""
+                                />
+                              ) : (
+                                <div className="heis-audio-art">♫</div>
+                              )}
+                              <strong>{asset.name}</strong>
+                              <small>
+                                {asset.kind} ·{" "}
+                                {asset.durationSeconds.toFixed(1)}s
+                              </small>
+                            </button>
+                            <div className="heis-asset-actions">
+                              <button
+                                disabled={asset.missing}
+                                onClick={() => addAsset(asset)}
+                              >
+                                ＋ Add
+                              </button>
+                              {asset.missing ? (
+                                <button
+                                  onClick={() =>
+                                    void task(() =>
+                                      bridge.relink(project.id, asset.id),
+                                    )
+                                  }
+                                >
+                                  Relink
+                                </button>
+                              ) : (
+                                clip && (
+                                  <button
+                                    onClick={() => {
+                                      const shorter =
+                                        asset.kind !== "image" &&
+                                        Math.floor(
+                                          asset.durationSeconds * rate,
+                                        ) < clip.duration;
+                                      if (
+                                        shorter &&
+                                        !window.confirm(
+                                          "This asset is shorter. Trim the selected clip to fit the new source?",
+                                        )
+                                      )
+                                        return;
+                                      if (clip.linkId) {
+                                        setError(
+                                          "Detach linked audio before replacing this clip.",
+                                        );
+                                        return;
+                                      }
+                                      patch({
+                                        assetId: asset.id,
+                                        name: asset.name,
+                                        sourceIn: 0,
+                                        duration: shorter
+                                          ? Math.max(
+                                              1,
+                                              Math.floor(
+                                                asset.durationSeconds * rate,
+                                              ),
+                                            )
+                                          : clip.duration,
+                                        fadeIn: 0,
+                                        fadeOut: 0,
+                                      });
+                                    }}
+                                  >
+                                    Replace
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      {!project.assets.length && (
+                        <div className="heis-empty">
+                          Import footage to start your edit.
+                          <br />
+                          Or generate something new.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {generation && generationApi ? (
+                    <GeneratePanel api={generationApi} onAdvanced={setTool} />
+                  ) : (
+                    generation && (
+                      <div className="heis-generate">
+                        <strong>Create for this project</strong>
+                        <div>
+                          {["image", "video", "audio", "cinema"].map((id) => (
+                            <button key={id} onClick={() => setTool(id)}>
+                              {id === "cinema"
+                                ? "Cinema"
+                                : id[0].toUpperCase() + id.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                        <p>
+                          Results are saved to your media library. Add them to
+                          the timeline when ready.
+                        </p>
+                      </div>
+                    )
+                  )}
+                </>
+              ) : null}
+              {tab === "Captions" && (
+                <div className="heis-panel-content">
+                  <h3>Tell the whole story.</h3>
+                  <button
+                    className="primary"
+                    onClick={() =>
+                      void task(() =>
+                        bridge.transcribe(project.id, sequence.id, selection),
+                      )
                     }
-                  />
-                  <Field
-                    label="Height"
-                    value={sequence.height}
-                    min={2}
-                    max={7680}
-                    step={2}
-                    onChange={(v) =>
-                      void command("Canvas height", [
-                        {
-                          type: "sequence.update",
-                          id: sequence.id,
-                          patch: { height: v },
-                        },
-                      ])
+                  >
+                    Transcribe {selection.length ? "selection" : "dialogue"}
+                  </button>
+                  {(!runtime.whisper || !runtime.model) && (
+                    <small>
+                      Requires the local Whisper runtime and base model.
+                    </small>
+                  )}
+                  <button onClick={() => addText(true)}>
+                    ＋ Manual caption
+                  </button>
+                  <button
+                    onClick={() =>
+                      void task(() =>
+                        bridge.importCaptions(project.id, sequence.id),
+                      )
                     }
-                  />
-                  <label>
-                    Frame rate
-                    <select
-                      disabled={sequence.clips.length > 0}
-                      value={sequence.frameRate.numerator}
-                      onChange={(e) =>
-                        void command("Frame rate", [
+                  >
+                    Import SRT / VTT
+                  </button>
+                  <button
+                    onClick={() =>
+                      void task(() =>
+                        bridge.exportCaptions(project.id, sequence.id),
+                      )
+                    }
+                  >
+                    Export subtitles
+                  </button>
+                  {sequence.clips
+                    .filter((c) =>
+                      sequence.tracks.some(
+                        (t) => t.id === c.trackId && t.kind === "caption",
+                      ),
+                    )
+                    .map((c) => (
+                      <button
+                        key={c.id}
+                        className="heis-caption-row"
+                        onClick={() => {
+                          setSelection([c.id]);
+                          setFrame(c.start);
+                        }}
+                      >
+                        <small>
+                          {timecode(c.start, rate)}{" "}
+                          {c.needsReview ? " · Review timing" : ""}
+                        </small>
+                        {c.text?.text}
+                      </button>
+                    ))}
+                </div>
+              )}
+              {tab === "Tools" && (
+                <div className="heis-panel-content">
+                  {editorTools.map((t) => (
+                    <button
+                      key={t.id}
+                      disabled={!t.available}
+                      title={t.note || t.name}
+                      onClick={() => setTool(t.id)}
+                    >
+                      <span>{t.name}</span>
+                      <small>{t.available ? t.group : t.note}</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {jobsView}
+            </aside>
+            <div
+              className="heis-resize vertical"
+              onPointerDown={(e) => resize("left", e)}
+            />
+            <div className="heis-preview">
+              <div className="heis-preview-heading">
+                <span>{sequence.name}</span>
+                <small>
+                  {sequence.width} × {sequence.height} ·{" "}
+                  {rate.toFixed(rate % 1 ? 2 : 0)} fps
+                </small>
+              </div>
+              <div className="heis-preview-surface">
+                <Preview
+                  project={project}
+                  sequence={sequence}
+                  frame={frame}
+                  playing={playing}
+                  onMeter={onMeter}
+                />
+                {!sequence.clips.length && (
+                  <div className="heis-preview-empty">
+                    <span>▤</span>
+                    <h2>Your story starts here.</h2>
+                    <p>Drag media onto the timeline to begin.</p>
+                    <button
+                      onClick={() =>
+                        void task(() => bridge.importMedia(project.id))
+                      }
+                    >
+                      Import footage
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="heis-transport">
+                <code>
+                  {timecode(frame, rate)}{" "}
+                  <span>/ {timecode(duration, rate)}</span>
+                </code>
+                <div>
+                  <button
+                    aria-label="Start"
+                    title="Start"
+                    onClick={() => {
+                      setPlaying(false);
+                      setFrame(0);
+                    }}
+                  >
+                    ⏮
+                  </button>
+                  <button
+                    aria-label="Previous frame"
+                    title="Previous frame"
+                    onClick={() => {
+                      setPlaying(false);
+                      setFrame((v) => Math.max(0, v - 1));
+                    }}
+                  >
+                    ◂
+                  </button>
+                  <button
+                    aria-label="Play or pause"
+                    title="Play or pause"
+                    className="heis-play"
+                    onClick={() => {
+                      if (frame >= duration - 1) setFrame(0);
+                      setPlaying((v) => !v);
+                    }}
+                  >
+                    {playing ? "Ⅱ" : "▶"}
+                  </button>
+                  <button
+                    aria-label="Next frame"
+                    title="Next frame"
+                    onClick={() => {
+                      setPlaying(false);
+                      setFrame((v) => Math.min(duration - 1, v + 1));
+                    }}
+                  >
+                    ▸
+                  </button>
+                </div>
+                <meter title="Audio output" min={0} max={1} value={meter} />
+                <button
+                  onClick={() => {
+                    const canvas = document.querySelector(
+                      ".heis-preview canvas",
+                    );
+                    void canvas?.requestFullscreen();
+                  }}
+                >
+                  Fit ⛶
+                </button>
+              </div>
+            </div>
+            <div
+              className="heis-resize vertical"
+              onPointerDown={(e) => resize("right", e)}
+            />
+            <aside className="heis-inspector" hidden={!rightOpen}>
+              <nav className="heis-panel-tabs">
+                <button className="active">Inspector</button>
+              </nav>
+              <div className="heis-panel-content">
+                {clip ? (
+                  <>
+                    <h3>{clip.name}</h3>
+                    <small>
+                      {selection.length > 1
+                        ? `${selection.length} selected · inspecting first clip`
+                        : "Clip properties"}
+                    </small>
+                    <Field
+                      label="Start (frames)"
+                      value={clip.start}
+                      min={0}
+                      onChange={(v) => patch({ start: Math.round(v) })}
+                    />
+                    <Field
+                      label="Duration (frames)"
+                      value={clip.duration}
+                      min={1}
+                      onChange={(v) => patch({ duration: Math.round(v) })}
+                    />
+                    {clip.assetId && (
+                      <Field
+                        label="Source in (frames)"
+                        value={clip.sourceIn}
+                        min={0}
+                        onChange={(v) => patch({ sourceIn: Math.round(v) })}
+                      />
+                    )}
+                    {clip.text && (
+                      <>
+                        <textarea
+                          aria-label="Text"
+                          key={`${clip.id}-text`}
+                          defaultValue={clip.text.text}
+                          onBlur={(e) =>
+                            patch({
+                              text: { ...clip.text!, text: e.target.value },
+                            })
+                          }
+                        />
+                        <Field
+                          label="Font size"
+                          value={clip.text.fontSize}
+                          min={8}
+                          max={500}
+                          onChange={(v) =>
+                            patch({ text: { ...clip.text!, fontSize: v } })
+                          }
+                        />
+                        <label>
+                          Font
+                          <select
+                            value={clip.text.fontFamily}
+                            onChange={(e) =>
+                              patch({
+                                text: {
+                                  ...clip.text!,
+                                  fontFamily: e.target.value,
+                                },
+                              })
+                            }
+                          >
+                            {[
+                              "Heis Sans",
+                              "Arial",
+                              "Georgia",
+                              "Times New Roman",
+                              "monospace",
+                            ].map((font) => (
+                              <option key={font} value={font}>
+                                {font}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Color
+                          <input
+                            type="color"
+                            value={clip.text.color}
+                            onChange={(e) =>
+                              patch({
+                                text: { ...clip.text!, color: e.target.value },
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Background
+                          <input
+                            aria-label="Text background"
+                            defaultValue={clip.text.background}
+                            key={`${clip.id}-bg`}
+                            onBlur={(e) =>
+                              patch({
+                                text: {
+                                  ...clip.text!,
+                                  background: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Alignment
+                          <select
+                            value={clip.text.align}
+                            onChange={(e) =>
+                              patch({
+                                text: {
+                                  ...clip.text!,
+                                  align: e.target.value as
+                                    | "left"
+                                    | "center"
+                                    | "right",
+                                },
+                              })
+                            }
+                          >
+                            {["left", "center", "right"].map((v) => (
+                              <option key={v}>{v}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    )}
+                    <h4>Transform</h4>
+                    <Field
+                      label="X (%)"
+                      value={clip.x * 100}
+                      onChange={(v) => patch({ x: v / 100 })}
+                    />
+                    <Field
+                      label="Y (%)"
+                      value={clip.y * 100}
+                      onChange={(v) => patch({ y: v / 100 })}
+                    />
+                    <Field
+                      label="Scale (%)"
+                      value={clip.scale * 100}
+                      min={1}
+                      max={2000}
+                      onChange={(v) => patch({ scale: v / 100 })}
+                    />
+                    <Field
+                      label="Rotation"
+                      value={clip.rotation}
+                      onChange={(v) => patch({ rotation: v })}
+                    />
+                    <Field
+                      label="Opacity (%)"
+                      value={clip.opacity * 100}
+                      min={0}
+                      max={100}
+                      onChange={(v) => patch({ opacity: v / 100 })}
+                    />
+                    <label>
+                      Sizing
+                      <select
+                        value={clip.fit}
+                        onChange={(e) =>
+                          patch({ fit: e.target.value as "fit" | "fill" })
+                        }
+                      >
+                        <option value="fit">Fit</option>
+                        <option value="fill">Fill</option>
+                      </select>
+                    </label>
+                    {(["left", "right", "top", "bottom"] as const).map(
+                      (side) => (
+                        <Field
+                          key={side}
+                          label={`Crop ${side} (%)`}
+                          value={clip.crop[side] * 100}
+                          min={0}
+                          max={99}
+                          onChange={(v) =>
+                            patch({ crop: { ...clip.crop, [side]: v / 100 } })
+                          }
+                        />
+                      ),
+                    )}
+                    <h4>Audio and fades</h4>
+                    <Field
+                      label="Volume (%)"
+                      value={clip.volume * 100}
+                      min={0}
+                      max={400}
+                      onChange={(v) => patch({ volume: v / 100 })}
+                    />
+                    <label>
+                      Mute
+                      <input
+                        type="checkbox"
+                        checked={clip.muted}
+                        onChange={(e) => patch({ muted: e.target.checked })}
+                      />
+                    </label>
+                    <Field
+                      label="Fade in (frames)"
+                      value={clip.fadeIn}
+                      min={0}
+                      onChange={(v) => patch({ fadeIn: Math.round(v) })}
+                    />
+                    <Field
+                      label="Fade out (frames)"
+                      value={clip.fadeOut}
+                      min={0}
+                      onChange={(v) => patch({ fadeOut: Math.round(v) })}
+                    />
+                    <button onClick={transition}>
+                      Cross dissolve with previous
+                    </button>
+                    {clip.linkId && (
+                      <button onClick={() => patch({ linkId: "" })}>
+                        Detach linked audio
+                      </button>
+                    )}
+                    <h4>Clip tools</h4>
+                    {editorTools
+                      .filter((t) => t.group === "Clip" && t.available)
+                      .map((t) => (
+                        <button key={t.id} onClick={() => setTool(t.id)}>
+                          {t.name} ↗
+                        </button>
+                      ))}
+                  </>
+                ) : (
+                  <>
+                    <h3>Project settings</h3>
+                    <label>
+                      Canvas
+                      <select
+                        value={`${sequence.width}x${sequence.height}`}
+                        onChange={(e) => {
+                          const [width, height] = e.target.value
+                            .split("x")
+                            .map(Number);
+                          void command("Canvas preset", [
+                            {
+                              type: "sequence.update",
+                              id: sequence.id,
+                              patch: { width, height },
+                            },
+                          ]);
+                        }}
+                      >
+                        <option value="1920x1080">
+                          Landscape · 1920 × 1080
+                        </option>
+                        <option value="1080x1920">
+                          Portrait · 1080 × 1920
+                        </option>
+                        <option value="1080x1080">Square · 1080 × 1080</option>
+                        {!["1920x1080", "1080x1920", "1080x1080"].includes(
+                          `${sequence.width}x${sequence.height}`,
+                        ) && (
+                          <option
+                            value={`${sequence.width}x${sequence.height}`}
+                          >
+                            Custom
+                          </option>
+                        )}
+                      </select>
+                    </label>
+                    <Field
+                      label="Width"
+                      value={sequence.width}
+                      min={2}
+                      max={7680}
+                      step={2}
+                      onChange={(v) =>
+                        void command("Canvas width", [
                           {
                             type: "sequence.update",
                             id: sequence.id,
-                            patch: {
-                              frameRate: {
-                                numerator: Number(e.target.value),
-                                denominator: 1,
-                              },
-                            },
+                            patch: { width: v },
                           },
                         ])
                       }
-                    >
-                      {[24, 25, 30, 50, 60].map((v) => (
-                        <option key={v} value={v}>
-                          {v} fps
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <small>Set frame rate before adding clips.</small>
-                  <h4>Tracks</h4>
-                  {(["video", "audio", "title", "caption"] as const).map(
-                    (kind) => (
-                      <button
-                        key={kind}
-                        onClick={() =>
-                          void command("Add track", [
+                    />
+                    <Field
+                      label="Height"
+                      value={sequence.height}
+                      min={2}
+                      max={7680}
+                      step={2}
+                      onChange={(v) =>
+                        void command("Canvas height", [
+                          {
+                            type: "sequence.update",
+                            id: sequence.id,
+                            patch: { height: v },
+                          },
+                        ])
+                      }
+                    />
+                    <label>
+                      Frame rate
+                      <select
+                        disabled={sequence.clips.length > 0}
+                        value={sequence.frameRate.numerator}
+                        onChange={(e) =>
+                          void command("Frame rate", [
                             {
-                              type: "track.add",
-                              sequenceId: sequence.id,
-                              track: newTrack(
-                                uuid(),
-                                kind,
-                                `${kind[0].toUpperCase() + kind.slice(1)} ${sequence.tracks.filter((t) => t.kind === kind).length + 1}`,
-                              ),
+                              type: "sequence.update",
+                              id: sequence.id,
+                              patch: {
+                                frameRate: {
+                                  numerator: Number(e.target.value),
+                                  denominator: 1,
+                                },
+                              },
                             },
                           ])
                         }
                       >
-                        ＋ {kind} track
-                      </button>
-                    ),
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </aside>
-      </section>
-      <div
-        className="heis-resize horizontal"
-        onPointerDown={(e) => resize("bottom", e)}
-      />
-      <section className="heis-timeline">
-        <div className="heis-sequence-tabs">
-          {project.sequences.map((s) => (
-            <button
-              key={s.id}
-              className={s.id === sequence.id ? "active" : ""}
-              onClick={() => {
-                setPlaying(false);
-                setFrame(0);
-                setSelection([]);
-                void command("Switch sequence", [
-                  { type: "sequence.select", id: s.id },
-                ]);
-              }}
-              onDoubleClick={() => {
-                const name = window.prompt("Sequence name", s.name);
-                if (name)
-                  void command("Rename sequence", [
-                    { type: "sequence.update", id: s.id, patch: { name } },
-                  ]);
-              }}
-            >
-              {s.name}
-            </button>
-          ))}
-          <button
-            aria-label="New sequence"
-            title="New sequence"
-            onClick={() => {
-              setFrame(0);
-              setSelection([]);
-              void command("New sequence", [
-                {
-                  type: "sequence.add",
-                  sequence: newSequence(
-                    uuid(),
-                    `Sequence ${project.sequences.length + 1}`,
-                  ),
-                },
-              ]);
-            }}
-          >
-            ＋
-          </button>
-        </div>
-        <div className="heis-timeline-toolbar">
-          <button
-            aria-label="Split (S)"
-            title="Split (S)"
-            disabled={!clip}
-            onClick={split}
-          >
-            ✂ Split
-          </button>
-          <button disabled={!clip} onClick={duplicate}>
-            Duplicate
-          </button>
-          <button disabled={!clip} onClick={() => remove()}>
-            Delete
-          </button>
-          <button disabled={!clip} onClick={() => remove(true)}>
-            Ripple delete
-          </button>
-          <button onClick={() => addText()}>T Title</button>
-          <button
-            className={snap ? "active" : ""}
-            onClick={() => setSnap((v) => !v)}
-          >
-            Snap
-          </button>
-          <div className="heis-bar-spacer" />
-          <small>Timeline zoom</small>
-          <input
-            aria-label="Timeline zoom"
-            type="range"
-            min={10}
-            max={200}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
+                        {[24, 25, 30, 50, 60].map((v) => (
+                          <option key={v} value={v}>
+                            {v} fps
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <small>Set frame rate before adding clips.</small>
+                    <h4>Tracks</h4>
+                    {(["video", "audio", "title", "caption"] as const).map(
+                      (kind) => (
+                        <button
+                          key={kind}
+                          onClick={() =>
+                            void command("Add track", [
+                              {
+                                type: "track.add",
+                                sequenceId: sequence.id,
+                                track: newTrack(
+                                  uuid(),
+                                  kind,
+                                  `${kind[0].toUpperCase() + kind.slice(1)} ${sequence.tracks.filter((t) => t.kind === kind).length + 1}`,
+                                ),
+                              },
+                            ])
+                          }
+                        >
+                          ＋ {kind} track
+                        </button>
+                      ),
+                    )}
+                  </>
+                )}
+              </div>
+            </aside>
+          </section>
+          <div
+            className="heis-resize horizontal"
+            onPointerDown={(e) => resize("bottom", e)}
           />
+          <section className="heis-timeline">
+            <div className="heis-sequence-tabs">
+              {project.sequences.map((s) => (
+                <button
+                  key={s.id}
+                  className={s.id === sequence.id ? "active" : ""}
+                  onClick={() => {
+                    setPlaying(false);
+                    setFrame(0);
+                    setSelection([]);
+                    void command("Switch sequence", [
+                      { type: "sequence.select", id: s.id },
+                    ]);
+                  }}
+                  onDoubleClick={() => {
+                    const name = window.prompt("Sequence name", s.name);
+                    if (name)
+                      void command("Rename sequence", [
+                        { type: "sequence.update", id: s.id, patch: { name } },
+                      ]);
+                  }}
+                >
+                  {s.name}
+                </button>
+              ))}
+              <button
+                aria-label="New sequence"
+                title="New sequence"
+                onClick={() => {
+                  setFrame(0);
+                  setSelection([]);
+                  void command("New sequence", [
+                    {
+                      type: "sequence.add",
+                      sequence: newSequence(
+                        uuid(),
+                        `Sequence ${project.sequences.length + 1}`,
+                      ),
+                    },
+                  ]);
+                }}
+              >
+                ＋
+              </button>
+            </div>
+            <div className="heis-timeline-toolbar">
+              <button
+                aria-label="Split (S)"
+                title="Split (S)"
+                disabled={!clip}
+                onClick={split}
+              >
+                ✂ Split
+              </button>
+              <button disabled={!clip} onClick={duplicate}>
+                Duplicate
+              </button>
+              <button disabled={!clip} onClick={() => remove()}>
+                Delete
+              </button>
+              <button disabled={!clip} onClick={() => remove(true)}>
+                Ripple delete
+              </button>
+              <button onClick={() => addText()}>T Title</button>
+              <button
+                className={snap ? "active" : ""}
+                onClick={() => setSnap((v) => !v)}
+              >
+                Snap
+              </button>
+              <div className="heis-bar-spacer" />
+              <small>Timeline zoom</small>
+              <input
+                aria-label="Timeline zoom"
+                type="range"
+                min={10}
+                max={200}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+              />
+            </div>
+            <Timeline
+              sequence={sequence}
+              frame={frame}
+              zoom={zoom}
+              snap={snap}
+              selection={selection}
+              setSelection={setSelection}
+              seek={(v) => {
+                setPlaying(false);
+                setFrame(v);
+              }}
+              onCommand={command}
+              trackPatch={trackPatch}
+              onDrop={(id, track, start) => {
+                const asset = project.assets.find((a) => a.id === id);
+                if (asset) addAsset(asset, track, start);
+              }}
+              assets={project.assets}
+            />
+          </section>
         </div>
-        <Timeline
-          sequence={sequence}
-          frame={frame}
-          zoom={zoom}
-          snap={snap}
-          selection={selection}
-          setSelection={setSelection}
-          seek={(v) => {
-            setPlaying(false);
-            setFrame(v);
-          }}
-          onCommand={command}
-          trackPatch={trackPatch}
-          onDrop={(id, track, start) => {
-            const asset = project.assets.find((a) => a.id === id);
-            if (asset) addAsset(asset, track, start);
-          }}
-          assets={project.assets}
-        />
-      </section>
+      </div>
       {error && (
         <div role="alert" className="heis-error">
           {error}
