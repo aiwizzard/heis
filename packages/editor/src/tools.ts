@@ -61,8 +61,8 @@ export const editorTools: EditorTool[] = [
     id: "clipping",
     name: "AI clipping",
     group: "Clip",
-    available: false,
-    note: "AI highlight ranking is not connected.",
+    available: true,
+    input: "video",
   },
   {
     id: "workflows",

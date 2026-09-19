@@ -26,7 +26,7 @@ Automatic captions download the multilingual Whisper base model on first use, va
 - Generation submission captures its destination project before awaiting the provider. Persistent polling and downloaded assets survive studio unmounts and project switches. A local standalone library receives creations made outside projects. Library assets can be copied into a project.
 - Project-aware studio workspaces receive selected source media. Outputs enter the library without replacing timeline content. Shorter replacements require trimming confirmation, and linked audio must be detached before replacing its video.
 - The optional assistant is bound to the project directory. MCP exposes project state, selected clips/playhead, revision-checked edit batches, job status, managed generation, and export. Manual and assistant edits share undo/redo.
-- Image layer decomposition uses managed Qwen Image Layered with ordered transparent PNG outputs. The updated hosted service must be deployed alongside this desktop build. AI highlight ranking, workflows, and Design Agent remain gated. Their UI registration does not claim completed provider support.
+- Image layer decomposition uses managed Qwen Image Layered with ordered transparent PNG outputs. The updated hosted service must be deployed alongside this desktop build. AI clipping provides local transcription, managed transcript-based ranking, and reviewed local clip creation. Workflows and Design Agent remain gated. See `docs/ai-clipping.md` for limits and deployment requirements. Their UI registration does not claim completed provider support.
 
 ## Validation
 

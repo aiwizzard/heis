@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const providerResponse = await fetch("https://api.runware.ai/v1", {
       method: "POST",
       headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify([{ ...(capability.operation === "rank-highlights" ? highlightProviderInput(body.inputs as HighlightRequest) : body.inputs), taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
+      body: JSON.stringify([{ ...(capability.operation === "rank-highlights" ? { ...highlightProviderInput(body.inputs as HighlightRequest), deliveryMethod: "async" } : body.inputs), taskType: taskType(capability.operation, capability.outputKind), taskUUID: providerJobId, model: capability.providerModelId, webhookURL, includeCost: true }]),
     });
     const providerBody = await providerResponse.json().catch(() => ({}));
     if (!providerResponse.ok || providerBody.errors?.length) {

@@ -37,9 +37,14 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       const asset = output(data);
       if (job.operation === "rank-highlights") {
         const highlights = parseRankedHighlights(String(data.text ?? ""), job.request_payload);
-        const objectKey = await storeAnalysisAsset({ userId: job.user_id, jobId: job.id, value: { highlights } });
-        const stored = await admin.rpc("finalize_cloud_output", { p_user_id: job.user_id, p_job_id: job.id, p_kind: "other", p_object_key: objectKey, p_source_url: `runware:${eventId}` });
-        if (stored.error) throw stored.error;
+        const source = `runware:${eventId}`;
+        const existing = await admin.from("media_assets").select("id").eq("job_id", job.id).eq("source_url", source).maybeSingle();
+        if (existing.error) throw existing.error;
+        if (!existing.data) {
+          const objectKey = await storeAnalysisAsset({ userId: job.user_id, jobId: job.id, value: { highlights } });
+          const stored = await admin.rpc("finalize_cloud_output", { p_user_id: job.user_id, p_job_id: job.id, p_kind: "other", p_object_key: objectKey, p_source_url: source });
+          if (stored.error) throw stored.error;
+        }
         await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
       } else if (!asset.url) throw new Error("Provider returned no output");
       else if (job.operation === "decompose-layers") {
@@ -76,7 +81,7 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       const job = found.data;
       const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_provider_output" });
       if (released.error) throw released.error;
-      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Try another source image.` }).eq("id", job.id);
+      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Retry with another source or different analysis settings.` }).eq("id", job.id);
       if (updated.error) throw updated.error;
       await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
       await admin.from("processed_webhooks").update({ status: "processed", last_error: message, processed_at: new Date().toISOString() }).eq("provider", "runware").eq("event_id", eventId);

@@ -57,6 +57,7 @@
     "test:editor": "npm run build:core && npm run build:tests && node --test dist-tests/tests/editor*.test.js",
     "test:editor-desktop": "node scripts/editor-smoke.mjs",
     "build:media-runtime": "node scripts/build-media-runtime.mjs",
+    "test:clipping-desktop": "node scripts/clipping-smoke.mjs",
     "test:layers-desktop": "node scripts/layers-smoke.mjs",
     "test:editor-captions": "node scripts/editor-caption-smoke.mjs",
     "desktop:editor": "HEIS_EDITOR=1 node scripts/desktop-dev.mjs"
