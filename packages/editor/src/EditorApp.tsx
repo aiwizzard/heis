@@ -40,6 +40,9 @@ export interface EditorAppProps {
   renderAssistant: (directory: string) => React.ReactNode;
   onLegacy: () => void;
   generationApi?: GenerationBridge;
+  onAccount?: () => void;
+  accountLabel?: string;
+  accessRevision?: number;
 }
 const uuid = () => crypto.randomUUID();
 function timecode(frame: number, rate: number) {
@@ -75,6 +78,9 @@ export function EditorApp({
   renderAssistant,
   onLegacy,
   generationApi,
+  onAccount,
+  accountLabel = "Sign in",
+  accessRevision = 0,
 }: EditorAppProps) {
   const [snapshot, setSnapshot] = useState<EditorSnapshot | null>(null),
     [recent, setRecent] = useState<RecentEditorProject[]>([]),
@@ -547,6 +553,7 @@ export function EditorApp({
         <header className="heis-editor-bar">
           <img className="heis-wordmark" src="/brand/heis-wordmark-dark.svg" alt="Heis" height={26} draggable={false} />
           <div className="heis-bar-spacer" />
+          {onAccount && <button onClick={onAccount}>{accountLabel}</button>}
           <button onClick={onLegacy}>Standalone tools ↗</button>
         </header>
         <section className="heis-home-content">
@@ -695,6 +702,7 @@ export function EditorApp({
         >
           Assistant
         </button>
+        {onAccount && <button onClick={onAccount}>{accountLabel}</button>}
         <button
           className="primary"
           disabled={!sequence.clips.length}
@@ -932,7 +940,7 @@ export function EditorApp({
                     </div>
                   )}
                   {generation && generationApi ? (
-                    <GeneratePanel api={generationApi} onAdvanced={setTool} />
+                    <GeneratePanel api={generationApi} onAdvanced={setTool} onAccount={onAccount} accessRevision={accessRevision} />
                   ) : (
                     generation && (
                       <div className="heis-generate">

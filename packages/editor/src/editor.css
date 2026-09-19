@@ -910,3 +910,15 @@
 .heis-editor .heis-crop-layout-popover button { display:flex; width:100%; align-items:center; justify-content:space-between; padding:10px; margin:2px 0; background:transparent; }
 .heis-editor .heis-crop-layout-popover button[aria-pressed="true"] { background:#58313a; }
 .heis-crop-layout-popover small { color:#a5a5ae; font-size:10px; }
+
+.heis-account-backdrop { margin:0; border:0; width:100vw; height:100vh; max-width:none; max-height:none; position:fixed; inset:0; z-index:1000; display:grid; place-items:center; background:#0009; color:#dedee3; font:13px -apple-system,BlinkMacSystemFont,sans-serif; }
+.heis-account-dialog { width:min(390px,calc(100vw - 48px)); background:#202125; border:1px solid #3a3b42; border-radius:12px; padding:24px; display:flex; flex-direction:column; gap:16px; }
+.heis-account-dialog header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.heis-account-dialog h2 { margin:0; font-size:20px; }.heis-account-dialog p { margin:0; color:#aaaab4; line-height:1.5; }
+.heis-account-dialog button,.heis-account-dialog input { border:1px solid #44454c; border-radius:6px; padding:10px 12px; background:#2d2e34; color:#eee; }
+.heis-account-dialog button { cursor:pointer; }.heis-account-dialog button:disabled { opacity:.5; }
+.heis-account-dialog .primary { background:#ac2430; border-color:#ac2430; }
+.heis-account-dialog form,.heis-account-dialog label { display:flex; flex-direction:column; gap:10px; }
+.heis-account-dialog a { color:#eea1aa; }
+
+.heis-account-backdrop:not([open]) { display:none; }

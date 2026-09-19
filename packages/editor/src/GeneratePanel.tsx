@@ -5,6 +5,7 @@ import type {
   GenerationRequest,
   ResultEnvelope,
 } from "@heis/core";
+import { accessMessage, needsAccount } from "./accessMessages";
 import { reserveCredits } from "@heis/core";
 export interface GenerationBridge {
   listCapabilities(
@@ -19,7 +20,11 @@ export interface GenerationBridge {
 export function GeneratePanel({
   api,
   onAdvanced,
+  onAccount,
+  accessRevision = 0,
 }: {
+  onAccount?: () => void;
+  accessRevision?: number;
   api: GenerationBridge;
   onAdvanced: (id: string) => void;
 }) {
@@ -30,23 +35,33 @@ export function GeneratePanel({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [retry, setRetry] = useState(0),
+    [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
+    setError("");
     let cancelled = false;
     void api
       .listCapabilities("managed")
       .then((result) => {
         if (cancelled) return;
         if (!result.ok) {
+          setModels([]);
           setError(result.error.message);
           return;
         }
         setModels(result.value.filter((m) => m.enabled));
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => {
+        if (!cancelled) setError(String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [api]);
+  }, [api, accessRevision, retry]);
   const available = models.filter((m) => m.outputKind === kind),
     model = available.find((m) => m.id === modelId) || available[0];
   useEffect(() => {
@@ -57,7 +72,6 @@ export function GeneratePanel({
           .map((p) => [p.name, p.default]),
       ),
     );
-    setError("");
   }, [model?.id]);
   const submit = async () => {
     if (!model) return;
@@ -101,17 +115,19 @@ export function GeneratePanel({
         ))}
         <button onClick={() => onAdvanced(kind)}>↗</button>
       </div>
-      <select
-        aria-label="Generation model"
-        value={model?.id || ""}
-        onChange={(e) => setModelId(e.target.value)}
-      >
-        {available.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.displayName}
-          </option>
-        ))}
-      </select>
+      {models.length > 0 && (
+        <select
+          aria-label="Generation model"
+          value={model?.id || ""}
+          onChange={(e) => setModelId(e.target.value)}
+        >
+          {available.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.displayName}
+            </option>
+          ))}
+        </select>
+      )}
       {model?.parameters.map((p) => {
         const update = (v: unknown) =>
           setInputs((old) => ({ ...old, [p.name]: v }));
@@ -200,11 +216,15 @@ export function GeneratePanel({
             : `Generate · up to ${reserveCredits(model.maximumEstimatedCostUsd)} credits`}
         </button>
       )}
-      {error && <p role="alert">{error}</p>}
+      {loading && <p role="status">Loading generation tools…</p>}
+      {error && <p role="alert">{accessMessage(error)}</p>}
       {message && <p>{message}</p>}
-      {!models.length && (
-        <button onClick={() => onAdvanced(kind)}>
-          Open studio and sign in
+      {!loading && needsAccount(error) && onAccount && (
+        <button onClick={onAccount}>Sign in or manage account</button>
+      )}
+      {!loading && !models.length && !needsAccount(error) && (
+        <button onClick={() => setRetry((v) => v + 1)}>
+          Retry generation tools
         </button>
       )}
     </section>

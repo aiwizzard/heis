@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import { EditorAccount, type AccountBridge } from "./EditorAccount";
 import type { EditorBridge } from "@heis/core";
 import { EditorApp } from "./EditorApp";
 import type { GenerationBridge } from "./GeneratePanel";
@@ -10,7 +11,9 @@ export function DesktopEditor({
   assistant,
   renderTool,
   generationApi,
+  accountApi,
 }: {
+  accountApi?: AccountBridge;
   bridge: EditorBridge;
   generationApi?: GenerationBridge;
   legacy: React.ReactNode;
@@ -24,6 +27,34 @@ export function DesktopEditor({
 }) {
   const [enabled, setEnabled] = useState<boolean | null>(null),
     [standalone, setStandalone] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false),
+    [signedIn, setSignedIn] = useState(false),
+    [accessRevision, setAccessRevision] = useState(0);
+  const refreshAccount = () => {
+    if (accountApi)
+      void accountApi.auth
+        .getSession()
+        .then((result) => setSignedIn(result.ok && !!result.value))
+        .catch(() => {});
+    setAccessRevision((v) => v + 1);
+  };
+  useEffect(() => {
+    if (!accountApi) return;
+    refreshAccount();
+    return accountApi.auth.onEvent((event) => {
+      if (
+        [
+          "signed-in",
+          "signed-out",
+          "entitlement-refreshed",
+          "entitlement-error",
+        ].includes(event.type)
+      ) {
+        refreshAccount();
+        if (event.type === "entitlement-refreshed") setAccountOpen(false);
+      }
+    });
+  }, [accountApi]);
   useEffect(() => {
     void bridge
       .status()
@@ -45,12 +76,25 @@ export function DesktopEditor({
       </div>
     );
   return (
-    <EditorApp
-      bridge={bridge}
-      generationApi={generationApi}
-      onLegacy={() => setStandalone(true)}
-      renderAssistant={assistant}
-      renderTool={renderTool}
-    />
+    <>
+      <EditorApp
+        onAccount={accountApi ? () => setAccountOpen(true) : undefined}
+        accountLabel={signedIn ? "Account" : "Sign in"}
+        accessRevision={accessRevision}
+        bridge={bridge}
+        generationApi={generationApi}
+        onLegacy={() => setStandalone(true)}
+        renderAssistant={assistant}
+        renderTool={renderTool}
+      />
+      {accountOpen && accountApi && (
+        <EditorAccount
+          api={accountApi}
+          signedIn={signedIn}
+          onClose={() => setAccountOpen(false)}
+          onRefresh={refreshAccount}
+        />
+      )}
+    </>
   );
 }

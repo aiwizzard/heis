@@ -136,6 +136,33 @@ try {
   await page
     .getByRole("button", { name: "Collapse assistant", exact: true })
     .click();
+  await page.getByRole("button", { name: "Generate", exact: true }).click();
+  await page.getByText(/Sign in to Heis to use generation/).waitFor();
+  assert.equal((await page.locator('body').innerText()).includes('VALID_ENTITLEMENT_REQUIRED'),false);
+  await page.getByRole("button", { name: "Sign in or manage account", exact: true }).click();
+  await page.getByRole("dialog", {name:"Sign in to Heis",exact:true}).waitFor();
+  await app.evaluate(({ipcMain})=>{
+    ipcMain.removeHandler('auth:start-oauth');
+    ipcMain.handle('auth:start-oauth',()=>({ok:true,value:undefined}));
+    ipcMain.removeHandler('auth:send-magic-link');
+    ipcMain.handle('auth:send-magic-link',()=>({ok:true,value:undefined}));
+  });
+  await page.getByRole('button',{name:'Continue with Google',exact:true}).click();
+  await page.getByText(/Finish signing in in your browser/).waitFor();
+  await page.getByRole('textbox',{name:'Email address',exact:true}).fill('test@example.com');
+  await page.getByRole('button',{name:'Email me a sign-in link',exact:true}).click();
+  await page.getByText(/Check your email for a sign-in link/).waitFor();
+  await app.evaluate(({ipcMain,BrowserWindow})=>{
+    ipcMain.removeHandler('auth:get-session');
+    ipcMain.handle('auth:get-session',()=>({ok:true,value:{userId:'test-user'}}));
+    ipcMain.removeHandler('generation:list-capabilities');
+    ipcMain.handle('generation:list-capabilities',()=>({ok:true,value:[{id:'test-video',displayName:'Test video',outputKind:'video',enabled:true,parameters:[],operation:'video.generate',maximumEstimatedCostUsd:0.1}]}));
+    for(const win of BrowserWindow.getAllWindows())win.webContents.send('auth:event',{type:'entitlement-refreshed'});
+  });
+  await page.getByRole('dialog',{name:'Sign in to Heis',exact:true}).waitFor({state:'detached'});
+  await page.getByRole('button',{name:'Account',exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('select[aria-label="Generation model"]')?.textContent.includes('Test video'));
+  await page.getByRole("button", { name: "Generate", exact: true }).click();
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page
     .getByText("footage.mp4", { exact: true })

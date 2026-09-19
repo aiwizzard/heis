@@ -19,6 +19,7 @@ createRoot(document.getElementById("root")!).render(
     <DesktopEditor
       bridge={bridge}
       generationApi={window.heis?.generation}
+      accountApi={window.heis}
       legacy={legacy}
       assistant={(directory) => (
         <CodexStudio projectDirectory={directory} compact />
