@@ -129,6 +129,14 @@ try {
   await page.getByRole("button", { name: "＋ Add", exact: true }).click();
   await page.locator(".heis-timeline-clip").first().waitFor();
   assert.equal(await page.locator(".heis-timeline-clip").count(), 2);
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('canvas.heis-filmstrip');
+    if (!canvas) return false;
+    const ctx = canvas.getContext('2d');
+    const first = ctx.getImageData(0, 0, 96, 54).data;
+    const last = ctx.getImageData(canvas.width - 96, 0, 96, 54).data;
+    return last.some((v, i) => i % 4 === 3 && v > 0) && first.some((v, i) => v !== last[i]);
+  });
   const mediaUrl = await app.evaluate(({}, directory) => {
     const fs = process.mainModule.require("node:fs");
     const id = JSON.parse(

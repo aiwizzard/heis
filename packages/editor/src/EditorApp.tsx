@@ -17,6 +17,7 @@ import type {
   Track,
   RecentEditorProject,
 } from "@heis/core";
+import { Filmstrip } from "./Filmstrip";
 import { Preview, assetUrl } from "./Preview";
 import { editorTools } from "./tools";
 import { GeneratePanel, type GenerationBridge } from "./GeneratePanel";
@@ -1581,6 +1582,7 @@ export function EditorApp({
                 const asset = project.assets.find((a) => a.id === id);
                 if (asset) addAsset(asset, track, start);
               }}
+              projectId={project.id}
               assets={project.assets}
             />
           </section>
@@ -1671,6 +1673,7 @@ function Timeline({
   trackPatch,
   onDrop,
   assets,
+  projectId,
 }: {
   sequence: Sequence;
   frame: number;
@@ -1683,6 +1686,7 @@ function Timeline({
   trackPatch: (track: Track, patch: Partial<Track>) => void;
   onDrop: (assetId: string, trackId: string, start: number) => void;
   assets: ProjectAsset[];
+  projectId: string;
 }) {
   const rate = fps(sequence),
     px = zoom / rate,
@@ -2187,6 +2191,16 @@ function Timeline({
                         className="heis-trim left"
                         onPointerDown={(e) => drag(e, c, "left")}
                       />
+                      {track.kind === "video" && asset && !asset.missing && <>
+                        {asset.thumbnailPath && <img className="heis-filmstrip" src={assetUrl(projectId, asset.thumbnailPath)} alt="" draggable={false} />}
+                        {asset.kind === "video" && <Filmstrip
+                          src={assetUrl(projectId, asset.proxyPath || asset.path)}
+                          sourceIn={(c.sourceIn + (g?.mode === "left" ? g.delta : 0)) / rate}
+                          duration={length / rate}
+                          sourceDuration={asset.durationSeconds}
+                          width={length * px}
+                        />}
+                      </>}
                       <strong>{c.text?.text || c.name}</strong>
                       {asset?.waveform && track.kind === "audio" && (
                         <svg viewBox="0 0 1000 26" preserveAspectRatio="none">

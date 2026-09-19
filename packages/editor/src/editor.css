@@ -857,3 +857,8 @@
   background: transparent;
   font-size: 18px;
 }
+
+.heis-filmstrip { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.heis-timeline-clip.video strong { position:relative; z-index:1; background:#101113b8; border-radius:2px; padding:2px 4px; }
+.heis-timeline-clip.video small { z-index:1; background:#101113b8; }
+.heis-timeline-clip .heis-trim { z-index:2; }
