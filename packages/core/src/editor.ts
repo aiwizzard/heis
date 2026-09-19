@@ -1,3 +1,5 @@
+import type { TranscriptCue, RankedHighlight } from "./highlights";
+
 export const EDITOR_SCHEMA_VERSION = 1;
 export type FrameRate = { numerator: number; denominator: number };
 export type TrackKind = "video" | "audio" | "title" | "caption";
@@ -146,7 +148,8 @@ export interface ToolResult {
 export interface EditorJob {
   id: string;
   projectId: string;
-  kind: "export" | "transcribe" | "import" | "generation";
+  kind: "export" | "transcribe" | "import" | "generation" | "source-transcript" | "clipping";
+  transcript?: { duration: number; cues: TranscriptCue[] };
   status: "running" | "succeeded" | "failed" | "cancelled";
   progress: number;
   message?: string;
@@ -157,6 +160,8 @@ export interface EditorJob {
     clipIds?: string[];
     files?: string[];
     destination?: string;
+    sourceUrl?: string;
+    ranges?: RankedHighlight[];
   };
 }
 export interface EditorSnapshot {
@@ -184,6 +189,9 @@ export type EditorEvent =
   | { type: "error"; message: string };
 export interface EditorBridge {
   status(): Promise<EditorRuntimeStatus>;
+  chooseClippingSource(): Promise<{ url: string; name: string } | null>;
+  transcribeSource(sourceUrl: string): Promise<EditorJob>;
+  extractHighlights(sourceUrl: string, ranges: RankedHighlight[]): Promise<EditorJob>;
   setContext(context: ToolContext): Promise<void>;
   list(): Promise<RecentEditorProject[]>;
   library(): Promise<{ projectId: string; assets: ProjectAsset[] }>;

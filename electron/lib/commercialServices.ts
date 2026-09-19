@@ -86,7 +86,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
       const provider = providerFor(mode);
       const projectId = editorService?.destinationProjectId();
       const job = await provider.submit({ operation: args.operation, modelId: args.modelId, inputs: args.inputs, billing: { mode, accountId: authSession.getUserId() ?? "local", idempotencyKey: require("node:crypto").randomUUID() } });
-      if (projectId) editorService.watchGeneration(projectId, job.id);
+      if (projectId && args.operation !== "rank-highlights") editorService.watchGeneration(projectId, job.id);
       return job;
     },
     heis_export: async (args: any) => {
@@ -132,7 +132,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
   handle(IPC_CHANNELS.generationSubmit, async (request: any) => {
     const projectId = editorService?.destinationProjectId();
     const job = await providerFor(request?.billing?.mode).submit(request);
-    if (projectId) editorService.watchGeneration(projectId, job.id);
+    if (projectId && request.operation !== "rank-highlights") editorService.watchGeneration(projectId, job.id);
     return job;
   });
   handle(IPC_CHANNELS.generationGetJob, (mode: string, jobId: string) => providerFor(mode).getJob(jobId));

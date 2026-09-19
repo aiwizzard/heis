@@ -75,6 +75,15 @@ export function registerEditor(): EditorService {
   );
   const handlers: Record<string, (...args: any[]) => unknown> = {
     status: () => service.status(),
+    chooseClippingSource: async () => {
+      const projectId = service.destinationProjectId();
+      const selected = await dialog.showOpenDialog({ title: "Choose a spoken video", properties: ["openFile"], filters: [{ name: "Video", extensions: ["mp4", "mov", "mkv", "webm", "m4v"] }] });
+      if (selected.canceled) return null;
+      const [asset] = await service.importFiles(projectId, selected.filePaths);
+      return { url: `heis-project://${projectId}/${asset.path.split("/").map(encodeURIComponent).join("/")}`, name: asset.name };
+    },
+    transcribeSource: (sourceUrl: string) => service.transcribeSource(sourceUrl),
+    extractHighlights: (sourceUrl: string, ranges: any) => service.extractHighlights(sourceUrl, ranges),
     library: () => service.library(),
     importLibrary: (id: string, assetId: string) =>
       service.importLibrary(id, assetId),

@@ -7,3 +7,4 @@ export * from "./types";
 export * from "./plans";
 export * from "./editor";
 export * from "./editorDrawing";
+export * from "./highlights";

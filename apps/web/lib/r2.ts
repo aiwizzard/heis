@@ -42,6 +42,14 @@ export async function storeLayerAsset(input: { userId: string; jobId: string; in
   await client().send(new PutObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey, Body: input.body, ContentType: "image/png", Metadata: { owner: input.userId, job: input.jobId } }));
   return objectKey;
 }
+export async function storeAnalysisAsset(input: { userId: string; jobId: string; value: unknown }) {
+  const body = Buffer.from(JSON.stringify(input.value));
+  const objectKey = `users/${input.userId}/jobs/${input.jobId}/highlights.json`;
+  const reserved = await createAdminClient().rpc("reserve_cloud_storage", { p_user_id: input.userId, p_object_key: objectKey, p_mime_type: "application/json", p_size_bytes: body.length });
+  if (reserved.error) throw reserved.error;
+  await client().send(new PutObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey, Body: body, ContentType: "application/json" }));
+  return objectKey;
+}
 export async function createDownloadUrl(objectKey: string) {
   return getSignedUrl(client(), new GetObjectCommand({ Bucket: env.r2Bucket(), Key: objectKey }), { expiresIn: 900 });
 }

@@ -37,7 +37,7 @@ function harness() {
   const source = readFileSync("apps/web/lib/runwareWebhook.ts", "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const imports: Record<string, unknown> = {
-    "@heis/core": { creditsForProviderCost: () => 12 },
+    "@heis/core": { creditsForProviderCost: () => 12, HighlightValidationError: class extends Error {} },
     "./supabase": { createAdminClient: () => admin },
     "./r2": { storeLayerAsset: async ({ index }: { index: number }) => { if (index === failIndex) throw new Error("Storage temporarily unavailable"); writes.push(index); return `layer-${index}`; } },
     "./layeredImage": { InvalidLayeredImageError, fetchLayeredImage: async () => { if (invalid) throw new InvalidLayeredImageError("Flattened output"); return [Buffer.from("0"), Buffer.from("1"), Buffer.from("2")]; } },

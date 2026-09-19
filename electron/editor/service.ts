@@ -29,6 +29,7 @@ import type {
   RecentEditorProject,
   CaptionCue,
   ToolContext,
+  RankedHighlight,
 } from "@heis/core";
 
 type Session = {
@@ -497,6 +498,8 @@ export class EditorService {
     const r = job.request;
     if (job.kind === "export" && r.sequenceId && r.destination)
       return this.exportProject(job.projectId, r.sequenceId, r.destination);
+    if (job.kind === "source-transcript" && r.sourceUrl) return this.transcribeSource(r.sourceUrl);
+    if (job.kind === "clipping" && r.sourceUrl && r.ranges) return this.extractHighlights(r.sourceUrl, r.ranges);
     if (job.kind === "transcribe" && r.sequenceId)
       return this.transcribe(job.projectId, r.sequenceId, r.clipIds || []);
     if (job.kind === "import" && r.files)
@@ -1089,6 +1092,55 @@ export class EditorService {
       this.controllers.delete(job.id);
       await fsp.unlink(temporary).catch(() => {});
     }
+  }
+  private clippingSource(sourceUrl: string) {
+    const url = new URL(sourceUrl);
+    if (url.protocol !== "heis-project:") throw new Error("Choose an imported project video.");
+    const session = this.session(url.hostname);
+    const asset = session.project.assets.find(a => a.path === decodeURIComponent(url.pathname.slice(1)));
+    if (!asset || asset.kind !== "video" || asset.missing) throw new Error("Choose an available video source.");
+    if (!asset.hasAudio) throw new Error("AI clipping needs spoken audio. This video has no audio track.");
+    if (asset.durationSeconds <= 0 || asset.durationSeconds > 7200) throw new Error("Choose a spoken video up to two hours long.");
+    return { session, asset, input: this.resolveMedia(sourceUrl) };
+  }
+  transcribeSource(sourceUrl: string): EditorJob {
+    const { session, asset, input } = this.clippingSource(sourceUrl);
+    if (!fs.existsSync(this.whisper)) throw new Error("Install the packaged Whisper runtime before analyzing video.");
+    return this.start(session.project.id, "source-transcript", async job => {
+      this.update(job, { request: { sourceUrl }, message: "Preparing local transcript…" });
+      await this.ensureModel(job);
+      const audio = path.join(session.directory, "cache", `${job.id}.wav`);
+      const output = path.join(session.directory, "cache", job.id);
+      try {
+        await this.run(this.ffmpeg, ["-v", "error", "-y", "-i", input, "-vn", "-ac", "1", "-ar", "16000", audio], job.id);
+        this.update(job, { progress: .25, message: "Transcribing speech locally…" });
+        await this.run(this.whisper, ["-m", this.model, "-f", audio, "-l", "auto", "-osrt", "-of", output], job.id);
+        const cues = parseSubtitles(await fsp.readFile(`${output}.srt`, "utf8"), 1000).map(c => ({ start: c.start / 1000, end: Math.min(asset.durationSeconds, (c.start + c.duration) / 1000), text: c.text })).filter(c => c.end > c.start);
+        if (!cues.length) throw new Error("No speech was detected. Choose a video with clear dialogue.");
+        this.update(job, { transcript: { duration: asset.durationSeconds, cues }, message: "Transcript ready for review." });
+      } finally { await fsp.unlink(audio).catch(() => {}); await fsp.unlink(`${output}.srt`).catch(() => {}); }
+    });
+  }
+  extractHighlights(sourceUrl: string, ranges: RankedHighlight[]): EditorJob {
+    const { session, asset, input } = this.clippingSource(sourceUrl);
+    if (!Array.isArray(ranges) || !ranges.length || ranges.length > 10 || ranges.some(r => !r || !Number.isFinite(r.start) || !Number.isFinite(r.end) || r.start < 0 || r.end > asset.durationSeconds || r.end - r.start < 1 || r.end - r.start > 180 || typeof r.title !== "string" || r.title.length > 120)) throw new Error("Choose 1 to 10 valid source ranges, each up to three minutes long.");
+    const selected = structuredClone(ranges);
+    return this.start(session.project.id, "clipping", async job => {
+      this.update(job, { request: { sourceUrl, ranges: selected }, message: "Creating selected clips locally…" });
+      for (const [index, range] of selected.entries()) {
+        const temporary = path.join(session.directory, "cache", `${job.id}-${index}.mp4`);
+        try {
+          await this.run(this.ffmpeg, ["-v", "error", "-y", "-ss", String(range.start), "-i", input, "-t", String(range.end - range.start), "-map", "0:v:0", "-map", "0:a:0?", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", ...this.videoEncoding(), "-c:a", "aac", "-movflags", "+faststart", temporary], job.id);
+          const [created] = await this.importFiles(session.project.id, [temporary], job.id);
+          const stored = session.project.assets.find(a => a.id === created.id)!;
+          stored.name = range.title || `Highlight ${index + 1}`;
+          stored.sourceJobId = `${job.id}:${index}`;
+          this.changed(session);
+          this.update(job, { progress: (index + 1) / selected.length });
+        } finally { await fsp.unlink(temporary).catch(() => {}); }
+      }
+      this.update(job, { message: `${selected.length} clips saved to the source project library. Add them to the timeline when ready.` });
+    });
   }
   transcribe(id: string, sequenceId: string, clipIds: string[]): EditorJob {
     if (!fs.existsSync(this.whisper))

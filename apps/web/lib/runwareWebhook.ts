@@ -1,5 +1,5 @@
-import { creditsForProviderCost } from "@heis/core";
-import { copyRemoteAsset, storeLayerAsset } from "./r2";
+import { creditsForProviderCost, parseRankedHighlights, HighlightValidationError } from "@heis/core";
+import { copyRemoteAsset, storeLayerAsset, storeAnalysisAsset } from "./r2";
 import { fetchLayeredImage, InvalidLayeredImageError } from "./layeredImage";
 import { createAdminClient } from "./supabase";
 
@@ -35,8 +35,14 @@ export async function processRunwareWebhook(data: Record<string, any>) {
       if (!Number.isFinite(providerCost) || providerCost < 0) throw new Error("Runware returned an invalid cost.");
       const settledCredits = creditsForProviderCost(providerCost);
       const asset = output(data);
-      if (!asset.url) throw new Error("Provider returned no output");
-      if (job.operation === "decompose-layers") {
+      if (job.operation === "rank-highlights") {
+        const highlights = parseRankedHighlights(String(data.text ?? ""), job.request_payload);
+        const objectKey = await storeAnalysisAsset({ userId: job.user_id, jobId: job.id, value: { highlights } });
+        const stored = await admin.rpc("finalize_cloud_output", { p_user_id: job.user_id, p_job_id: job.id, p_kind: "other", p_object_key: objectKey, p_source_url: `runware:${eventId}` });
+        if (stored.error) throw stored.error;
+        await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
+      } else if (!asset.url) throw new Error("Provider returned no output");
+      else if (job.operation === "decompose-layers") {
         const layers = await fetchLayeredImage(asset.url);
         for (let index = 0; index < layers.length; index++) {
           const source = `${asset.url}#layer=${index}`;
@@ -64,13 +70,13 @@ export async function processRunwareWebhook(data: Record<string, any>) {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Webhook processing failed.";
-    if (error instanceof InvalidLayeredImageError) {
+    if (error instanceof InvalidLayeredImageError || error instanceof HighlightValidationError) {
       const found = await admin.from("generation_jobs").select("id,user_id").eq("provider_job_id", eventId).single();
       if (found.error) throw found.error;
       const job = found.data;
-      const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_layer_output" });
+      const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_provider_output" });
       if (released.error) throw released.error;
-      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: "INVALID_LAYER_OUTPUT", error_message: `Layer separation failed: ${message} Your reserved credits were returned. Try another source image.` }).eq("id", job.id);
+      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: error instanceof HighlightValidationError ? "INVALID_HIGHLIGHT_OUTPUT" : "INVALID_LAYER_OUTPUT", error_message: `Processing failed: ${message} Your reserved credits were returned. Try another source image.` }).eq("id", job.id);
       if (updated.error) throw updated.error;
       await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
       await admin.from("processed_webhooks").update({ status: "processed", last_error: message, processed_at: new Date().toISOString() }).eq("provider", "runware").eq("event_id", eventId);

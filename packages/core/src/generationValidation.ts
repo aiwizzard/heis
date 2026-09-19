@@ -1,3 +1,4 @@
+import { validateHighlightRequest } from "./highlights";
 import { getCapability } from "./catalog";
 import type { GenerationRequest, ModelCapability, ModelParameter } from "./types";
 
@@ -50,5 +51,6 @@ export function validateGenerationRequest(request: GenerationRequest): ModelCapa
     if (Object.keys(settings).some((key) => key !== "layers") || !Number.isInteger(settings.layers) || Number(settings.layers) < 2 || Number(settings.layers) > 10) throw new Error("LAYERS_COUNT_MUST_BE_2_TO_10");
     if (String(request.inputs.positivePrompt).length > 32000) throw new Error("LAYER_PROMPT_TOO_LONG");
   }
+  if (request.operation === "rank-highlights") validateHighlightRequest(request.inputs);
   return capability;
 }

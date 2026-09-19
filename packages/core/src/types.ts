@@ -14,6 +14,7 @@ export const GENERATION_OPERATIONS = [
   "remove-background",
   "expand-image",
   "decompose-layers",
+  "rank-highlights",
 ] as const;
 
 export type GenerationOperation = (typeof GENERATION_OPERATIONS)[number];

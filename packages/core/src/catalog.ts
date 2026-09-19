@@ -2,6 +2,17 @@ import type { ModelCapability } from "./types";
 
 export const STARTER_RUNWARE_CATALOG: readonly ModelCapability[] = [
   {
+    id: "heis-highlight-analysis", provider: "runware", providerModelId: "openai:gpt@5.4-mini",
+    displayName: "AI highlight analysis", operation: "rank-highlights", outputKind: "other",
+    maximumEstimatedCostUsd: 0.50, enabled: true,
+    parameters: [
+      { name: "transcript", type: "object", required: true },
+      { name: "count", type: "number", minimum: 1, maximum: 10, required: true },
+      { name: "minDuration", type: "number", minimum: 5, maximum: 180, required: true },
+      { name: "maxDuration", type: "number", minimum: 5, maximum: 180, required: true },
+    ],
+  },
+  {
     id: "heis-image-layers",
     provider: "runware",
     providerModelId: "alibaba:qwen-image@layered",
