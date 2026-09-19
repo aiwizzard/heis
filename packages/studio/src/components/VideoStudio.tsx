@@ -1,7 +1,5 @@
 "use client";
 
-import StudioEmptyMark from "./StudioEmptyMark";
-
 import { useState, useEffect, useRef, useCallback, useMemo, useId } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../heisProvider";
@@ -2628,21 +2626,11 @@ export default function VideoStudio({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]">
-            <StudioEmptyMark />
-
             <h1 className="studio-empty-title text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center">
-              {!selectedTool && !selectedVeoTool && <span className="text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90">{copy.empty.heading}</span>}
               <span className="text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight">
                 {selectedTool || selectedVeoTool || selectedPickerEntry?.groupedVideo ? selectedPickerLabel : selectedFamily.name}
               </span>
             </h1>
-            {!selectedTool && !selectedVeoTool && (
-              <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
-                {groupedConfiguration
-                  ? getVideoModeDescription(selectedVariant.model, selectedWorkflowId, groupCopy)
-                  : copy.empty.subtitle}
-              </p>
-            )}
           </div>
         )}
       </div>

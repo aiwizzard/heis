@@ -1,7 +1,5 @@
 "use client";
 
-import StudioEmptyMark from "./StudioEmptyMark";
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateImage, uploadFile } from "../heisProvider";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey";
@@ -1045,17 +1043,11 @@ export default function CinemaStudio({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 animate-fade-in-up transition-all duration-700 min-h-[50vh]">
-            <StudioEmptyMark />
-
             <h1 className="studio-empty-title text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center">
-              <span className="text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90">{copy.empty.kicker}</span>
               <span className="text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight">
                 {copy.empty.title}
               </span>
             </h1>
-            <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
-              {copy.empty.description}
-            </p>
           </div>
         )}
       </div>

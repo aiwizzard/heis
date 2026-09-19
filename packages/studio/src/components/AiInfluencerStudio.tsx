@@ -653,11 +653,7 @@ export default function AiInfluencerStudio({
               </>
             ) : (
               <div className="flex flex-col items-center gap-3 text-center px-8 py-12">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-gray-700">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
-                </svg>
                 <p className="text-sm text-gray-600 font-medium">{copy.preview.emptyTitle}</p>
-                <p className="text-xs text-gray-700">{copy.preview.emptySubtitleLine1}<br />{copy.preview.emptySubtitleLine2}</p>
               </div>
             )}
           </div>

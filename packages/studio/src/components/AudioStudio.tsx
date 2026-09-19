@@ -1098,16 +1098,8 @@ export default function AudioStudio({
             {/* 3. Empty State (no audio, not loading, no error) */}
             {view === "input" && !isGenerating && !generateError && (
               <div className="flex flex-col items-center gap-6 max-w-md text-center p-8 bg-zinc-900/40 border border-zinc-800 rounded backdrop-blur-sm relative group animate-fade-in-up">
-                {/* Glow behind the icon */}
-                <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full opacity-25 group-hover:opacity-40 transition-opacity duration-1000 pointer-events-none" />
-                <div className="w-20 h-20 bg-zinc-900 border border-zinc-705 rounded flex items-center justify-center shadow-inner relative z-10 transition-transform duration-500 group-hover:scale-105">
-                  <MusicIcon className="text-primary w-8 h-8 filter drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]" />
-                </div>
                 <div className="relative z-10">
                   <h3 className="text-white font-black text-xl mb-3 tracking-tight">{copy.result.emptyHeading}</h3>
-                  <p className="text-sm text-zinc-200 font-medium leading-relaxed px-4">
-                    {copy.result.emptyBody}
-                  </p>
                 </div>
               </div>
             )}

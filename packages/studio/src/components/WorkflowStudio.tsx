@@ -875,9 +875,6 @@ export default function WorkflowStudio({
               <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
                 Workflows
               </h1>
-              <p className="text-white/40 text-sm font-medium">
-                Create and manage your asynchronous AI processing pipelines
-              </p>
             </div>
             <button
               onClick={() => handleCreateWorkflow()}
