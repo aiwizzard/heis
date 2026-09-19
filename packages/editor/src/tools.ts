@@ -75,7 +75,6 @@ export const editorTools: EditorTool[] = [
     id: "design-agent",
     name: "Design agent",
     group: "Workflow",
-    available: false,
-    note: "Design tools are being migrated.",
+    available: true,
   },
 ];

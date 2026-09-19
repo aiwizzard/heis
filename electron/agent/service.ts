@@ -305,7 +305,8 @@ export class CodexService {
     this.state.codex.loginPending = false;
     this.changed();
   }
-  async send(input: SendInput) {
+  async send(input: SendInput, designContext?: { instructions: string; images: string[] }) {
+    if (Boolean(input.design) !== Boolean(designContext)) throw new Error("Design context must be prepared by Heis.");
     if (
       !input ||
       typeof input.text !== "string" ||
@@ -332,8 +333,10 @@ export class CodexService {
       throw new Error(
         "A conversation stays in its original project. Start a new thread to change projects.",
       );
+    if (thread && JSON.stringify(thread.design) !== JSON.stringify(input.design)) throw new Error("Start a new conversation for this design.");
     if (!thread) {
       thread = {
+        design: input.design,
         id: randomUUID(),
         title: input.text.trim().split("\n")[0].slice(0, 70),
         project: input.project,
@@ -358,11 +361,12 @@ export class CodexService {
       const params = {
         cwd: input.project,
         approvalPolicy: "on-request",
-        sandbox: "workspace-write",
+        sandbox: designContext ? "read-only" : "workspace-write",
+        ...(designContext ? { developerInstructions: designContext.instructions } : {}),
         approvalsReviewer: "user",
         ...(input.model ? { model: input.model } : {}),
       };
-      if (!thread.providerId || !this.loaded.has(thread.providerId)) {
+      if (designContext || !thread.providerId || !this.loaded.has(thread.providerId)) {
         const response = await rpc.request(
           thread.providerId ? "thread/resume" : "thread/start",
           {
@@ -393,7 +397,7 @@ export class CodexService {
       this.changed();
       const response = await rpc.request("turn/start", {
         threadId: thread.providerId,
-        input: [{ type: "text", text: input.text.trim() }],
+        input: [{ type: "text", text: input.text.trim() }, ...(designContext?.images.map(path => ({ type: "localImage", path })) ?? [])],
         ...(input.model ? { model: input.model } : {}),
       });
       if (input.model) thread.model = input.model;

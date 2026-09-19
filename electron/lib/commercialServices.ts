@@ -70,15 +70,51 @@ function register(localMediaService?: any, projectService?: any, editorService?:
     pendingApprovals.set(id, { resolve, timer });
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(IPC_CHANNELS.codexApprovalRequired, { id, tool, args });
   });
+  const submittingDesigns = new Set<string>();
+  const designGenerate = async (original: any) => {
+    const request = structuredClone(original);
+    const submissionKey = `${request.projectId}:${request.sessionId}`;
+    if (submittingDesigns.has(submissionKey)) throw new Error("A design submission is already awaiting approval or upload.");
+    submittingDesigns.add(submissionKey);
+    try {
+    const provider = providerFor("managed");
+    const plan = editorService.designs.plan(request);
+    const credits = require("@heis/core").reserveCredits(plan.capability.maximumEstimatedCostUsd);
+    const {dialog} = require("electron");
+    const approval = await dialog.showMessageBox({type:"question",title:"Approve design generation",message:`Reserve up to ${credits} credits for ${request.action}?`,detail:`${request.prompt}\n${plan.asset ? 'The selected image will be uploaded to the generation provider. ' : ''}Results will be saved to ${plan.session.name}. Unused credits are returned.`,buttons:["Cancel","Generate"],defaultId:0,cancelId:0});
+    if (approval.response !== 1) throw new Error("Design generation cancelled.");
+    editorService.designs.plan(request);
+    let sourceUrl;
+    if (plan.asset) {
+      const file=editorService.resolveMedia(`heis-project://${request.projectId}/${plan.asset.path.split('/').map(encodeURIComponent).join('/')}`);
+      const fs=require('node:fs');
+      if(fs.statSync(file).size>20*1024*1024)throw new Error('Reference exceeds the 20 MB image upload limit.');
+      const ext=require('node:path').extname(file).toLowerCase();
+      const mime:Record<string,string>={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'};
+      if(!mime[ext])throw new Error('Use a PNG, JPEG or WebP reference image.');
+      sourceUrl=(await provider.upload({name:plan.asset.name,type:mime[ext],bytes:fs.readFileSync(file)})).url;
+    }
+    const generation=editorService.designs.request(request,sourceUrl);
+    const job=await provider.submit(generation);
+    return editorService.designs.track(request,job.id);
+    } finally { submittingDesigns.delete(submissionKey); }
+  };
+  handleTrusted('editor:designGenerate',(_event:any,request:any)=>designGenerate(request));
+  const designScope = () => { const scope=agent.activeDesign();if(!scope)throw new Error('Open a Design Agent conversation first.');return scope; };
+  const rejectDesignMutation = () => { if(agent.activeDesign())throw new Error('Use design tools. Timeline insertion is controlled by the user.'); };
   const bridge = new McpBridge({
+    heis_design_info: async () => {const s=designScope();return editorService.designs.snapshot(s.projectId,s.sessionId);},
+    heis_design_generate: async (args:any) => {const s=designScope();return designGenerate({...args,...s});},
     heis_list_capabilities: async () => ({ managed: entitlementStore.get()?.canUseManagedGeneration ? await managedProvider.listCapabilities().catch(() => []) : [] }),
-    heis_project_info: async () => editorService?.activeProjectId ? { ...editorService.snapshot(editorService.activeProjectId), context: editorService.activeContext } : ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
+    heis_project_info: async () => agent.activeDesign() ? editorService.designs.snapshot(agent.activeDesign().projectId,agent.activeDesign().sessionId) : editorService?.activeProjectId ? { ...editorService.snapshot(editorService.activeProjectId), context: editorService.activeContext } : ({ available: Boolean(projectService), workflows: projectService?.listWorkflows().map((workflow: any) => ({ id: workflow.id, name: workflow.name, updatedAt: workflow.updated_at })) ?? [] }),
     heis_edit: async (args: any) => {
+      rejectDesignMutation();
       if (!editorService?.activeProjectId || args.projectId !== editorService.activeProjectId) throw new Error("Open the target project first.");
       return editorService.command(args);
     },
-    heis_jobs: async () => editorService?.activeProjectId ? editorService.jobs(editorService.activeProjectId) : [],
+    heis_jobs: async () => agent.activeDesign() ? editorService.jobs(agent.activeDesign().projectId) : editorService?.activeProjectId ? editorService.jobs(editorService.activeProjectId) : [],
     heis_generate: async (args: any) => {
+      rejectDesignMutation();
       providerFor("managed");
       const approval = await requestApproval("heis_generate", args);
       if (!approval?.approved) throw new Error("Generation was declined by the user.");
@@ -90,6 +126,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
       return job;
     },
     heis_export: async (args: any) => {
+      rejectDesignMutation();
       const approval = await requestApproval("heis_export", args);
       if (!approval?.approved) throw new Error("Export was declined by the user.");
       if (!editorService?.activeProjectId) throw new Error("Open a video project first.");
@@ -100,7 +137,7 @@ function register(localMediaService?: any, projectService?: any, editorService?:
       return editorService.exportProject(snapshot.project.id, snapshot.project.activeSequenceId, result.filePath);
     },
   });
-  const agent = registerAgent(bridge, secureStore);
+  const agent = registerAgent(bridge, secureStore, editorService);
 
   handle(IPC_CHANNELS.secretHas, (name: string) => secureStore.has(name));
   handle(IPC_CHANNELS.secretSet, (name: string, value: string) => secureStore.set(name, value));

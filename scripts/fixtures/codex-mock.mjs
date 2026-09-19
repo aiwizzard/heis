@@ -117,6 +117,17 @@ createInterface({ input: process.stdin }).on("line", (line) => {
         setTimeout(() => process.exit(1), 30);
         break;
       }
+      if (prompt === "design-tool") {
+        void (async()=>{
+          const call=async(name,args={})=>{const r=await fetch(process.env.HEIS_MCP_BRIDGE_URL+'/tools/'+name,{method:'POST',headers:{Authorization:'Bearer '+process.env.HEIS_MCP_BRIDGE_TOKEN,'Content-Type':'application/json'},body:JSON.stringify(args)});const body=await r.json();if(!r.ok)throw new Error(body.error);return body;};
+          const info=await call('heis_design_info');
+          let blocked=false;try{await call('heis_edit',{projectId:info.session.projectId});}catch{blocked=true;}
+          if(!blocked)throw new Error('Design unexpectedly allowed timeline edits');
+          await call('heis_design_generate',{revision:info.session.revision,action:'edit',sourceAssetId:info.session.referenceAssetIds[0],prompt:'Make a second orange variation'});
+          finish();
+        })().catch(error=>{notify('item/completed',{threadId:provider,item:{id:'error-'+turnId,type:'agentMessage',text:String(error)}});notify('turn/completed',{threadId:provider,turn:{id:turnId,status:'failed',items:[]}});});
+        break;
+      }
       if (prompt === "hold") break;
       if (prompt.startsWith("approval")) {
         notify("item/started", {

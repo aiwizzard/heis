@@ -689,7 +689,7 @@ export class EditorService {
     this.changed(s);
   }
   async capture(id: string, urls: string[], jobId: string) {
-    const key = id + urls.join("|");
+    const key = JSON.stringify([id, jobId, urls]);
     const pending = this.captures.get(key);
     if (pending) return pending;
     const work = this.captureResults(id, urls, jobId);
@@ -711,7 +711,7 @@ export class EditorService {
     for (const [index, url] of urls.entries()) {
       if (
         s.project.assets.some(
-          (a) => a.sourceJobId === `${jobId}:${index}` || a.sourceUrl === url,
+          (a) => a.sourceJobId === `${jobId}:${index}`,
         )
       )
         continue;
@@ -722,7 +722,11 @@ export class EditorService {
       if (!response.ok || !response.body)
         throw new Error("Could not download generated media");
       const mime = response.headers.get("content-type") || "",
-        ext = mime.startsWith("image/")
+        ext = mime.startsWith("image/jpeg")
+          ? ".jpg"
+          : mime.startsWith("image/webp")
+          ? ".webp"
+          : mime.startsWith("image/")
           ? ".png"
           : mime.startsWith("audio/")
             ? ".mp3"

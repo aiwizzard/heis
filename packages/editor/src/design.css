@@ -1,0 +1,185 @@
+.heis-design {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #151516;
+  color: #ddd;
+  font: 13px system-ui;
+}
+.heis-design header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid #343438;
+}
+.heis-design header span {
+  margin-left: auto;
+  color: #999;
+}
+.heis-design button,
+.heis-design select,
+.heis-design input,
+.heis-design textarea {
+  font: inherit;
+  color: inherit;
+  border: 1px solid #404045;
+  border-radius: 6px;
+  background: #242427;
+  padding: 8px;
+}
+.heis-design button {
+  cursor: pointer;
+}
+.heis-design button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.heis-design button:hover:not(:disabled) {
+  border-color: #a6d47e;
+}
+.heis-design label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #bbb;
+}
+.heis-design textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.design-columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.design-settings {
+  width: 235px;
+  flex-shrink: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  border-right: 1px solid #343438;
+}
+.design-main {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.design-board {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  min-height: 200px;
+  background: radial-gradient(#3b3b40 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.design-card {
+  position: absolute;
+  width: 210px;
+  height: 165px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 6px;
+}
+.design-card img {
+  height: 120px;
+  width: 100%;
+  object-fit: contain;
+  background: repeating-conic-gradient(#303033 0% 25%, #252527 0% 50%) 50%/16px
+    16px;
+}
+.design-card span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.design-card.selected {
+  outline: 2px solid #a6d47e;
+}
+.design-empty {
+  position: absolute;
+  left: 30px;
+  top: 20px;
+  max-width: 420px;
+  color: #aaa;
+}
+.design-comparison {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  height: 240px;
+}
+.design-comparison img {
+  width: 48%;
+  object-fit: contain;
+}
+.design-generate {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #343438;
+}
+.design-generate textarea {
+  flex: 1;
+  min-width: 80px;
+}
+.design-chat {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid #343438;
+}
+.design-chat > p,
+.design-consent {
+  padding: 14px;
+}
+.heis-design .design-consent {
+  flex-direction: row;
+  align-items: flex-start;
+  font-size: 12px;
+}
+.design-chat > div {
+  flex: 1;
+  min-height: 0;
+}
+.design-jobs {
+  max-height: 120px;
+  overflow: auto;
+  padding: 0 12px;
+}
+.design-jobs > div,
+.design-ref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px;
+}
+.design-ref span {
+  overflow-wrap: anywhere;
+}
+.heis-design [role="alert"] {
+  color: #ffb5a7;
+  padding: 0 14px;
+}
+.heis-design details {
+  padding: 6px 12px;
+}
+@media (max-width: 1150px) {
+  .design-settings {
+    width: 190px;
+  }
+  .design-chat {
+    width: 300px;
+  }
+}

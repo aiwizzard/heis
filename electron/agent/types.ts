@@ -23,6 +23,7 @@ export type Thread = {
   id: string;
   title: string;
   project: string | null;
+  design?: { projectId: string; sessionId: string };
   providerId?: string;
   model?: string;
   items: ChatItem[];
@@ -47,6 +48,7 @@ export type Snapshot = {
   models: Model[];
 };
 export type SendInput = {
+  design?: { projectId: string; sessionId: string };
   threadId?: string;
   project: string;
   text: string;

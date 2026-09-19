@@ -27,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
         <EditorToolWorkspace
           key={`${projectId}-${id}`}
           id={id}
+          projectId={projectId}
           locale={locale}
           input={input}
           onResult={onResult}
