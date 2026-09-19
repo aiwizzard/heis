@@ -54,8 +54,8 @@ export const editorTools: EditorTool[] = [
     id: "layers",
     name: "Image layers",
     group: "Image",
-    available: false,
-    note: "Layer decomposition provider is not connected.",
+    available: true,
+    input: "image",
   },
   {
     id: "clipping",

@@ -31,6 +31,8 @@ test("flattened, opaque and corrupt results cannot masquerade as layers", async 
   await assert.rejects(decodeLayeredImage(Buffer.from("bad")));
   const opaque = await sharp(Buffer.alloc(12), { raw: { width: 2, height: 2, channels: 3, pageHeight: 1 } }).tiff({ compression: "deflate" }).toBuffer();
   await assert.rejects(decodeLayeredImage(opaque), /alpha/);
+  const opaqueRgba = await sharp(Buffer.alloc(16, 255), { raw: { width: 2, height: 2, channels: 4, pageHeight: 1 } }).tiff({ compression: "deflate" }).toBuffer();
+  await assert.rejects(decodeLayeredImage(opaqueRgba), /opaque pages/);
   await assert.rejects(fetchLayeredImage("http://localhost/private"), /Untrusted/);
   await assert.rejects(fetchLayeredImage("https://runware.ai.evil.example/private"), /Untrusted/);
 });

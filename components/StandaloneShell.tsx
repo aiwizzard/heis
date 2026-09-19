@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { getUserBalance } from '../packages/studio/src/heisProvider';
+const LazyLayersStudio = lazy(() => import('../packages/studio/src/components/ImageLayersStudio'));
+const LayersStudio = (props: any) => <Suspense fallback={<div className="p-8 text-white/50">Loading studio...</div>}><LazyLayersStudio {...props} /></Suspense>;
 const LazyImageStudio = lazy(() => import('../packages/studio/src/components/ImageStudio'));
 const ImageStudio = (props: any) => <Suspense fallback={<div className="p-8 text-white/50">Loading studio...</div>}><LazyImageStudio {...props} /></Suspense>;
 const LazyVideoStudio = lazy(() => import('../packages/studio/src/components/VideoStudio'));
@@ -263,7 +265,7 @@ const NAVIGATION_CATEGORIES = [
   }
 ];
 
-const COMMERCIAL_READY_TABS = new Set(['image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'motion-control', 'vibe-motion', 'body-swap', 'agents', 'ai-influencer']);
+const COMMERCIAL_READY_TABS = new Set(['layers', 'image', 'video', 'lipsync', 'cinema', 'audio', 'marketing', 'motion-control', 'vibe-motion', 'body-swap', 'agents', 'ai-influencer']);
 
 function ProviderMigrationNotice({ tabId, label }: { tabId: string; label: string }) {
   return (
@@ -948,6 +950,7 @@ export default function StandaloneShell({ locale = 'en', routeParams = {} as Rec
           <ProviderMigrationNotice tabId={activeTab} label={tabLabel(activeTab)} />
         ) : (
           <>
+        {activeTab === 'layers' && <LayersStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('layers')} onGenerationEnd={makeGenerationEndCallback('layers')} onGenerationComplete={makeSuccessCallback('layers')} onGenerationError={makeErrorCallback('layers')} />}
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
           {activeTab === 'image' && <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />}
         </div>

@@ -224,7 +224,7 @@ async function submit(operation: any, modelId: string, inputs: Record<string, un
     await new Promise((resolve) => setTimeout(resolve, 2_000));
     job = unwrap(await heis.generation.getJob(billingMode, job.id));
   }
-  if (job.status !== "succeeded") throw new Error(job.error?.message ?? `Generation ${job.status}.`);
+  if (job.status !== "succeeded") throw new Error(job.error?.message ?? job.error_message ?? `Generation ${job.status}.`);
   const url = job.outputs?.[0]?.url;
   if (!url) throw new Error("Generation completed without a media output.");
   return { ...job, request_id: job.id, url, outputs: job.outputs.map((asset: any) => asset.url) };
@@ -268,8 +268,19 @@ export async function generateI2I(_legacyApiKey: string, params: any) {
   return submit("image-to-image", "heis-image-edit-standard", { positivePrompt: params.prompt, seedImage, strength: params.strength ?? 0.8, ...dimensions(params.aspect_ratio) }, params.onRequestId);
 }
 
-export async function decomposeLayers() {
-  throw new Error("Layer decomposition is unavailable until a verified multi-layer provider is configured.");
+export async function decomposeLayers(_legacyApiKey: string, params: { image_url: string; prompt?: string; layer_count?: number; onRequestId?: (id: string) => void }) {
+  const image = params.image_url?.trim();
+  const layers = params.layer_count ?? 4;
+  if (!image || !/^https:\/\//.test(image)) throw new Error("Upload an image before separating layers.");
+  if (!Number.isInteger(layers) || layers < 2 || layers > 10) throw new Error("Choose between 2 and 10 layers.");
+  const result = await submit("decompose-layers", "heis-image-layers", {
+    positivePrompt: params.prompt?.trim() || "Decompose the supplied image into coherent, independently editable RGBA layers. Preserve composition, framing, appearance, and clean transparent edges. Separate foreground objects from the background without adding new content.",
+    inputs: { referenceImages: [image] },
+    settings: { layers },
+    outputFormat: "TIFF",
+  }, params.onRequestId);
+  if (result.outputs.length < 2) throw new Error("The provider did not return multiple layers. Please retry.");
+  return result;
 }
 
 export async function upscaleImage(_legacyApiKey: string, params: any) {

@@ -1,6 +1,6 @@
 import { creditsForProviderCost } from "@heis/core";
 import { copyRemoteAsset, storeLayerAsset } from "./r2";
-import { fetchLayeredImage } from "./layeredImage";
+import { fetchLayeredImage, InvalidLayeredImageError } from "./layeredImage";
 import { createAdminClient } from "./supabase";
 
 function output(data: Record<string, any>): { url?: string; kind: string } {
@@ -64,6 +64,18 @@ export async function processRunwareWebhook(data: Record<string, any>) {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Webhook processing failed.";
+    if (error instanceof InvalidLayeredImageError) {
+      const found = await admin.from("generation_jobs").select("id,user_id").eq("provider_job_id", eventId).single();
+      if (found.error) throw found.error;
+      const job = found.data;
+      const released = await admin.rpc("release_generation_credits", { p_job_id: job.id, p_reason: "invalid_layer_output" });
+      if (released.error) throw released.error;
+      const updated = await admin.from("generation_jobs").update({ status: "failed", error_code: "INVALID_LAYER_OUTPUT", error_message: `Layer separation failed: ${message} Your reserved credits were returned. Try another source image.` }).eq("id", job.id);
+      if (updated.error) throw updated.error;
+      await admin.from("upload_assets").delete().eq("user_id", job.user_id).eq("object_key", `users/${job.user_id}/jobs/${job.id}/reservation`);
+      await admin.from("processed_webhooks").update({ status: "processed", last_error: message, processed_at: new Date().toISOString() }).eq("provider", "runware").eq("event_id", eventId);
+      return { failed: true };
+    }
     await admin.from("processed_webhooks").update({ status: "failed", last_error: message }).eq("provider", "runware").eq("event_id", eventId);
     throw error;
   }

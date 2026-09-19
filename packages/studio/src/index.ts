@@ -13,6 +13,6 @@ export { default as WorkflowStudio } from './components/WorkflowStudio';
 export { default as DesignAgentStudio } from './components/DesignAgentStudio';
 export { default as McpCliStudio } from './components/McpCliStudio';
 export { default as AiInfluencerStudio } from './components/AiInfluencerStudio';
-export { default as LayersStudio } from './components/LayersStudio';
+export { default as LayersStudio } from './components/ImageLayersStudio';
 export { default as MotionControlStudio } from './components/MotionControlStudio';
 export { getUserBalance } from './heisProvider';
