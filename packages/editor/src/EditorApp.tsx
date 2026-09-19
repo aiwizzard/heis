@@ -531,12 +531,11 @@ export function EditorApp({
     return (
       <main className="heis-editor heis-project-home">
         <header className="heis-editor-bar">
-          <b className="heis-wordmark">heis</b>
+          <img className="heis-wordmark" src="/brand/heis-wordmark-dark.svg" alt="Heis" height={26} draggable={false} />
           <span>Video editing studio</span>
           <button onClick={onLegacy}>Standalone tools ↗</button>
         </header>
         <section className="heis-home-content">
-          <p className="heis-eyebrow">YOUR WORKSPACE</p>
           <h1>Make the next cut.</h1>
           <p>Bring your footage, ideas, and sound together.</p>
           <div className="heis-new-project">
@@ -632,7 +631,7 @@ export function EditorApp({
         >
           ▦
         </button>
-        <b className="heis-wordmark">heis</b>
+        <img className="heis-wordmark" src="/brand/heis-wordmark-dark.svg" alt="Heis" height={26} draggable={false} />
         <input
           className="heis-project-title"
           aria-label="Project name"

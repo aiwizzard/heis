@@ -107,10 +107,11 @@
   -webkit-app-region: drag;
 }
 .heis-wordmark {
-  font-size: 22px;
-  letter-spacing: -1.2px;
+  display: block;
+  height: 26px;
+  width: auto;
+  flex-shrink: 0;
   margin-right: 12px;
-  color: #f2f0eb;
 }
 .heis-editor .heis-project-title {
   border: 0;
