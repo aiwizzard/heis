@@ -74,6 +74,30 @@ export function registerEditor(): EditorService {
     net.fetch(pathToFileURL(service.resolveMedia(request.url)).toString()),
   );
   const handlers: Record<string, (...args: any[]) => unknown> = {
+    designOpen: (projectId?: string, sessionId?: string, sourceUrl?: string) => {
+      const id = projectId || service.destinationProjectId();
+      const selected = sessionId || service.designs.list(id)[0]?.id || service.designs.create(id).session.id;
+      if (sourceUrl) {
+        const url = new URL(sourceUrl);
+        if (url.protocol !== "heis-project:" || url.hostname !== id) throw new Error("Reference belongs to another project.");
+        const asset = service.snapshot(id).project.assets.find(a => a.path === decodeURIComponent(url.pathname.slice(1)));
+        if (asset?.kind === "image" && !service.designs.read(id,selected).referenceAssetIds.includes(asset.id)) service.designs.addReferences(id,selected,[asset.id]);
+      }
+      return service.designs.snapshot(id, selected);
+    },
+    designList: (id: string) => service.designs.list(id),
+    designCreate: (id: string) => service.designs.create(id),
+    designUpdate: (id: string, sessionId: string, revision: number, patch: any) => service.designs.update(id,sessionId,revision,patch),
+    designImport: async (id: string, sessionId: string) => {
+      const result = await dialog.showOpenDialog({ title:"Import design references",properties:["openFile","multiSelections"],filters:[{name:"Images",extensions:["png","jpg","jpeg","webp"]}] });
+      if (!result.canceled) {
+        const assets = await service.importFiles(id,result.filePaths);
+        return service.designs.addReferences(id,sessionId,assets.map(a=>a.id));
+      }
+      return service.designs.snapshot(id,sessionId);
+    },
+    designFrame: (id: string, sessionId: string, assetId: string, seconds: number) => service.designFrame(id,sessionId,assetId,seconds),
+    designInsert: (id: string, sessionId: string, assetId: string, sequenceId: string, frame: number, duration: number, revision: number, replaceId?: string) => service.designs.insert(id,sessionId,assetId,sequenceId,frame,duration,revision,replaceId),
     status: () => service.status(),
     chooseClippingSource: async () => {
       const projectId = service.destinationProjectId();

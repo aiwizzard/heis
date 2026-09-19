@@ -32,6 +32,8 @@ import type {
   RankedHighlight,
 } from "@heis/core";
 
+import { DesignStore } from "./designStore";
+
 type Session = {
   directory: string;
   project: EditorProject;
@@ -73,6 +75,7 @@ export class EditorService {
   private watching = new Set<string>();
   private captures = new Map<string, Promise<void>>();
   private disposed = false;
+  readonly designs = new DesignStore(this);
   activeProjectId: string | null = null;
   activeContext: ToolContext | null = null;
   setContext(context: ToolContext) {
@@ -1092,6 +1095,16 @@ export class EditorService {
       this.controllers.delete(job.id);
       await fsp.unlink(temporary).catch(() => {});
     }
+  }
+  async designFrame(projectId: string, sessionId: string, assetId: string, seconds: number) {
+    const s = this.session(projectId), asset = s.project.assets.find(a => a.id === assetId);
+    if (!asset || asset.kind !== "video" || !Number.isFinite(seconds) || seconds < 0 || seconds >= asset.durationSeconds) throw new Error("Choose a valid frame from a project video.");
+    const temporary = path.join(s.directory,"cache",`${randomUUID()}.png`);
+    try {
+      await this.run(this.ffmpeg,["-v","error","-y","-ss",String(seconds),"-i",this.safePath(s.directory,asset.path),"-frames:v","1",temporary]);
+      const [frame] = await this.importFiles(projectId,[temporary]);
+      return this.designs.addReferences(projectId,sessionId,[frame.id]);
+    } finally { await fsp.unlink(temporary).catch(()=>{}); }
   }
   private clippingSource(sourceUrl: string) {
     const url = new URL(sourceUrl);

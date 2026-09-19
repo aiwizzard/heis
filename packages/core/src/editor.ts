@@ -1,3 +1,4 @@
+import type { DesignBridge } from "./design";
 import type { TranscriptCue, RankedHighlight } from "./highlights";
 
 export const EDITOR_SCHEMA_VERSION = 1;
@@ -187,7 +188,7 @@ export type EditorEvent =
   | { type: "project"; snapshot: EditorSnapshot }
   | { type: "job"; job: EditorJob }
   | { type: "error"; message: string };
-export interface EditorBridge {
+export interface EditorBridge extends DesignBridge {
   status(): Promise<EditorRuntimeStatus>;
   chooseClippingSource(): Promise<{ url: string; name: string } | null>;
   transcribeSource(sourceUrl: string): Promise<EditorJob>;
